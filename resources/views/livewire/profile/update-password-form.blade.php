@@ -1,8 +1,8 @@
 <?php
 
+use App\Support\PasswordPolicy;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Livewire\Volt\Component;
 
@@ -20,8 +20,8 @@ new class extends Component
         try {
             $validated = $this->validate([
                 'current_password' => ['required', 'string', 'current_password'],
-                'password' => ['required', 'string', Password::defaults(), 'confirmed'],
-            ]);
+                'password' => ['required', 'string', PasswordPolicy::rule(), 'confirmed'],
+            ], PasswordPolicy::messages());
         } catch (ValidationException $e) {
             $this->reset('current_password', 'password', 'password_confirmation');
 
@@ -40,11 +40,11 @@ new class extends Component
 
 <section>
     <header>
-        <h2 class="text-lg font-medium text-gray-900">
+        <h2 class="text-lg font-medium text-slate-900">
             {{ __('Update Password') }}
         </h2>
 
-        <p class="mt-1 text-sm text-gray-600">
+        <p class="mt-1 text-sm text-slate-600">
             {{ __('Ensure your account is using a long, random password to stay secure.') }}
         </p>
     </header>
@@ -58,7 +58,9 @@ new class extends Component
 
         <div>
             <x-input-label for="update_password_password" :value="__('New Password')" />
-            <x-text-input wire:model="password" id="update_password_password" name="password" type="password" class="mt-1 block w-full" autocomplete="new-password" />
+            <x-password-strength-meter>
+                <x-text-input wire:model="password" id="update_password_password" name="password" type="password" class="mt-1 block w-full" autocomplete="new-password" />
+            </x-password-strength-meter>
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
         </div>
 

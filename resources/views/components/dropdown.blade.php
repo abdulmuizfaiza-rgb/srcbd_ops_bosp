@@ -3,9 +3,13 @@
 @php
 $alignmentClasses = match ($align) {
     'left' => 'ltr:origin-top-left rtl:origin-top-right start-0',
-    'top' => 'origin-top',
+    'top' => 'origin-bottom start-0',
     default => 'ltr:origin-top-right rtl:origin-top-left end-0',
 };
+
+// "top" berarti dropdown-nya terbuka ke ATAS (dipakai untuk trigger yang
+// posisinya di bagian bawah layar, misal kartu pengguna di sidebar).
+$positionClass = $align === 'top' ? 'bottom-full mb-2' : 'mt-2';
 
 $width = match ($width) {
     '48' => 'w-48',
@@ -25,7 +29,7 @@ $width = match ($width) {
             x-transition:leave="transition ease-in duration-75"
             x-transition:leave-start="opacity-100 scale-100"
             x-transition:leave-end="opacity-0 scale-95"
-            class="absolute z-50 mt-2 {{ $width }} rounded-md shadow-lg {{ $alignmentClasses }}"
+            class="absolute z-50 {{ $positionClass }} {{ $width }} rounded-md shadow-lg {{ $alignmentClasses }}"
             style="display: none;"
             @click="open = false">
         <div class="rounded-md ring-1 ring-black ring-opacity-5 {{ $contentClasses }}">

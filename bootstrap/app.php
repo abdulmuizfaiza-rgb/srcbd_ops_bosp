@@ -15,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
         ]);
+
+        $middleware->web(append: [
+            \App\Http\Middleware\ForcePasswordChange::class,
+            \App\Http\Middleware\EnsureOnboardingComplete::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -22,8 +22,6 @@ class ProfilSekolahSeeder extends Seeder
                 'nama_kepala_sekolah' => null,
                 'nip_kepala_sekolah' => null,
                 'alamat_sekolah' => null,
-                'logo_sekolah' => null,
-                'logo_pemda' => null,
             ]
         );
     }

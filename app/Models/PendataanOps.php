@@ -2,20 +2,116 @@
 
 namespace App\Models;
 
+use Database\Factories\PendataanOpsFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Kerangka awal Pendataan OPS.
- * Field detail akan ditambahkan sesuai instruksi berikutnya.
+ * Identitas OPS (satu data per sekolah, dikelola oleh Admin OPS sekolah
+ * tersebut atau oleh Superadmin).
  */
-#[Fillable(['created_by'])]
+#[Fillable([
+    'profil_sekolah_id',
+    'nuptk',
+    'nama',
+    'nip',
+    'jk',
+    'tempat_lahir',
+    'tanggal_lahir',
+    'status_kepegawaian',
+    'pendidikan_terakhir',
+    'jurusan',
+    'nama_perguruan_tinggi',
+    'no_whatsapp',
+    'foto_ops',
+    'sk_ops',
+    'created_by',
+])]
 class PendataanOps extends Model
 {
+    /** @use HasFactory<PendataanOpsFactory> */
+    use HasFactory;
+
     protected $table = 'pendataan_ops';
 
-    public function pembuat()
+    protected function casts(): array
+    {
+        return [
+            'tanggal_lahir' => 'date',
+        ];
+    }
+
+    public const JK_OPTIONS = [
+        'L' => 'Laki-Laki',
+        'P' => 'Perempuan',
+    ];
+
+    public const STATUS_KEPEGAWAIAN_OPTIONS = [
+        'PNS' => 'PNS',
+        'ASN PPPK' => 'ASN PPPK',
+        'ASN PPPK-PW' => 'ASN PPPK-PW',
+        'Honorer' => 'Honorer',
+        'PTT Yayasan' => 'PTT Yayasan',
+    ];
+
+    public const PENDIDIKAN_OPTIONS = [
+        'SMA' => 'SMA',
+        'SMK' => 'SMK',
+        'MA' => 'MA',
+        'D1' => 'D1',
+        'D2' => 'D2',
+        'D3' => 'D3',
+        'S1' => 'S1',
+        'S2' => 'S2',
+        'S3' => 'S3',
+    ];
+
+    /**
+     * Jenjang pendidikan yang mengaktifkan field Jurusan & Nama Perguruan
+     * Tinggi (nonaktif untuk SMA/SMK/MA).
+     */
+    public const PENDIDIKAN_BUTUH_JURUSAN = ['S1', 'S2', 'S3'];
+
+    public static function butuhJurusan(?string $pendidikan): bool
+    {
+        return in_array($pendidikan, self::PENDIDIKAN_BUTUH_JURUSAN, true);
+    }
+
+    public function pembuat(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function profilSekolah(): BelongsTo
+    {
+        return $this->belongsTo(ProfilSekolah::class);
+    }
+
+    public function getJkLabelAttribute(): string
+    {
+        return self::JK_OPTIONS[$this->jk] ?? '-';
+    }
+
+    /**
+     * PENTING: sengaja route aplikasi (bukan Storage::disk('public')->url()
+     * langsung) - lihat penjelasan lengkap di PendataanOpsFileController.
+     * Storage::url() membangun URL dari APP_URL statis yang bisa tidak
+     * cocok dengan host+port sungguhan yang dipakai browser, menyebabkan
+     * Photo OPS & SK OPS "tidak muncul" walau filenya tersimpan benar.
+     */
+    public function getFotoOpsUrlAttribute(): ?string
+    {
+        return $this->foto_ops
+            ? route('pendataan-ops.file', ['jenis' => 'foto', 'pendataanOps' => $this->id])
+            : null;
+    }
+
+    public function getSkOpsUrlAttribute(): ?string
+    {
+        return $this->sk_ops
+            ? route('pendataan-ops.file', ['jenis' => 'sk', 'pendataanOps' => $this->id])
+            : null;
     }
 }

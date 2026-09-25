@@ -1,3 +1,125 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+[x-cloak] {
+    display: none !important;
+}
+
+/* Pengaturan Tampilan: jenis & ukuran huruf halaman/menu (diatur Superadmin) */
+body {
+    font-family: var(--font-halaman, 'Figtree', sans-serif);
+    font-size: var(--ukuran-halaman, 16px);
+}
+
+.menu-tampilan,
+.menu-tampilan * {
+    font-family: var(--font-menu, 'Figtree', sans-serif) !important;
+}
+
+.menu-tampilan {
+    font-size: var(--ukuran-menu, 14px);
+}
+
+/* Pengaturan Tampilan: jenis & ukuran huruf khusus form Registrasi Admin
+   OPS/Admin BOSP (diatur Superadmin lewat menu Tampilan). */
+.form-registrasi,
+.form-registrasi * {
+    font-family: var(--font-registrasi, 'Figtree', sans-serif) !important;
+}
+
+.form-registrasi {
+    font-size: var(--ukuran-registrasi, 14px);
+}
+
+/* Permintaan user (2026-09-05, lanjutan): SEMUA tulisan pada landing page
+   (pilih akses), form login, dan form registrasi Admin OPS/Admin BOSP
+   dibuat BOLD supaya lebih jelas terbaca - bukan pengaturan yang bisa
+   diatur Superadmin (beda dengan warna/ukuran/jenis huruf di atas), jadi
+   cukup class CSS tetap. Dipasang di kartu pembungkus layout tamu
+   (layouts/guest.blade.php) supaya mencakup ketiga halaman itu sekaligus
+   (landing & login berbagi 1 file Blade yang sama, registrasi memakai
+   layout yang sama juga). */
+.teks-tebal-akses,
+.teks-tebal-akses * {
+    font-weight: 700 !important;
+}
+
+@keyframes blob-a {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(40px, -30px) scale(1.1); }
+    66% { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+@keyframes blob-b {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(-30px, 30px) scale(1.05); }
+    66% { transform: translate(30px, -20px) scale(0.9); }
+}
+
+@keyframes blob-c {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(25px, -25px) scale(1.08); }
+}
+
+@keyframes float-logo {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+@keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-down {
+    from { opacity: 0; transform: translateY(-16px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@layer utilities {
+    .animate-blob-a { animation: blob-a 14s ease-in-out infinite; }
+    .animate-blob-b { animation: blob-b 16s ease-in-out infinite; }
+    .animate-blob-c { animation: blob-c 18s ease-in-out infinite; }
+    .animate-float-logo { animation: float-logo 4s ease-in-out infinite; }
+    .animate-fade-in-up { animation: fade-in-up 0.6s ease-out both; }
+    .animate-fade-in-down { animation: fade-in-down 0.6s ease-out both; }
+
+    /* Scrollbar modern (vertikal & horizontal) untuk kontainer tabel riwayat
+       yang bisa di-scroll - dibuat cukup tebal & kontras supaya kelihatan
+       jelas ada scroll bar-nya, bukan cuma tipis samar-samar. */
+    .scrollbar-modern {
+        scrollbar-width: auto;
+        scrollbar-color: #64748b #e2e8f0;
+    }
+
+    .scrollbar-modern::-webkit-scrollbar {
+        width: 14px;
+        height: 14px;
+    }
+
+    .scrollbar-modern::-webkit-scrollbar-track {
+        background: #e2e8f0;
+        border-radius: 9999px;
+    }
+
+    .scrollbar-modern::-webkit-scrollbar-thumb {
+        background-color: #64748b;
+        border-radius: 9999px;
+        border: 3px solid #e2e8f0;
+        /* Round 26 (2026-09-24), permintaan user "scroll bar bergaya
+           animasi" pada menu Panduan Aplikasi - transisi warna halus saat
+           di-hover, ditambahkan di class GLOBAL ini (bukan class baru
+           terpisah) supaya semua tabel yang sudah memakai "scrollbar-modern"
+           di menu lain ikut mendapat efek animasi yang sama, konsisten. */
+        transition: background-color 0.2s ease;
+    }
+
+    .scrollbar-modern::-webkit-scrollbar-thumb:hover {
+        background-color: #475569;
+    }
+
+    .scrollbar-modern::-webkit-scrollbar-corner {
+        background: #e2e8f0;
+    }
+}

@@ -20,6 +20,20 @@ class AuthenticationTest extends TestCase
             ->assertSeeVolt('pages.auth.login');
     }
 
+    /**
+     * Round ketujuh belas (2026-09-24, permintaan user): tombol
+     * "Kembali ke Beranda" (landing page publik, route "beranda") harus
+     * tampil di halaman login - lihat
+     * resources/views/livewire/pages/auth/login.blade.php.
+     */
+    public function test_halaman_login_punya_tombol_kembali_ke_beranda(): void
+    {
+        $this->get('/login')
+            ->assertOk()
+            ->assertSee('Kembali ke Beranda')
+            ->assertSee(route('beranda'), false);
+    }
+
     public function test_users_can_authenticate_using_the_login_screen(): void
     {
         $user = User::factory()->create();
@@ -56,7 +70,10 @@ class AuthenticationTest extends TestCase
 
     public function test_navigation_menu_can_be_rendered(): void
     {
-        $user = User::factory()->create();
+        // Superadmin dipakai supaya test ini murni menguji navigasi
+        // Breeze, tidak ikut kena gate onboarding Profil Sekolah/Identitas
+        // yang berlaku untuk Admin OPS/Admin BOSP (lihat OnboardingGateTest).
+        $user = User::factory()->create(['level_akses' => User::LEVEL_SUPERADMIN]);
 
         $this->actingAs($user);
 

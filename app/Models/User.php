@@ -6,10 +6,11 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['username', 'password', 'level_akses', 'nama_sekolah', 'jabatan'])]
+#[Fillable(['username', 'password', 'level_akses', 'nama_sekolah', 'profil_sekolah_id', 'jabatan', 'must_change_password', 'is_approved'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -45,6 +46,8 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'must_change_password' => 'boolean',
+            'is_approved' => 'boolean',
         ];
     }
 
@@ -61,6 +64,16 @@ class User extends Authenticatable
     public function isAdminBosp(): bool
     {
         return $this->level_akses === self::LEVEL_ADMIN_BOSP;
+    }
+
+    /**
+     * Sekolah yang terhubung dengan akun ini (khusus Admin OPS/Admin BOSP).
+     *
+     * @return BelongsTo<ProfilSekolah, User>
+     */
+    public function profilSekolah(): BelongsTo
+    {
+        return $this->belongsTo(ProfilSekolah::class);
     }
 
     /**

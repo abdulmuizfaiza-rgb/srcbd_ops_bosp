@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Forms;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -22,6 +23,32 @@ class LoginForm extends Form
     public bool $remember = false;
 
     /**
+     * Jumlah percobaan login gagal secara beruntun pada form ini.
+     * Setelah 2x gagal, tombol "Pemulihan Akun" ditampilkan.
+     */
+    public int $percobaanGagal = 0;
+
+    /**
+     * Kata sandi pemulihan (default) per level akses.
+     *
+     * SENGAJA HANYA Superadmin (2026-09-05) - jalur pemulihan mandiri
+     * untuk Admin OPS/Admin BOSP dinonaktifkan TOTAL (bukan cuma
+     * disembunyikan dari tampilan login): satu-satunya cara akun kedua
+     * level ini reset password sekarang lewat Superadmin (menu Kelola
+     * Pengguna, tombol "Reset Password" - lihat Pengguna\Index). Kalau
+     * dulu ada yang tahu kata sandi pemulihan default lama ('adminops'/
+     * 'adminbosp'), sekarang sudah tidak bisa dipakai sama sekali lagi.
+     *
+     * @return array<string, string>
+     */
+    public static function kataSandiPemulihan(): array
+    {
+        return [
+            User::LEVEL_SUPERADMIN => 'superadmin',
+        ];
+    }
+
+    /**
      * Attempt to authenticate the request's credentials.
      *
      * @throws ValidationException
@@ -30,8 +57,17 @@ class LoginForm extends Form
     {
         $this->ensureIsNotRateLimited();
 
+        $akun = User::where('username', $this->username)->first();
+
+        if ($akun && ! $akun->is_approved) {
+            throw ValidationException::withMessages([
+                'form.username' => 'Akun Anda masih menunggu persetujuan Superadmin dan belum bisa digunakan untuk login.',
+            ]);
+        }
+
         if (! Auth::attempt($this->only(['username', 'password']), $this->remember)) {
             RateLimiter::hit($this->throttleKey());
+            $this->percobaanGagal++;
 
             throw ValidationException::withMessages([
                 'form.username' => trans('auth.failed'),
@@ -39,6 +75,54 @@ class LoginForm extends Form
         }
 
         RateLimiter::clear($this->throttleKey());
+        $this->percobaanGagal = 0;
+    }
+
+    /**
+     * Login menggunakan kata sandi pemulihan (default) sesuai level akses
+     * akun dengan username yang diketik, lalu wajibkan ganti password.
+     *
+     * HANYA untuk Superadmin (2026-09-05) - Admin OPS/Admin BOSP yang
+     * mencoba jalur ini (mis. lewat request langsung, bukan dari tombol
+     * di UI yang memang sudah disembunyikan untuk mereka) akan selalu
+     * ditolak dengan pesan yang mengarahkan ke Superadmin.
+     *
+     * @throws ValidationException
+     */
+    public function pemulihan(): void
+    {
+        $this->validate([
+            'username' => ['required', 'string'],
+            'password' => ['required', 'string'],
+        ]);
+
+        $user = User::where('username', $this->username)->first();
+
+        if ($user && $user->level_akses !== User::LEVEL_SUPERADMIN) {
+            throw ValidationException::withMessages([
+                'form.username' => 'Pemulihan akun mandiri sudah tidak tersedia untuk Admin OPS/Admin BOSP. Silakan hubungi Superadmin untuk me-reset password akun Anda.',
+            ]);
+        }
+
+        $kataSandi = $user ? (static::kataSandiPemulihan()[$user->level_akses] ?? null) : null;
+
+        if (! $user || $kataSandi === null || ! hash_equals($kataSandi, $this->password)) {
+            throw ValidationException::withMessages([
+                'form.username' => 'Akun tidak ditemukan atau kata sandi pemulihan tidak sesuai.',
+            ]);
+        }
+
+        if (! $user->is_approved) {
+            throw ValidationException::withMessages([
+                'form.username' => 'Akun Anda masih menunggu persetujuan Superadmin dan belum bisa digunakan untuk login.',
+            ]);
+        }
+
+        Auth::login($user, $this->remember);
+        $user->forceFill(['must_change_password' => true])->save();
+
+        RateLimiter::clear($this->throttleKey());
+        $this->percobaanGagal = 0;
     }
 
     /**
