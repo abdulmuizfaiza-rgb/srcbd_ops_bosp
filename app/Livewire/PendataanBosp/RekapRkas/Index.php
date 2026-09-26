@@ -585,6 +585,30 @@ class Index extends Component
                 $sekolah->danaBospTahapTerisi = $this->danaBospTahapTerisiDari($sekolah->danaBospTahunIni);
                 $sekolah->anggaranBospOtomatis = RekapRkas::anggaranBospOtomatis($sekolah->danaBospTahunIni?->total_penerimaan_setahun);
 
+                // PENTING (perbaikan 2026-09-26, ditemukan user lewat hasil
+                // Unduh Excel Rekap RKAS): selama sekolah BELUM mengisi Dana
+                // BOSP Tahap 1&2 - Penerimaan BOSP untuk tahun aktif, baris
+                // Rekap RKAS-nya TERKUNCI di layar (lihat index.blade.php -
+                // seluruh kolom diganti pesan terkunci, BUKAN menampilkan
+                // data). Tapi kalau sekolah itu KEBETULAN masih menyimpan
+                // data lama di tabel rekap_rkas (mis. diisi sebelum dikunci,
+                // lalu Dana BOSP Tahap-nya dikosongkan lagi belakangan),
+                // data lama itu tetap ada di $sekolah->rekapRkas & akan
+                // "bocor" ke konsumen lain method ini (Unduh PDF/Excel,
+                // baris JUMLAH di hitungTotalBaris()) walau di layar sudah
+                // disembunyikan. Paksa jadi null di sini (jawaban user:
+                // "harusnya datanya nol/tidak ada, kecuali baris JUMLAH
+                // [total keseluruhan] yang tetap ada datanya") supaya SEMUA
+                // konsumen menganggap baris terkunci = kosong (0), dan baris
+                // JUMLAH otomatis ikut benar (tidak lagi kemasukan data lama
+                // sekolah yang terkunci). Data asli di database TIDAK
+                // disentuh - murni representasi in-memory untuk request ini;
+                // begitu Dana BOSP Tahap-nya diisi lagi, data lama itu akan
+                // otomatis muncul kembali seperti semula.
+                if (! $sekolah->danaBospTahapTerisi) {
+                    $sekolah->rekapRkasTahunIni = null;
+                }
+
                 return $sekolah;
             });
     }

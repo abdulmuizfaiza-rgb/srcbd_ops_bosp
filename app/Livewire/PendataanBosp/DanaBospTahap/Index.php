@@ -194,17 +194,42 @@ class Index extends Component
             $data['penerimaan_tahap_1'] = $tahap1;
             $data['penerimaan_tahap_2'] = $tahap2;
 
-            // Sinkronkan kolom rekap_rkas.anggaran_bosp (permintaan user
-            // 2026-09-23: field itu sekarang otomatis mengikuti Total
-            // Penerimaan BOSP Setahun di sini) KALAU sekolah ini sudah
-            // punya baris Rekap RKAS untuk tahun yang sama - sengaja TIDAK
-            // membuat baris baru di sini (updateOrCreate) supaya gate
-            // "wajib isi Dana BOSP Tahap dulu" di menu Rekap RKAS
-            // (Livewire\PendataanBosp\RekapRkas\Index::danaBospTahapTerisi())
-            // tidak diam-diam dilewati dari jalur ini.
-            RekapRkas::where('profil_sekolah_id', $sekolahId)
-                ->where('tahun', $this->tahun)
-                ->update(['anggaran_bosp' => RekapRkas::anggaranBospOtomatis($total)]);
+            // "Terisi" di sini SAMA PERSIS dengan syarat yang dipakai menu
+            // Rekap RKAS untuk membuka/mengunci baris sekolah ini (lihat
+            // Livewire\PendataanBosp\RekapRkas\Index::danaBospTahapTerisiDari()) -
+            // WAJIB dijaga sama supaya database selalu konsisten dengan
+            // status terkunci/terbuka yang tampil di layar menu itu.
+            $danaBospTahapTerisi = $jumlahSiswa !== null && $jumlahDana !== null;
+
+            if ($danaBospTahapTerisi) {
+                // Sinkronkan kolom rekap_rkas.anggaran_bosp (permintaan user
+                // 2026-09-23: field itu sekarang otomatis mengikuti Total
+                // Penerimaan BOSP Setahun di sini) KALAU sekolah ini sudah
+                // punya baris Rekap RKAS untuk tahun yang sama - sengaja TIDAK
+                // membuat baris baru di sini (updateOrCreate) supaya gate
+                // "wajib isi Dana BOSP Tahap dulu" di menu Rekap RKAS
+                // tidak diam-diam dilewati dari jalur ini.
+                RekapRkas::where('profil_sekolah_id', $sekolahId)
+                    ->where('tahun', $this->tahun)
+                    ->update(['anggaran_bosp' => RekapRkas::anggaranBospOtomatis($total)]);
+            } else {
+                // PENTING (permintaan user 2026-09-26, ditemukan lewat hasil
+                // Unduh Excel Rekap RKAS yang menampilkan data lama sekolah
+                // yang sudah terkunci): begitu Jumlah Siswa atau Jumlah Dana
+                // BOSP Per Tahun DIKOSONGKAN LAGI (sekolah ini jadi TIDAK
+                // terisi/terkunci lagi di menu Rekap RKAS), baris Rekap RKAS
+                // sekolah+tahun ini HARUS ikut dihapus TOTAL dari database
+                // (jawaban AskUserQuestion: "Ya, otomatis ikut dibersihkan" +
+                // "Hapus barisnya total") - BUKAN cuma disembunyikan di layar
+                // seperti sebelumnya, supaya data di database selalu sama
+                // dengan yang terlihat di aplikasi (tidak ada data "nyangkut"
+                // dari sekolah yang sudah terkunci). Kalau sekolah ini nanti
+                // mengisi Dana BOSP Tahap lagi, Rekap RKAS-nya mulai dari nol
+                // lagi (bukan muncul kembali data lama).
+                RekapRkas::where('profil_sekolah_id', $sekolahId)
+                    ->where('tahun', $this->tahun)
+                    ->delete();
+            }
         }
 
         // Kalau field yang diedit adalah Saldo Kas Bank atau Saldo Kas
