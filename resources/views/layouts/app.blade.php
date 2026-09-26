@@ -7,6 +7,8 @@
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 
+        <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+
         {{-- Pengaturan Tampilan (warna & huruf) - diatur Superadmin lewat menu Tampilan --}}
         @php($tampilanHalaman = \App\Models\PengaturanTampilan::current())
 

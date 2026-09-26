@@ -7,6 +7,8 @@
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 
+        <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+
         {{--
             Layout BARU (round keenam belas, 2026-09-24, bagian 2) khusus
             utk landing page publik (route "/", nama route "beranda") -
@@ -114,7 +116,7 @@
                                     📢 {{ $p->judul }}&nbsp;&nbsp;&nbsp;•&nbsp;&nbsp;&nbsp;
                                 @endforeach
                             </span>
-                            <span class="block text-[10px] sm:text-[11px] text-white/85 leading-tight mt-0.5">
+                            <span class="block text-center text-[10px] sm:text-[11px] text-white/85 leading-tight mt-0.5">
                                 Silahkan Klik Link Informasi nya untuk melihat Detail nya
                             </span>
                         </button>
@@ -134,7 +136,7 @@
                                 x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
                                 <div class="fixed inset-0 bg-slate-900/60" @click="tampilDetailPengumuman = false; clearTimeout(timerPengumuman)"></div>
 
-                                <div class="relative w-full max-w-lg max-h-[80vh] overflow-y-auto scrollbar-modern rounded-xl bg-white p-6 shadow-2xl">
+                                <div class="relative w-full max-w-md max-h-[80vh] overflow-y-auto scrollbar-modern rounded-xl bg-white p-6 shadow-2xl">
                                     <div class="flex items-center justify-between mb-4">
                                         <h3 class="text-lg font-semibold text-slate-900">Pengumuman</h3>
                                         <button type="button" @click="tampilDetailPengumuman = false; clearTimeout(timerPengumuman)" class="text-slate-400 hover:text-slate-600">
