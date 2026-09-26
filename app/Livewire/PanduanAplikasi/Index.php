@@ -149,7 +149,7 @@ class Index extends Component
             'judul' => ['required', 'string', 'max:255'],
             'deskripsi' => ['nullable', 'string', 'max:2000'],
             'fileBaruList' => ['array'],
-            'fileBaruList.*' => ['nullable', 'file', 'max:'.PanduanAplikasi::UKURAN_MAKS_KB, 'mimes:'.implode(',', PanduanAplikasi::EKSTENSI_DIIZINKAN)],
+            'fileBaruList.*' => ['nullable', 'file', 'max:'.PanduanAplikasi::UKURAN_MAKS_KB, 'extensions:'.implode(',', PanduanAplikasi::EKSTENSI_DIIZINKAN)],
             'linkBaruList' => ['array'],
             'linkBaruList.*' => ['nullable', 'url', 'max:500'],
         ], [], [
