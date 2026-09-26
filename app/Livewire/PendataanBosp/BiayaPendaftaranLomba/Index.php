@@ -346,6 +346,58 @@ class Index extends Component
         $this->dispatch('close-modal', 'biaya-pendaftaran-lomba-hapus');
     }
 
+    /**
+     * Hapus massal (checkbox pilih baris + tombol "Hapus Terpilih") -
+     * permintaan user 2026-09-26 supaya admin bisa hapus banyak data
+     * sekaligus tanpa hapus satu-satu. Pola identik dengan Langganan
+     * Daya Jasa.
+     */
+    public array $dipilih = [];
+
+    public bool $confirmingHapusTerpilih = false;
+
+    public function toggleSemua(): void
+    {
+        $idSemua = collect($this->baris)->keys()->filter(fn ($id) => $id > 0)->values()->all();
+        if (count($idSemua) > 0 && count(array_diff($idSemua, $this->dipilih)) === 0) {
+            $this->dipilih = [];
+        } else {
+            $this->dipilih = $idSemua;
+        }
+    }
+
+    public function konfirmasiHapusTerpilih(): void
+    {
+        if (empty($this->dipilih)) {
+            return;
+        }
+        $this->confirmingHapusTerpilih = true;
+        $this->dispatch('open-modal', 'biaya-pendaftaran-lomba-hapus-terpilih');
+    }
+
+    public function batalHapusTerpilih(): void
+    {
+        $this->confirmingHapusTerpilih = false;
+        $this->dispatch('close-modal', 'biaya-pendaftaran-lomba-hapus-terpilih');
+    }
+
+    public function hapusTerpilih(): void
+    {
+        $barisTerpilih = BiayaPendaftaranLomba::whereIn('id', $this->dipilih)->get();
+        foreach ($barisTerpilih as $baris) {
+            abort_unless($this->bolehKelola($baris->profil_sekolah_id), 403);
+            $this->abortJikaTerkunciVerval($baris->profil_sekolah_id, $this->tahun, $baris->triwulan);
+        }
+
+        $jumlah = $barisTerpilih->count();
+        BiayaPendaftaranLomba::whereIn('id', $barisTerpilih->pluck('id'))->delete();
+
+        $this->dipilih = [];
+        $this->confirmingHapusTerpilih = false;
+        $this->dispatch('close-modal', 'biaya-pendaftaran-lomba-hapus-terpilih');
+        session()->flash('status', "Berhasil menghapus {$jumlah} data Biaya Pendaftaran Lomba/Bimtek/Workshop sekaligus.");
+    }
+
     public function hapus(): void
     {
         $baris = BiayaPendaftaranLomba::findOrFail($this->confirmingDeleteId);
@@ -495,6 +547,10 @@ class Index extends Component
             ];
         }
 
+        $idRealBaris = collect($this->baris)->keys()->filter(fn ($id) => $id > 0)->values()->all();
+        $this->dipilih = array_values(array_intersect($this->dipilih, $idRealBaris));
+        $semuaTerpilih = count($idRealBaris) > 0 && count(array_diff($idRealBaris, $this->dipilih)) === 0;
+
         $tahunOptions = range(now()->year - 2, now()->year + 1);
 
         // Jumlah Biaya Pendaftaran Lomba/Bimtek/Workshop UNTUK SELURUH
@@ -522,6 +578,7 @@ class Index extends Component
             'terkunciTriwulanIni' => $this->terkunciVervalUntukTampilan($this->triwulan),
             'tahunOptions' => array_reverse($tahunOptions),
             'totalBiayaKeseluruhan' => $totalBiayaKeseluruhan,
+            'semuaTerpilih' => $semuaTerpilih,
         ]);
     }
 }

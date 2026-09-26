@@ -630,6 +630,62 @@ class Index extends Component
         $this->dispatch('close-modal', 'rincian-belanja-barang-habis-pakai-hapus');
     }
 
+    /**
+     * Hapus massal (checkbox pilih baris + tombol "Hapus Terpilih") -
+     * permintaan user 2026-09-26 supaya admin bisa hapus banyak data
+     * sekaligus tanpa hapus satu-satu. HANYA berlaku untuk tab "Rincian
+     * Belanja Barang Habis Pakai" ($baris) - TIDAK berlaku untuk tab
+     * "Stock Opname" karena baris Stock Opname memang TIDAK BISA
+     * ditambah/dihapus manual sama sekali (selalu otomatis mengikuti
+     * baris RBBHP, lihat catatan di atas & di blade), jadi tidak ada
+     * konsep "pilih baris untuk dihapus" di tab itu.
+     */
+    public array $dipilih = [];
+
+    public bool $confirmingHapusTerpilih = false;
+
+    public function toggleSemua(): void
+    {
+        $idSemua = collect($this->baris)->keys()->filter(fn ($id) => $id > 0)->values()->all();
+        if (count($idSemua) > 0 && count(array_diff($idSemua, $this->dipilih)) === 0) {
+            $this->dipilih = [];
+        } else {
+            $this->dipilih = $idSemua;
+        }
+    }
+
+    public function konfirmasiHapusTerpilih(): void
+    {
+        if (empty($this->dipilih)) {
+            return;
+        }
+        $this->confirmingHapusTerpilih = true;
+        $this->dispatch('open-modal', 'rincian-belanja-barang-habis-pakai-hapus-terpilih');
+    }
+
+    public function batalHapusTerpilih(): void
+    {
+        $this->confirmingHapusTerpilih = false;
+        $this->dispatch('close-modal', 'rincian-belanja-barang-habis-pakai-hapus-terpilih');
+    }
+
+    public function hapusTerpilih(): void
+    {
+        $barisTerpilih = RincianBelanjaBarangHabisPakai::whereIn('id', $this->dipilih)->get();
+        foreach ($barisTerpilih as $baris) {
+            abort_unless($this->bolehKelola($baris->profil_sekolah_id), 403);
+            $this->abortJikaTerkunciVerval($baris->profil_sekolah_id, $this->tahun, $baris->triwulan);
+        }
+
+        $jumlah = $barisTerpilih->count();
+        RincianBelanjaBarangHabisPakai::whereIn('id', $barisTerpilih->pluck('id'))->delete();
+
+        $this->dipilih = [];
+        $this->confirmingHapusTerpilih = false;
+        $this->dispatch('close-modal', 'rincian-belanja-barang-habis-pakai-hapus-terpilih');
+        session()->flash('status', "Berhasil menghapus {$jumlah} data Rincian Belanja Barang Habis Pakai sekaligus.");
+    }
+
     public function hapus(): void
     {
         $baris = RincianBelanjaBarangHabisPakai::findOrFail($this->confirmingDeleteId);
@@ -904,6 +960,10 @@ class Index extends Component
             }
         }
 
+        $idRealBaris = collect($this->baris)->keys()->filter(fn ($id) => $id > 0)->values()->all();
+        $this->dipilih = array_values(array_intersect($this->dipilih, $idRealBaris));
+        $semuaTerpilih = count($idRealBaris) > 0 && count(array_diff($idRealBaris, $this->dipilih)) === 0;
+
         $tahunOptions = range(now()->year - 2, now()->year + 1);
 
         // Jumlah Total Harga UNTUK SELURUH SEKOLAH yang SEDANG DITAMPILKAN
@@ -953,6 +1013,7 @@ class Index extends Component
             'tahunOptions' => array_reverse($tahunOptions),
             'totalHargaKeseluruhan' => $totalHargaKeseluruhan,
             'totalOpname' => $totalOpname,
+            'semuaTerpilih' => $semuaTerpilih,
         ]);
     }
 }

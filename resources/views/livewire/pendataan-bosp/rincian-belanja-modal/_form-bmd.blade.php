@@ -267,3 +267,17 @@
         </div>
     </div>
 </x-modal>
+
+{{-- Modal Konfirmasi Hapus Terpilih BMD (hapus massal) - permintaan
+     user 2026-09-26, pola sama seperti Penerimaan Honor PTK. --}}
+<x-modal name="rincian-belanja-modal-bmd-hapus-terpilih" :show="$confirmingHapusTerpilihBmd" maxWidth="md">
+    <div class="p-6">
+        <h2 class="text-lg font-medium text-slate-900">Hapus {{ count($dipilihBmd) }} data terpilih?</h2>
+        <p class="mt-1 text-sm text-slate-600">Semua baris yang dicentang akan dihapus sekaligus. Tindakan ini tidak dapat dibatalkan.</p>
+
+        <div class="mt-6 flex justify-end gap-3">
+            <x-secondary-button wire:click="batalHapusTerpilihBmd" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
+            <x-danger-button wire:click="hapusTerpilihBmd" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Hapus Semua Terpilih</x-danger-button>
+        </div>
+    </div>
+</x-modal>

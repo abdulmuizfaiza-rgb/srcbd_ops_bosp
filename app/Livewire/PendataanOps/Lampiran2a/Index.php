@@ -206,6 +206,60 @@ class Index extends Component
         $this->dispatch('close-modal', 'lampiran-2a-hapus');
     }
 
+    /**
+     * Hapus massal (checkbox pilih baris + tombol "Hapus Terpilih") -
+     * permintaan user 2026-09-26. Menu ini pakai daftar BERHALAMAN
+     * (WithPagination, 10/halaman) bukan pola "tbody per sekolah" seperti
+     * menu BOSP - "pilih semua" di sini HANYA memilih baris yang SEDANG
+     * TAMPIL di halaman aktif (bukan seluruh data di semua halaman),
+     * supaya perilakunya jelas & tidak menghapus data yang tidak terlihat
+     * user.
+     */
+    public array $dipilih = [];
+
+    public bool $confirmingHapusTerpilih = false;
+
+    public function toggleSemua(): void
+    {
+        $idHalamanIni = $this->queryDasar()->latest()->paginate(10)->pluck('id')->all();
+        if (count($idHalamanIni) > 0 && count(array_diff($idHalamanIni, $this->dipilih)) === 0) {
+            $this->dipilih = array_values(array_diff($this->dipilih, $idHalamanIni));
+        } else {
+            $this->dipilih = array_values(array_unique(array_merge($this->dipilih, $idHalamanIni)));
+        }
+    }
+
+    public function konfirmasiHapusTerpilih(): void
+    {
+        if (empty($this->dipilih)) {
+            return;
+        }
+        $this->confirmingHapusTerpilih = true;
+        $this->dispatch('open-modal', 'lampiran-2a-hapus-terpilih');
+    }
+
+    public function batalHapusTerpilih(): void
+    {
+        $this->confirmingHapusTerpilih = false;
+        $this->dispatch('close-modal', 'lampiran-2a-hapus-terpilih');
+    }
+
+    public function hapusTerpilih(): void
+    {
+        $barisTerpilih = Lampiran2a::whereIn('id', $this->dipilih)->get();
+        foreach ($barisTerpilih as $baris) {
+            abort_unless($this->bolehKelola($baris->profil_sekolah_id), 403);
+        }
+
+        $jumlah = $barisTerpilih->count();
+        Lampiran2a::whereIn('id', $barisTerpilih->pluck('id'))->delete();
+
+        $this->dipilih = [];
+        $this->confirmingHapusTerpilih = false;
+        $this->dispatch('close-modal', 'lampiran-2a-hapus-terpilih');
+        session()->flash('status', "Berhasil menghapus {$jumlah} data Lampiran 2a sekaligus.");
+    }
+
     public function hapus(): void
     {
         $baris = Lampiran2a::findOrFail($this->confirmingDeleteId);
@@ -299,6 +353,13 @@ class Index extends Component
     {
         $daftar = $this->queryDasar()->latest()->paginate(10);
 
+        // Filter $dipilih supaya hanya berisi id yang masih valid di
+        // halaman yang SEDANG ditampilkan - pola sama seperti $dipilih
+        // pada menu BOSP (lihat catatan di toggleSemua() di atas).
+        $idHalamanIni = $daftar->pluck('id')->all();
+        $this->dipilih = array_values(array_intersect($this->dipilih, $idHalamanIni));
+        $semuaTerpilih = count($idHalamanIni) > 0 && count(array_diff($idHalamanIni, $this->dipilih)) === 0;
+
         return view('livewire.pendataan-ops.lampiran2a.index', [
             'daftar' => $daftar,
             'triwulanOptions' => Lampiran2a::TRIWULAN_OPTIONS,
@@ -306,6 +367,7 @@ class Index extends Component
             'sekolahOptions' => ProfilSekolah::orderBy('nama_sekolah')->get(['id', 'nama_sekolah']),
             'bolehKelolaSemua' => $this->bolehKelolaSemua(),
             'tahunSekarang' => now()->year,
+            'semuaTerpilih' => $semuaTerpilih,
         ]);
     }
 }

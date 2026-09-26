@@ -78,6 +78,10 @@ class Index extends Component
 
     public ?int $confirmingDeleteId = null;
 
+    public array $dipilih = [];
+
+    public bool $confirmingHapusTerpilih = false;
+
     public $fileImport = null;
 
     public ?string $errorImport = null;
@@ -239,6 +243,56 @@ class Index extends Component
         session()->flash('status', 'Data Lampiran 2c berhasil dihapus.');
     }
 
+    /**
+     * Hapus massal (checkbox pilih baris) - permintaan user 2026-09-26,
+     * pola sama seperti Lampiran2a/2b. Hanya menghapus baris pada
+     * halaman yang sedang tampil (lihat toggleSemua()).
+     */
+    public function toggleSemua(): void
+    {
+        $idHalamanIni = $this->queryDasar()->latest()->paginate(10)->pluck('id')->all();
+
+        if (count($idHalamanIni) > 0 && count(array_diff($idHalamanIni, $this->dipilih)) === 0) {
+            $this->dipilih = array_values(array_diff($this->dipilih, $idHalamanIni));
+        } else {
+            $this->dipilih = array_values(array_unique(array_merge($this->dipilih, $idHalamanIni)));
+        }
+    }
+
+    public function konfirmasiHapusTerpilih(): void
+    {
+        if (count($this->dipilih) === 0) {
+            return;
+        }
+
+        $this->confirmingHapusTerpilih = true;
+        $this->dispatch('open-modal', 'lampiran-2c-hapus-terpilih');
+    }
+
+    public function batalHapusTerpilih(): void
+    {
+        $this->confirmingHapusTerpilih = false;
+        $this->dispatch('close-modal', 'lampiran-2c-hapus-terpilih');
+    }
+
+    public function hapusTerpilih(): void
+    {
+        $barisTerpilih = Lampiran2c::whereIn('id', $this->dipilih)->get();
+
+        foreach ($barisTerpilih as $baris) {
+            abort_unless($this->bolehKelola($baris->profil_sekolah_id), 403);
+        }
+
+        $jumlah = $barisTerpilih->count();
+
+        Lampiran2c::whereIn('id', $barisTerpilih->pluck('id'))->delete();
+
+        $this->dipilih = [];
+        $this->confirmingHapusTerpilih = false;
+        $this->dispatch('close-modal', 'lampiran-2c-hapus-terpilih');
+        session()->flash('status', "Berhasil menghapus {$jumlah} data Lampiran 2c.");
+    }
+
     protected function queryDasar()
     {
         $query = Lampiran2c::query()->with('profilSekolah')->where('triwulan', $this->triwulan);
@@ -321,6 +375,10 @@ class Index extends Component
     {
         $daftar = $this->queryDasar()->latest()->paginate(10);
 
+        $idHalamanIni = $daftar->pluck('id')->all();
+        $this->dipilih = array_values(array_intersect($this->dipilih, $idHalamanIni));
+        $semuaTerpilih = count($idHalamanIni) > 0 && count(array_diff($idHalamanIni, $this->dipilih)) === 0;
+
         return view('livewire.pendataan-ops.lampiran2c.index', [
             'daftar' => $daftar,
             'triwulanOptions' => Lampiran2c::TRIWULAN_OPTIONS,
@@ -330,6 +388,7 @@ class Index extends Component
             'golonganOptions' => Lampiran2c::GOLONGAN_OPTIONS,
             'pangkatBerkalaOptions' => Lampiran2c::PANGKAT_BERKALA_OPTIONS,
             'bolehKelolaSemua' => $this->bolehKelolaSemua(),
+            'semuaTerpilih' => $semuaTerpilih,
         ]);
     }
 }

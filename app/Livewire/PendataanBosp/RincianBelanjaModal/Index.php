@@ -768,6 +768,59 @@ class Index extends Component
         $this->dispatch('close-modal', 'rincian-belanja-modal-hapus');
     }
 
+    /**
+     * Hapus massal untuk tab "jenis" (Peralatan & Mesin/Aset Tetap
+     * Lainnya) - permintaan user 2026-09-26. TERPISAH dari hapus massal
+     * tab "BMD" di bawah (lihat toggleSemuaBmd()/hapusTerpilihBmd() dkk)
+     * karena modelnya beda (RincianBelanjaModal vs RincianBelanjaModalBmd),
+     * pola sama seperti $baris vs $barisBmd.
+     */
+    public array $dipilih = [];
+
+    public bool $confirmingHapusTerpilih = false;
+
+    public function toggleSemua(): void
+    {
+        $idSemua = collect($this->baris)->keys()->filter(fn ($id) => $id > 0)->values()->all();
+        if (count($idSemua) > 0 && count(array_diff($idSemua, $this->dipilih)) === 0) {
+            $this->dipilih = [];
+        } else {
+            $this->dipilih = $idSemua;
+        }
+    }
+
+    public function konfirmasiHapusTerpilih(): void
+    {
+        if (empty($this->dipilih)) {
+            return;
+        }
+        $this->confirmingHapusTerpilih = true;
+        $this->dispatch('open-modal', 'rincian-belanja-modal-hapus-terpilih');
+    }
+
+    public function batalHapusTerpilih(): void
+    {
+        $this->confirmingHapusTerpilih = false;
+        $this->dispatch('close-modal', 'rincian-belanja-modal-hapus-terpilih');
+    }
+
+    public function hapusTerpilih(): void
+    {
+        $barisTerpilih = RincianBelanjaModal::whereIn('id', $this->dipilih)->get();
+        foreach ($barisTerpilih as $baris) {
+            abort_unless($this->bolehKelola($baris->profil_sekolah_id), 403);
+            $this->abortJikaTerkunciVerval($baris->profil_sekolah_id, $this->tahun, $baris->triwulan);
+        }
+
+        $jumlah = $barisTerpilih->count();
+        RincianBelanjaModal::whereIn('id', $barisTerpilih->pluck('id'))->delete();
+
+        $this->dipilih = [];
+        $this->confirmingHapusTerpilih = false;
+        $this->dispatch('close-modal', 'rincian-belanja-modal-hapus-terpilih');
+        session()->flash('status', "Berhasil menghapus {$jumlah} data Rincian Belanja Modal sekaligus.");
+    }
+
     public function hapus(): void
     {
         $baris = RincianBelanjaModal::findOrFail($this->confirmingDeleteId);
@@ -959,6 +1012,57 @@ class Index extends Component
     {
         $this->confirmingDeleteBmdId = null;
         $this->dispatch('close-modal', 'rincian-belanja-modal-bmd-hapus');
+    }
+
+    /**
+     * Hapus massal untuk tab "BMD" - permintaan user 2026-09-26. Property
+     * TERPISAH dari hapus massal tab "jenis" di atas (lihat
+     * toggleSemua()/hapusTerpilih() dkk) karena modelnya beda, pola sama
+     * seperti $barisBmd terpisah dari $baris.
+     */
+    public array $dipilihBmd = [];
+
+    public bool $confirmingHapusTerpilihBmd = false;
+
+    public function toggleSemuaBmd(): void
+    {
+        $idSemua = collect($this->barisBmd)->keys()->filter(fn ($id) => $id > 0)->values()->all();
+        if (count($idSemua) > 0 && count(array_diff($idSemua, $this->dipilihBmd)) === 0) {
+            $this->dipilihBmd = [];
+        } else {
+            $this->dipilihBmd = $idSemua;
+        }
+    }
+
+    public function konfirmasiHapusTerpilihBmd(): void
+    {
+        if (empty($this->dipilihBmd)) {
+            return;
+        }
+        $this->confirmingHapusTerpilihBmd = true;
+        $this->dispatch('open-modal', 'rincian-belanja-modal-bmd-hapus-terpilih');
+    }
+
+    public function batalHapusTerpilihBmd(): void
+    {
+        $this->confirmingHapusTerpilihBmd = false;
+        $this->dispatch('close-modal', 'rincian-belanja-modal-bmd-hapus-terpilih');
+    }
+
+    public function hapusTerpilihBmd(): void
+    {
+        $barisTerpilih = RincianBelanjaModalBmd::whereIn('id', $this->dipilihBmd)->get();
+        foreach ($barisTerpilih as $baris) {
+            abort_unless($this->bolehKelola($baris->profil_sekolah_id), 403);
+        }
+
+        $jumlah = $barisTerpilih->count();
+        RincianBelanjaModalBmd::whereIn('id', $barisTerpilih->pluck('id'))->delete();
+
+        $this->dipilihBmd = [];
+        $this->confirmingHapusTerpilihBmd = false;
+        $this->dispatch('close-modal', 'rincian-belanja-modal-bmd-hapus-terpilih');
+        session()->flash('status', "Berhasil menghapus {$jumlah} data BMD sekaligus.");
     }
 
     public function hapusBmd(): void
@@ -1223,6 +1327,10 @@ class Index extends Component
             ];
         }
 
+        $idRealBaris = collect($this->baris)->keys()->filter(fn ($id) => $id > 0)->values()->all();
+        $this->dipilih = array_values(array_intersect($this->dipilih, $idRealBaris));
+        $semuaTerpilih = count($idRealBaris) > 0 && count(array_diff($idRealBaris, $this->dipilih)) === 0;
+
         $tahunOptions = range(now()->year - 2, now()->year + 1);
 
         // Jumlah Total Harga UNTUK SELURUH SEKOLAH yang SEDANG DITAMPILKAN
@@ -1257,6 +1365,7 @@ class Index extends Component
             'terkunciTriwulanIni' => $this->terkunciVervalUntukTampilan($this->triwulan),
             'tahunOptions' => array_reverse($tahunOptions),
             'totalHargaKeseluruhan' => $totalHargaKeseluruhan,
+            'semuaTerpilih' => $semuaTerpilih,
             // Variabel di bawah ini KHUSUS dipakai oleh modal BMD
             // (resources/views/.../_form-bmd.blade.php, di-@include SELALU
             // dari index.blade.php terlepas dari tab utama yang aktif -
@@ -1378,6 +1487,10 @@ class Index extends Component
             ];
         }
 
+        $idRealBarisBmd = collect($this->barisBmd)->keys()->filter(fn ($id) => $id > 0)->values()->all();
+        $this->dipilihBmd = array_values(array_intersect($this->dipilihBmd, $idRealBarisBmd));
+        $semuaTerpilihBmd = count($idRealBarisBmd) > 0 && count(array_diff($idRealBarisBmd, $this->dipilihBmd)) === 0;
+
         $tahunOptions = range(now()->year - 2, now()->year + 1);
 
         // Jumlah Total UNTUK SELURUH SEKOLAH yang SEDANG DITAMPILKAN - pola
@@ -1406,6 +1519,7 @@ class Index extends Component
             'bentukKontrakOptions' => RincianBelanjaModalBmd::BENTUK_KONTRAK_OPTIONS,
             'rekeningBelanjaOptions' => RincianBelanjaModalBmd::REKENING_BELANJA_OPTIONS,
             'totalBmdKeseluruhan' => $totalBmdKeseluruhan,
+            'semuaTerpilihBmd' => $semuaTerpilihBmd,
             'programBmd' => RincianBelanjaModalBmd::PROGRAM,
             'kegiatanBmd' => RincianBelanjaModalBmd::KEGIATAN,
             'kodeSubKegiatanBmd' => RincianBelanjaModalBmd::KODE_SUB_KEGIATAN,

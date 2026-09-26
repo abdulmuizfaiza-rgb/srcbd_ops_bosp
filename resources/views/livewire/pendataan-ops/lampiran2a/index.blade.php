@@ -65,6 +65,10 @@
                                     <x-icon name="plus" class="w-3.5 h-3.5 mr-1" />
                                     Tambah Data
                                 </x-primary-button>
+                                <x-danger-button type="button" wire:click="konfirmasiHapusTerpilih" wire:loading.attr="disabled" :disabled="count($dipilih) === 0" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                                    <x-icon name="trash" class="w-3.5 h-3.5 mr-1" />
+                                    Hapus Terpilih ({{ count($dipilih) }})
+                                </x-danger-button>
                             </div>
                         </div>
                     </div>
@@ -76,6 +80,9 @@
                         <table class="min-w-full divide-y divide-slate-200 text-sm">
                             <thead class="sticky top-0 z-10 bg-slate-50">
                                 <tr class="text-left text-slate-500">
+                                    <th class="px-3 py-2">
+                                        <input type="checkbox" wire:click="toggleSemua" @checked($semuaTerpilih) class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" title="Pilih/batal pilih semua baris di halaman ini">
+                                    </th>
                                     <th class="px-3 py-2">No</th>
                                     <th class="px-3 py-2">NRG</th>
                                     <th class="px-3 py-2">NUPTK</th>
@@ -89,7 +96,10 @@
                             </thead>
                             <tbody class="divide-y divide-slate-100">
                                 @forelse ($daftar as $baris)
-                                    <tr>
+                                    <tr wire:key="lampiran-2a-baris-{{ $baris->id }}">
+                                        <td class="px-3 py-2">
+                                            <input type="checkbox" wire:model="dipilih" value="{{ $baris->id }}" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                                        </td>
                                         <td class="px-3 py-2 whitespace-nowrap text-slate-500">{{ $loop->iteration + $daftar->firstItem() - 1 }}</td>
                                         <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->nrg }}</td>
                                         <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->nuptk }}</td>
@@ -105,7 +115,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="9" class="px-3 py-6 text-center text-slate-400">Belum ada data pada triwulan ini.</td>
+                                        <td colspan="10" class="px-3 py-6 text-center text-slate-400">Belum ada data pada triwulan ini.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -199,6 +209,21 @@
             <div class="mt-6 flex justify-end gap-3">
                 <x-secondary-button wire:click="batalHapus" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
                 <x-danger-button wire:click="hapus" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Hapus</x-danger-button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- Modal Konfirmasi Hapus Terpilih (hapus massal) - permintaan user
+         2026-09-26, pola sama seperti Penerimaan Honor PTK - HANYA
+         menghapus baris yang dicentang di halaman yang sedang tampil. --}}
+    <x-modal name="lampiran-2a-hapus-terpilih" :show="$confirmingHapusTerpilih" maxWidth="md">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900">Hapus {{ count($dipilih) }} data terpilih?</h2>
+            <p class="mt-1 text-sm text-slate-600">Semua baris yang dicentang akan dihapus sekaligus. Tindakan ini tidak dapat dibatalkan.</p>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-secondary-button wire:click="batalHapusTerpilih" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
+                <x-danger-button wire:click="hapusTerpilih" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Hapus Semua Terpilih</x-danger-button>
             </div>
         </div>
     </x-modal>

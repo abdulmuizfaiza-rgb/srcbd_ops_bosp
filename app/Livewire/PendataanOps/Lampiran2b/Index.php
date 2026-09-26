@@ -265,6 +265,56 @@ class Index extends Component
         $this->dispatch('close-modal', 'lampiran-2b-hapus');
     }
 
+    /**
+     * Hapus massal (checkbox pilih baris + tombol "Hapus Terpilih") -
+     * permintaan user 2026-09-26. Pola sama seperti Lampiran2a - "pilih
+     * semua" HANYA memilih baris di halaman yang sedang tampil.
+     */
+    public array $dipilih = [];
+
+    public bool $confirmingHapusTerpilih = false;
+
+    public function toggleSemua(): void
+    {
+        $idHalamanIni = $this->queryDasar()->latest()->paginate(10)->pluck('id')->all();
+        if (count($idHalamanIni) > 0 && count(array_diff($idHalamanIni, $this->dipilih)) === 0) {
+            $this->dipilih = array_values(array_diff($this->dipilih, $idHalamanIni));
+        } else {
+            $this->dipilih = array_values(array_unique(array_merge($this->dipilih, $idHalamanIni)));
+        }
+    }
+
+    public function konfirmasiHapusTerpilih(): void
+    {
+        if (empty($this->dipilih)) {
+            return;
+        }
+        $this->confirmingHapusTerpilih = true;
+        $this->dispatch('open-modal', 'lampiran-2b-hapus-terpilih');
+    }
+
+    public function batalHapusTerpilih(): void
+    {
+        $this->confirmingHapusTerpilih = false;
+        $this->dispatch('close-modal', 'lampiran-2b-hapus-terpilih');
+    }
+
+    public function hapusTerpilih(): void
+    {
+        $barisTerpilih = Lampiran2b::whereIn('id', $this->dipilih)->get();
+        foreach ($barisTerpilih as $baris) {
+            abort_unless($this->bolehKelola($baris->profil_sekolah_id), 403);
+        }
+
+        $jumlah = $barisTerpilih->count();
+        Lampiran2b::whereIn('id', $barisTerpilih->pluck('id'))->delete();
+
+        $this->dipilih = [];
+        $this->confirmingHapusTerpilih = false;
+        $this->dispatch('close-modal', 'lampiran-2b-hapus-terpilih');
+        session()->flash('status', "Berhasil menghapus {$jumlah} data Lampiran 2b sekaligus.");
+    }
+
     public function hapus(): void
     {
         $baris = Lampiran2b::findOrFail($this->confirmingDeleteId);
@@ -358,12 +408,17 @@ class Index extends Component
     {
         $daftar = $this->queryDasar()->latest()->paginate(10);
 
+        $idHalamanIni = $daftar->pluck('id')->all();
+        $this->dipilih = array_values(array_intersect($this->dipilih, $idHalamanIni));
+        $semuaTerpilih = count($idHalamanIni) > 0 && count(array_diff($idHalamanIni, $this->dipilih)) === 0;
+
         return view('livewire.pendataan-ops.lampiran2b.index', [
             'daftar' => $daftar,
             'triwulanOptions' => Lampiran2b::TRIWULAN_OPTIONS,
             'sekolahOptions' => ProfilSekolah::orderBy('nama_sekolah')->get(['id', 'nama_sekolah']),
             'namaPtkOptions' => $this->namaPtkOptions(),
             'bolehKelolaSemua' => $this->bolehKelolaSemua(),
+            'semuaTerpilih' => $semuaTerpilih,
         ]);
     }
 }

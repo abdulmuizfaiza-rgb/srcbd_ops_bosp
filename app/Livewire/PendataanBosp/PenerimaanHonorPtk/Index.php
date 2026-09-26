@@ -131,6 +131,18 @@ class Index extends Component
 
     public ?int $confirmingDeleteId = null;
 
+    /**
+     * ID baris (nyata, bukan placeholder) yang sedang dicentang lewat
+     * checkbox "pilih baris" pada tabel - dipakai tombol "Hapus Terpilih"
+     * supaya admin bisa hapus banyak data sekaligus tanpa satu-satu
+     * (permintaan user 2026-09-26).
+     *
+     * @var array<int, int>
+     */
+    public array $dipilih = [];
+
+    public bool $confirmingHapusTerpilih = false;
+
     public $fileImport = null;
 
     public ?string $errorImport = null;
@@ -518,6 +530,66 @@ class Index extends Component
         session()->flash('status', 'Data Penerimaan Honor PTK berhasil dihapus.');
     }
 
+    /**
+     * Centang/batal-centang SEMUA baris nyata yang sedang tampil (lintas
+     * semua sekolah yang sedang di-render, sesuai filter/pencarian yang
+     * aktif) - dipanggil dari checkbox di header tabel.
+     */
+    public function toggleSemua(): void
+    {
+        $idSemua = collect($this->baris)->keys()->filter(fn ($id) => $id > 0)->values()->all();
+
+        if (count($idSemua) > 0 && count(array_diff($idSemua, $this->dipilih)) === 0) {
+            $this->dipilih = [];
+        } else {
+            $this->dipilih = $idSemua;
+        }
+    }
+
+    public function konfirmasiHapusTerpilih(): void
+    {
+        if (empty($this->dipilih)) {
+            return;
+        }
+
+        $this->confirmingHapusTerpilih = true;
+        $this->dispatch('open-modal', 'penerimaan-honor-ptk-hapus-terpilih');
+    }
+
+    public function batalHapusTerpilih(): void
+    {
+        $this->confirmingHapusTerpilih = false;
+        $this->dispatch('close-modal', 'penerimaan-honor-ptk-hapus-terpilih');
+    }
+
+    /**
+     * Menghapus SEMUA baris yang sedang dicentang ($dipilih) sekaligus -
+     * permintaan user 2026-09-26 supaya admin tidak perlu hapus satu-satu
+     * kalau datanya banyak. Setiap baris tetap dicek hak akses & kuncian
+     * verval-nya masing-masing sebelum benar-benar dihapus (sama seperti
+     * hapus() satuan), sehingga kalau ada 1 baris yang harusnya tidak
+     * boleh dihapus (mis. sekolah lain / triwulan terkunci), SELURUH
+     * proses dibatalkan (tidak ada yang terhapus sebagian).
+     */
+    public function hapusTerpilih(): void
+    {
+        $barisTerpilih = PenerimaanHonorPtk::whereIn('id', $this->dipilih)->get();
+
+        foreach ($barisTerpilih as $baris) {
+            abort_unless($this->bolehKelola($baris->profil_sekolah_id), 403);
+            $this->abortJikaTerkunciVerval($baris->profil_sekolah_id, $this->tahun, $baris->triwulan);
+        }
+
+        $jumlah = $barisTerpilih->count();
+
+        PenerimaanHonorPtk::whereIn('id', $barisTerpilih->pluck('id'))->delete();
+
+        $this->dipilih = [];
+        $this->confirmingHapusTerpilih = false;
+        $this->dispatch('close-modal', 'penerimaan-honor-ptk-hapus-terpilih');
+        session()->flash('status', "Berhasil menghapus {$jumlah} data Penerimaan Honor PTK sekaligus.");
+    }
+
     protected function queryDasar()
     {
         $query = PenerimaanHonorPtk::query()
@@ -685,6 +757,14 @@ class Index extends Component
             ];
         }
 
+        // Buang dari $dipilih ID baris yang sudah tidak ada lagi (mis.
+        // dihapus dari tab/sesi lain, atau tidak lagi cocok filter/pencarian
+        // yang aktif) - supaya checkbox tidak "menempel" ke baris yang sudah
+        // tidak tampil.
+        $idRealBaris = collect($this->baris)->keys()->filter(fn ($id) => $id > 0)->values()->all();
+        $this->dipilih = array_values(array_intersect($this->dipilih, $idRealBaris));
+        $semuaTerpilih = count($idRealBaris) > 0 && count(array_diff($idRealBaris, $this->dipilih)) === 0;
+
         $tahunOptions = range(now()->year - 2, now()->year + 1);
 
         // Total Jumlah Honor Yang Diterima UNTUK SELURUH SEKOLAH yang
@@ -713,6 +793,7 @@ class Index extends Component
             // poin 1) - lihat docblock lengkap App\Livewire\Concerns\
             // MenolakEditJikaTerkunciVerval::terkunciVervalUntukTampilan().
             'terkunciTriwulanIni' => $this->terkunciVervalUntukTampilan($this->triwulan),
+            'semuaTerpilih' => $semuaTerpilih,
         ]);
     }
 }
