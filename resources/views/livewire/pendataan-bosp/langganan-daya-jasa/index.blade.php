@@ -110,6 +110,10 @@
                                     <x-icon name="plus" class="w-3.5 h-3.5 mr-1" />
                                     Tambah
                                 </x-primary-button>
+                                <x-danger-button type="button" wire:click="konfirmasiHapusTerpilih" wire:loading.attr="disabled" :disabled="count($dipilih) === 0 || $terkunciTriwulanIni" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                                    <x-icon name="trash" class="w-3.5 h-3.5 mr-1" />
+                                    Hapus Terpilih ({{ count($dipilih) }})
+                                </x-danger-button>
                             </div>
                         </div>
                     </div>
@@ -121,6 +125,9 @@
                         <table class="min-w-full divide-y divide-slate-200 text-xs">
                             <thead class="sticky top-0 z-10 bg-slate-50">
                                 <tr class="text-left text-slate-500">
+                                    <th class="px-2 py-2.5">
+                                        <input type="checkbox" wire:click="toggleSemua" @checked($semuaTerpilih) class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" title="Pilih/batal pilih semua baris yang tampil">
+                                    </th>
                                     <th class="px-2 py-2.5">No</th>
                                     <th class="px-2 py-2.5">NPSN</th>
                                     <th class="px-2 py-2.5">Nama Sekolah</th>
@@ -149,6 +156,7 @@
                                 @endphp
                                 <tbody wire:key="daya-jasa-grup-{{ $sekolah->id }}" x-data="{ terbuka: false }" class="divide-y divide-slate-100 border-b-2 border-slate-200">
                                     <tr class="bg-slate-50/70 hover:bg-slate-100 cursor-pointer select-none" x-on:click="terbuka = ! terbuka">
+                                        <td class="px-2 py-2" x-on:click.stop></td>
                                         <td class="px-2 py-2 whitespace-nowrap text-slate-600 font-semibold">
                                             <span class="inline-flex items-center gap-1.5">
                                                 <span class="inline-flex items-center justify-center w-4 h-4 rounded border border-slate-300 bg-white text-slate-500 shrink-0">
@@ -169,23 +177,26 @@
                                     @foreach ($sekolah->langgananDayaJasa as $row)
                                         @php $nomorBaris++; $revisi = $revisiBaris[$row->id] ?? 0; @endphp
                                         <tr wire:key="daya-jasa-baris-{{ $row->id }}" x-show="terbuka" x-cloak>
+                                            <td class="px-2 py-2">
+                                                <input type="checkbox" wire:model="dipilih" value="{{ $row->id }}" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                                            </td>
                                             <td class="px-2 py-2 whitespace-nowrap text-slate-400 text-right">{{ $nomorSekolah }}.{{ $nomorBaris }}</td>
                                             <td class="px-2 py-2 whitespace-nowrap text-slate-600">{{ $sekolah->npsn ?? '-' }}</td>
                                             <td class="px-2 py-2 whitespace-nowrap font-medium text-slate-800">{{ $sekolah->nama_sekolah ?? '-' }}</td>
                                             <td class="px-1 py-1.5 whitespace-nowrap">
-                                                <input type="text" wire:model.blur="baris.{{ $row->id }}.uraian_pembayaran" class="w-40 text-xs rounded px-1.5 py-1.5 border {{ $errors->has('baris.'.$row->id.'.uraian_pembayaran') ? 'border-red-400 focus:border-red-500 focus:ring-red-400' : 'border-blue-300 focus:border-blue-500 focus:ring-blue-400' }} focus:ring-1 focus:outline-none">
+                                                <input type="text" wire:key="daya-jasa-input-{{ $row->id }}-uraian_pembayaran" wire:model.blur="baris.{{ $row->id }}.uraian_pembayaran" class="w-40 text-xs rounded px-1.5 py-1.5 border {{ $errors->has('baris.'.$row->id.'.uraian_pembayaran') ? 'border-red-400 focus:border-red-500 focus:ring-red-400' : 'border-blue-300 focus:border-blue-500 focus:ring-blue-400' }} focus:ring-1 focus:outline-none">
                                                 @error('baris.'.$row->id.'.uraian_pembayaran')
                                                     <span class="block text-[10px] text-red-500 mt-0.5 whitespace-normal">{{ $message }}</span>
                                                 @enderror
                                             </td>
                                             <td class="px-1 py-1.5 whitespace-nowrap">
-                                                <input type="text" inputmode="numeric" wire:model.blur="baris.{{ $row->id }}.volume" class="w-16 text-xs text-right rounded px-1.5 py-1.5 border {{ $errors->has('baris.'.$row->id.'.volume') ? 'border-red-400 focus:border-red-500 focus:ring-red-400' : 'border-blue-300 focus:border-blue-500 focus:ring-blue-400' }} focus:ring-1 focus:outline-none">
+                                                <input type="text" inputmode="numeric" wire:key="daya-jasa-input-{{ $row->id }}-volume" wire:model.blur="baris.{{ $row->id }}.volume" class="w-16 text-xs text-right rounded px-1.5 py-1.5 border {{ $errors->has('baris.'.$row->id.'.volume') ? 'border-red-400 focus:border-red-500 focus:ring-red-400' : 'border-blue-300 focus:border-blue-500 focus:ring-blue-400' }} focus:ring-1 focus:outline-none">
                                                 @error('baris.'.$row->id.'.volume')
                                                     <span class="block text-[10px] text-red-500 mt-0.5 whitespace-normal">{{ $message }}</span>
                                                 @enderror
                                             </td>
                                             <td class="px-1 py-1.5 whitespace-nowrap">
-                                                <input type="text" wire:model.blur="baris.{{ $row->id }}.satuan" class="w-20 text-xs rounded px-1.5 py-1.5 border {{ $errors->has('baris.'.$row->id.'.satuan') ? 'border-red-400 focus:border-red-500 focus:ring-red-400' : 'border-blue-300 focus:border-blue-500 focus:ring-blue-400' }} focus:ring-1 focus:outline-none">
+                                                <input type="text" wire:key="daya-jasa-input-{{ $row->id }}-satuan" wire:model.blur="baris.{{ $row->id }}.satuan" class="w-20 text-xs rounded px-1.5 py-1.5 border {{ $errors->has('baris.'.$row->id.'.satuan') ? 'border-red-400 focus:border-red-500 focus:ring-red-400' : 'border-blue-300 focus:border-blue-500 focus:ring-blue-400' }} focus:ring-1 focus:outline-none">
                                                 @error('baris.'.$row->id.'.satuan')
                                                     <span class="block text-[10px] text-red-500 mt-0.5 whitespace-normal">{{ $message }}</span>
                                                 @enderror
@@ -195,7 +206,7 @@
                                             </td>
                                             <td class="px-2 py-2 whitespace-nowrap text-right font-bold text-slate-700">Rp {{ number_format((int) $row->jumlah, 0, ',', '.') }}</td>
                                             <td class="px-1 py-1.5 whitespace-nowrap">
-                                                <input type="date" wire:model.blur="baris.{{ $row->id }}.tanggal_bayar" class="text-xs rounded px-1.5 py-1.5 border {{ $errors->has('baris.'.$row->id.'.tanggal_bayar') ? 'border-red-400 focus:border-red-500 focus:ring-red-400' : 'border-blue-300 focus:border-blue-500 focus:ring-blue-400' }} focus:ring-1 focus:outline-none">
+                                                <input type="date" wire:key="daya-jasa-input-{{ $row->id }}-tanggal_bayar" wire:model.blur="baris.{{ $row->id }}.tanggal_bayar" class="text-xs rounded px-1.5 py-1.5 border {{ $errors->has('baris.'.$row->id.'.tanggal_bayar') ? 'border-red-400 focus:border-red-500 focus:ring-red-400' : 'border-blue-300 focus:border-blue-500 focus:ring-blue-400' }} focus:ring-1 focus:outline-none">
                                                 @error('baris.'.$row->id.'.tanggal_bayar')
                                                     <span class="block text-[10px] text-red-500 mt-0.5 whitespace-normal">{{ $message }}</span>
                                                 @enderror
@@ -222,23 +233,24 @@
                                          Penerimaan Honor PTK diterapkan di sini sejak awal. --}}
                                     @php $idBaru = -$sekolah->id; $revisiBaru = $revisiBaris[$idBaru] ?? 0; @endphp
                                     <tr wire:key="daya-jasa-baru-{{ $sekolah->id }}" class="bg-blue-50/40" x-show="terbuka" x-cloak>
+                                        <td class="px-2 py-2"></td>
                                         <td class="px-2 py-2 whitespace-nowrap text-slate-300">&nbsp;</td>
                                         <td class="px-2 py-2 whitespace-nowrap text-slate-600">{{ $sekolah->npsn ?? '-' }}</td>
                                         <td class="px-2 py-2 whitespace-nowrap font-medium text-slate-800">{{ $sekolah->nama_sekolah ?? '-' }}</td>
                                         <td class="px-1 py-1.5 whitespace-nowrap">
-                                            <input type="text" wire:model.blur="baris.{{ $idBaru }}.uraian_pembayaran" placeholder="Uraian Pembayaran" class="w-40 text-xs rounded px-1.5 py-1.5 border {{ $errors->has('baris.'.$idBaru.'.uraian_pembayaran') ? 'border-red-400 focus:border-red-500 focus:ring-red-400' : 'border-dashed border-blue-300 focus:border-blue-500 focus:ring-blue-400' }} focus:ring-1 focus:outline-none">
+                                            <input type="text" wire:key="daya-jasa-input-baru-{{ $sekolah->id }}-uraian_pembayaran" wire:model.blur="baris.{{ $idBaru }}.uraian_pembayaran" placeholder="Uraian Pembayaran" class="w-40 text-xs rounded px-1.5 py-1.5 border {{ $errors->has('baris.'.$idBaru.'.uraian_pembayaran') ? 'border-red-400 focus:border-red-500 focus:ring-red-400' : 'border-dashed border-blue-300 focus:border-blue-500 focus:ring-blue-400' }} focus:ring-1 focus:outline-none">
                                             @error('baris.'.$idBaru.'.uraian_pembayaran')
                                                 <span class="block text-[10px] text-red-500 mt-0.5 whitespace-normal">{{ $message }}</span>
                                             @enderror
                                         </td>
                                         <td class="px-1 py-1.5 whitespace-nowrap">
-                                            <input type="text" inputmode="numeric" wire:model.blur="baris.{{ $idBaru }}.volume" placeholder="0" class="w-16 text-xs text-right rounded px-1.5 py-1.5 border {{ $errors->has('baris.'.$idBaru.'.volume') ? 'border-red-400 focus:border-red-500 focus:ring-red-400' : 'border-dashed border-blue-300 focus:border-blue-500 focus:ring-blue-400' }} focus:ring-1 focus:outline-none">
+                                            <input type="text" inputmode="numeric" wire:key="daya-jasa-input-baru-{{ $sekolah->id }}-volume" wire:model.blur="baris.{{ $idBaru }}.volume" placeholder="0" class="w-16 text-xs text-right rounded px-1.5 py-1.5 border {{ $errors->has('baris.'.$idBaru.'.volume') ? 'border-red-400 focus:border-red-500 focus:ring-red-400' : 'border-dashed border-blue-300 focus:border-blue-500 focus:ring-blue-400' }} focus:ring-1 focus:outline-none">
                                             @error('baris.'.$idBaru.'.volume')
                                                 <span class="block text-[10px] text-red-500 mt-0.5 whitespace-normal">{{ $message }}</span>
                                             @enderror
                                         </td>
                                         <td class="px-1 py-1.5 whitespace-nowrap">
-                                            <input type="text" wire:model.blur="baris.{{ $idBaru }}.satuan" placeholder="Satuan" class="w-20 text-xs rounded px-1.5 py-1.5 border {{ $errors->has('baris.'.$idBaru.'.satuan') ? 'border-red-400 focus:border-red-500 focus:ring-red-400' : 'border-dashed border-blue-300 focus:border-blue-500 focus:ring-blue-400' }} focus:ring-1 focus:outline-none">
+                                            <input type="text" wire:key="daya-jasa-input-baru-{{ $sekolah->id }}-satuan" wire:model.blur="baris.{{ $idBaru }}.satuan" placeholder="Satuan" class="w-20 text-xs rounded px-1.5 py-1.5 border {{ $errors->has('baris.'.$idBaru.'.satuan') ? 'border-red-400 focus:border-red-500 focus:ring-red-400' : 'border-dashed border-blue-300 focus:border-blue-500 focus:ring-blue-400' }} focus:ring-1 focus:outline-none">
                                             @error('baris.'.$idBaru.'.satuan')
                                                 <span class="block text-[10px] text-red-500 mt-0.5 whitespace-normal">{{ $message }}</span>
                                             @enderror
@@ -248,7 +260,7 @@
                                         </td>
                                         <td class="px-2 py-2 whitespace-nowrap text-right font-bold text-slate-400">Rp 0</td>
                                         <td class="px-1 py-1.5 whitespace-nowrap">
-                                            <input type="date" wire:model.blur="baris.{{ $idBaru }}.tanggal_bayar" class="text-xs rounded px-1.5 py-1.5 border {{ $errors->has('baris.'.$idBaru.'.tanggal_bayar') ? 'border-red-400 focus:border-red-500 focus:ring-red-400' : 'border-dashed border-blue-300 focus:border-blue-500 focus:ring-blue-400' }} focus:ring-1 focus:outline-none">
+                                            <input type="date" wire:key="daya-jasa-input-baru-{{ $sekolah->id }}-tanggal_bayar" wire:model.blur="baris.{{ $idBaru }}.tanggal_bayar" class="text-xs rounded px-1.5 py-1.5 border {{ $errors->has('baris.'.$idBaru.'.tanggal_bayar') ? 'border-red-400 focus:border-red-500 focus:ring-red-400' : 'border-dashed border-blue-300 focus:border-blue-500 focus:ring-blue-400' }} focus:ring-1 focus:outline-none">
                                             @error('baris.'.$idBaru.'.tanggal_bayar')
                                                 <span class="block text-[10px] text-red-500 mt-0.5 whitespace-normal">{{ $message }}</span>
                                             @enderror
@@ -273,7 +285,7 @@
                                          di kolom ke-8 (Jumlah), kolom Tanggal Bayar & Aksi
                                          dikosongkan (colspan="2"). --}}
                                     <tr wire:key="daya-jasa-total-sekolah-{{ $sekolah->id }}" class="bg-slate-100 font-bold text-slate-700 border-t-2 border-slate-300" x-show="terbuka" x-cloak>
-                                        <td colspan="7" class="px-2 py-2 text-right">Jumlah Langganan Daya Jasa</td>
+                                        <td colspan="8" class="px-2 py-2 text-right">Jumlah Langganan Daya Jasa</td>
                                         <td class="px-2 py-2 whitespace-nowrap text-right">Rp {{ number_format((int) $sekolah->langgananDayaJasa->sum('jumlah'), 0, ',', '.') }}</td>
                                         <td colspan="2"></td>
                                     </tr>
@@ -281,7 +293,7 @@
                             @empty
                                 <tbody>
                                     <tr>
-                                        <td colspan="10" class="px-3 py-6 text-center text-slate-400">Tidak ada sekolah yang bisa ditampilkan.</td>
+                                        <td colspan="11" class="px-3 py-6 text-center text-slate-400">Tidak ada sekolah yang bisa ditampilkan.</td>
                                     </tr>
                                 </tbody>
                             @endforelse
@@ -300,7 +312,7 @@
                             @if ($daftarSekolah->isNotEmpty())
                                 <tbody>
                                     <tr class="bg-slate-200 font-bold text-slate-800 border-t-2 border-slate-400">
-                                        <td colspan="7" class="px-2 py-2.5 text-right">Jumlah Langganan Daya Jasa Seluruh Sekolah</td>
+                                        <td colspan="8" class="px-2 py-2.5 text-right">Jumlah Langganan Daya Jasa Seluruh Sekolah</td>
                                         <td class="px-2 py-2.5 whitespace-nowrap text-right">Rp {{ number_format((int) $totalDayaJasaKeseluruhan, 0, ',', '.') }}</td>
                                         <td colspan="2"></td>
                                     </tr>
@@ -400,6 +412,20 @@
             <div class="mt-6 flex justify-end gap-3">
                 <x-secondary-button wire:click="batalHapus" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
                 <x-danger-button wire:click="hapus" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Hapus</x-danger-button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- Modal Konfirmasi Hapus Terpilih (hapus massal) - permintaan user
+         2026-09-26, pola sama seperti Penerimaan Honor PTK. --}}
+    <x-modal name="langganan-daya-jasa-hapus-terpilih" :show="$confirmingHapusTerpilih" maxWidth="md">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900">Hapus {{ count($dipilih) }} data terpilih?</h2>
+            <p class="mt-1 text-sm text-slate-600">Semua baris yang dicentang akan dihapus sekaligus. Tindakan ini tidak dapat dibatalkan.</p>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-secondary-button wire:click="batalHapusTerpilih" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
+                <x-danger-button wire:click="hapusTerpilih" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Hapus Semua Terpilih</x-danger-button>
             </div>
         </div>
     </x-modal>

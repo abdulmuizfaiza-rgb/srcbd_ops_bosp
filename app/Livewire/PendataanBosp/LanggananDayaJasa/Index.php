@@ -108,6 +108,18 @@ class Index extends Component
 
     public ?int $confirmingDeleteId = null;
 
+    /**
+     * ID baris (nyata, bukan placeholder) yang sedang dicentang lewat
+     * checkbox "pilih baris" pada tabel - dipakai tombol "Hapus Terpilih"
+     * supaya admin bisa hapus banyak data sekaligus tanpa satu-satu
+     * (permintaan user 2026-09-26, pola sama seperti Penerimaan Honor PTK).
+     *
+     * @var array<int, int>
+     */
+    public array $dipilih = [];
+
+    public bool $confirmingHapusTerpilih = false;
+
     public $fileImport = null;
 
     public ?string $errorImport = null;
@@ -409,6 +421,64 @@ class Index extends Component
     }
 
     /**
+     * Centang/batal-centang SEMUA baris nyata yang sedang tampil (lintas
+     * semua sekolah yang sedang di-render, sesuai filter/pencarian yang
+     * aktif) - dipanggil dari checkbox di header tabel.
+     */
+    public function toggleSemua(): void
+    {
+        $idSemua = collect($this->baris)->keys()->filter(fn ($id) => $id > 0)->values()->all();
+
+        if (count($idSemua) > 0 && count(array_diff($idSemua, $this->dipilih)) === 0) {
+            $this->dipilih = [];
+        } else {
+            $this->dipilih = $idSemua;
+        }
+    }
+
+    public function konfirmasiHapusTerpilih(): void
+    {
+        if (empty($this->dipilih)) {
+            return;
+        }
+
+        $this->confirmingHapusTerpilih = true;
+        $this->dispatch('open-modal', 'langganan-daya-jasa-hapus-terpilih');
+    }
+
+    public function batalHapusTerpilih(): void
+    {
+        $this->confirmingHapusTerpilih = false;
+        $this->dispatch('close-modal', 'langganan-daya-jasa-hapus-terpilih');
+    }
+
+    /**
+     * Menghapus SEMUA baris yang sedang dicentang ($dipilih) sekaligus -
+     * permintaan user 2026-09-26. Setiap baris tetap dicek hak akses &
+     * kuncian verval-nya masing-masing sebelum benar-benar dihapus (sama
+     * seperti hapus() satuan) - kalau ada 1 baris yang tidak boleh
+     * dihapus, SELURUH proses dibatalkan.
+     */
+    public function hapusTerpilih(): void
+    {
+        $barisTerpilih = LanggananDayaJasa::whereIn('id', $this->dipilih)->get();
+
+        foreach ($barisTerpilih as $baris) {
+            abort_unless($this->bolehKelola($baris->profil_sekolah_id), 403);
+            $this->abortJikaTerkunciVerval($baris->profil_sekolah_id, $this->tahun, $baris->triwulan);
+        }
+
+        $jumlah = $barisTerpilih->count();
+
+        LanggananDayaJasa::whereIn('id', $barisTerpilih->pluck('id'))->delete();
+
+        $this->dipilih = [];
+        $this->confirmingHapusTerpilih = false;
+        $this->dispatch('close-modal', 'langganan-daya-jasa-hapus-terpilih');
+        session()->flash('status', "Berhasil menghapus {$jumlah} data Langganan Daya dan Jasa sekaligus.");
+    }
+
+    /**
      * Query flat (bukan per-sekolah) - dipakai HANYA oleh export(), sama
      * seperti pola queryDasar() pada Penerimaan Honor PTK.
      */
@@ -553,6 +623,10 @@ class Index extends Component
             ];
         }
 
+        $idRealBaris = collect($this->baris)->keys()->filter(fn ($id) => $id > 0)->values()->all();
+        $this->dipilih = array_values(array_intersect($this->dipilih, $idRealBaris));
+        $semuaTerpilih = count($idRealBaris) > 0 && count(array_diff($idRealBaris, $this->dipilih)) === 0;
+
         $tahunOptions = range(now()->year - 2, now()->year + 1);
 
         // Jumlah Langganan Daya Jasa UNTUK SELURUH SEKOLAH yang SEDANG
@@ -581,6 +655,7 @@ class Index extends Component
             'terkunciTriwulanIni' => $this->terkunciVervalUntukTampilan($this->triwulan),
             'tahunOptions' => array_reverse($tahunOptions),
             'totalDayaJasaKeseluruhan' => $totalDayaJasaKeseluruhan,
+            'semuaTerpilih' => $semuaTerpilih,
         ]);
     }
 }
