@@ -30,6 +30,22 @@
                         </select>
 
                         <x-zoom-controls :zoom="$zoomPercent" />
+
+                        {{--
+                            Tombol Unduh PDF & Excel (permintaan user
+                            2026-09-26) - mengunduh field yang SAMA seperti
+                            tabel di layar untuk tahun yang sedang aktif
+                            (Superadmin: seluruh sekolah, Admin BOSP:
+                            sekolah sendiri).
+                        --}}
+                        <x-secondary-button type="button" wire:click="unduhPdf" wire:loading.attr="disabled" wire:target="unduhPdf" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                            <x-icon name="printer" class="w-3.5 h-3.5 mr-1" />
+                            Unduh PDF
+                        </x-secondary-button>
+                        <x-secondary-button type="button" wire:click="unduhExcel" wire:loading.attr="disabled" wire:target="unduhExcel" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                            <x-icon name="download" class="w-3.5 h-3.5 mr-1" />
+                            Unduh Excel
+                        </x-secondary-button>
                     </div>
                 </div>
 

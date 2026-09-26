@@ -51,6 +51,26 @@
                                     <option value="{{ $tahun }}">{{ $tahun }}</option>
                                 @endforeach
                             </select>
+
+                            {{--
+                                Tombol "Unduh Semua Sekaligus" (permintaan user
+                                2026-09-26) - memicu unduhan SEMUA backup yang
+                                cocok dengan filter Tahun di atas (bukan cuma
+                                1 halaman pagination), satu per satu otomatis
+                                lewat event unduh-semua-backup (lihat
+                                <script> di bawah) - BUKAN digabung jadi 1
+                                file zip di server (jawaban AskUserQuestion).
+                            --}}
+                            <button
+                                type="button"
+                                wire:click="unduhSemua"
+                                wire:loading.attr="disabled"
+                                wire:target="unduhSemua"
+                                class="inline-flex items-center px-3 py-1.5 bg-white border border-slate-300 rounded-md font-medium text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                            >
+                                <span wire:loading.remove wire:target="unduhSemua">Unduh Semua Sekaligus</span>
+                                <span wire:loading wire:target="unduhSemua">Menyiapkan unduhan...</span>
+                            </button>
                         </div>
                     </div>
 
@@ -98,4 +118,26 @@
             </div>
         </div>
     </div>
+
+    {{--
+        Menangkap event unduh-semua-backup (dispatch dari unduhSemua() di
+        Index.php) - memicu unduhan tiap URL SATU PER SATU dengan jeda
+        singkat antar file, supaya browser tidak memblokirnya sebagai
+        "banyak unduhan sekaligus" tanpa interaksi user.
+    --}}
+    <script>
+        window.addEventListener('unduh-semua-backup', (event) => {
+            const urls = event.detail?.urls ?? [];
+
+            urls.forEach((url, index) => {
+                setTimeout(() => {
+                    const tautan = document.createElement('a');
+                    tautan.href = url;
+                    document.body.appendChild(tautan);
+                    tautan.click();
+                    tautan.remove();
+                }, index * 700);
+            });
+        });
+    </script>
 </div>

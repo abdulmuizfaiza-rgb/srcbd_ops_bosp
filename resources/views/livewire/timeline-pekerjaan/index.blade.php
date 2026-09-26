@@ -98,7 +98,11 @@
                         </div>
                     @endif
 
-                    <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                    <div class="flex justify-end mb-3">
+                        <x-zoom-controls :zoom="$zoomPercent" />
+                    </div>
+
+                    <div class="overflow-x-auto border border-slate-200 rounded-lg" style="zoom: {{ $zoomPercent }}%;">
                         <table class="min-w-full divide-y divide-slate-200 text-sm">
                             <thead class="bg-slate-50">
                                 <tr>

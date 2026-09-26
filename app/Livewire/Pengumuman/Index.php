@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pengumuman;
 
+use App\Livewire\Concerns\HasZoomTampilan;
 use App\Models\Pengumuman;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -22,6 +23,7 @@ use Livewire\WithPagination;
 #[Title('Pengumuman')]
 class Index extends Component
 {
+    use HasZoomTampilan;
     use WithPagination;
 
     public bool $showForm = false;

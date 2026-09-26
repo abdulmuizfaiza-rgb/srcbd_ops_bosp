@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PanduanAplikasi;
 
+use App\Livewire\Concerns\HasZoomTampilan;
 use App\Models\PanduanAplikasi;
 use App\Models\PanduanAplikasiFile;
 use App\Models\PanduanAplikasiLink;
@@ -48,6 +49,7 @@ use Livewire\WithPagination;
 #[Title('Panduan Aplikasi')]
 class Index extends Component
 {
+    use HasZoomTampilan;
     use WithFileUploads, WithPagination;
 
     /** Filter "Book Manual" (cari di kolom judul). */

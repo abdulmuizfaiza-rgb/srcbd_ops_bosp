@@ -24,7 +24,11 @@
                         <x-primary-button wire:click="tambah" class="shrink-0">+ Tambah Pengumuman</x-primary-button>
                     </div>
 
-                    <div class="overflow-x-auto">
+                    <div class="flex justify-end mb-3">
+                        <x-zoom-controls :zoom="$zoomPercent" />
+                    </div>
+
+                    <div class="overflow-x-auto" style="zoom: {{ $zoomPercent }}%;">
                         <table class="min-w-full divide-y divide-slate-200 text-sm">
                             <thead>
                                 <tr class="text-left text-slate-500">

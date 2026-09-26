@@ -22,6 +22,8 @@
                     </div>
 
                     <div class="flex flex-wrap items-center gap-2.5">
+                        <input wire:model.live.debounce.300ms="search" type="text" placeholder="Cari Nama Sekolah / Nama Admin BOSP..." class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm sm:w-72">
+
                         <x-zoom-controls :zoom="$zoomPercent" />
                     </div>
                 </div>

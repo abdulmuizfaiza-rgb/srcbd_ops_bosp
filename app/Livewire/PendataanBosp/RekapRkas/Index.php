@@ -2,14 +2,17 @@
 
 namespace App\Livewire\PendataanBosp\RekapRkas;
 
+use App\Exports\RekapRkasExport;
 use App\Livewire\Concerns\HasZoomTampilan;
 use App\Models\DanaBospTahap;
 use App\Models\ProfilSekolah;
 use App\Models\RekapRkas;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Maatwebsite\Excel\Facades\Excel;
 
 /**
  * Rekap RKAS Awal-Perubahan - Pendataan BOSP.
@@ -543,7 +546,15 @@ class Index extends Component
         session()->flash('status', 'Data Rekap RKAS Awal-Perubahan berhasil disimpan.');
     }
 
-    public function render()
+    /**
+     * Ambil daftar sekolah (sudah di-map dengan rekapRkasTahunIni,
+     * danaBospTahunIni, & anggaranBospOtomatis) sesuai peran & tahun yang
+     * aktif - dipakai bareng oleh render() (tampilan tabel) & unduhExcel()/
+     * unduhPdf() (permintaan user 2026-09-26) supaya query & urutan
+     * sekolahnya SELALU identik antara yang ditampilkan di layar & yang
+     * diunduh ("field yang sama dengan di aplikasi").
+     */
+    private function daftarSekolahDenganRekap()
     {
         $query = ProfilSekolah::with([
             'rekapRkas' => function ($q) {
@@ -562,7 +573,7 @@ class Index extends Component
             $query->where('id', auth()->user()->profil_sekolah_id);
         }
 
-        $daftarSekolah = $query
+        return $query
             ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
             ->orderByRaw('kecamatan IS NULL')
             ->orderBy('kecamatan')
@@ -576,6 +587,85 @@ class Index extends Component
 
                 return $sekolah;
             });
+    }
+
+    /**
+     * Baris "Jumlah" (total) - penjumlahan seluruh baris sekolah pada
+     * $daftarSekolah yang diberikan (sesuai scope peran: seluruh sekolah
+     * untuk Superadmin, hanya sekolah sendiri untuk Admin BOSP). Dipakai
+     * bareng oleh render(), unduhExcel(), & unduhPdf() supaya angka
+     * totalnya selalu konsisten.
+     *
+     * @return array<string, int>
+     */
+    private function hitungTotalBaris($daftarSekolah): array
+    {
+        $totalBaris = [];
+        foreach ($this->daftarFieldAngka() as $field) {
+            $totalBaris[$field] = $daftarSekolah->sum(function ($sekolah) use ($field) {
+                return (int) ($sekolah->rekapRkasTahunIni?->{$field} ?? 0);
+            });
+        }
+
+        $totalBaris['anggaran_bosp'] = $daftarSekolah->sum(fn ($sekolah) => (int) ($sekolah->anggaranBospOtomatis ?? 0));
+
+        return $totalBaris;
+    }
+
+    /**
+     * Unduh Excel Rekap RKAS Awal-Perubahan untuk tahun yang sedang aktif
+     * (permintaan user 2026-09-26, "field yang sama dengan di aplikasi...
+     * file yang sudah rapih tidak perlu diedit kembali") - Superadmin:
+     * seluruh sekolah, Admin BOSP: sekolah sendiri saja (sama seperti
+     * scope $daftarSekolah di layar).
+     */
+    public function unduhExcel()
+    {
+        $daftarSekolah = $this->daftarSekolahDenganRekap();
+        $totalBaris = $this->hitungTotalBaris($daftarSekolah);
+
+        return Excel::download(
+            new RekapRkasExport($daftarSekolah, $this->tahun, $totalBaris),
+            'rekap-rkas-'.$this->tahun.'.xlsx'
+        );
+    }
+
+    /**
+     * Unduh PDF Rekap RKAS Awal-Perubahan untuk tahun yang sedang aktif
+     * (permintaan user 2026-09-26) - kertas A3 landscape (bukan A4 seperti
+     * menu lain) karena tabelnya jauh lebih lebar (31 kolom data).
+     */
+    public function unduhPdf()
+    {
+        $daftarSekolah = $this->daftarSekolahDenganRekap();
+        $totalBaris = $this->hitungTotalBaris($daftarSekolah);
+
+        $pdf = Pdf::loadView('pdf.rekap-rkas', [
+            'daftarSekolah' => $daftarSekolah,
+            'kategori' => RekapRkas::KATEGORI,
+            'tahun' => $this->tahun,
+            'totalBaris' => $totalBaris,
+        ])->setPaper('a3', 'landscape');
+
+        // PENTING: Pdf::download() bawaan mengembalikan Illuminate\Http\Response
+        // BIASA (bukan BinaryFileResponse/StreamedResponse) - Livewire hanya
+        // mengenali unduhan file dari method komponen kalau responsnya salah
+        // satu dari 2 jenis itu, jadi kalau langsung di-return apa adanya,
+        // isi PDF (biner) malah dicoba di-encode sebagai JSON oleh Livewire
+        // dan gagal ("Malformed UTF-8 characters"). Solusinya (mengikuti
+        // pola yang sudah dipakai di PendataanOps\Unduhan\Index::unduhPdf()):
+        // simpan dulu ke file sementara, lalu pakai response()->download()
+        // bawaan Laravel yang menghasilkan BinaryFileResponse.
+        $namaFile = 'rekap-rkas-'.$this->tahun.'.pdf';
+        $pathSementara = tempnam(sys_get_temp_dir(), 'rekap-rkas-').'.pdf';
+        file_put_contents($pathSementara, $pdf->output());
+
+        return response()->download($pathSementara, $namaFile)->deleteFileAfterSend(true);
+    }
+
+    public function render()
+    {
+        $daftarSekolah = $this->daftarSekolahDenganRekap();
 
         // Isi ulang $baris (data untuk kotak input langsung di tabel) dari
         // data ter-terbaru database setiap kali render() dipanggil - ini
@@ -604,23 +694,11 @@ class Index extends Component
 
         $tahunOptions = range(now()->year - 2, now()->year + 1);
 
-        // Baris "Jumlah" (total) di bawah tabel - dihitung otomatis sebagai
-        // penjumlahan seluruh baris sekolah yang SEDANG TAMPIL di atas
-        // (mengikuti scope $daftarSekolah yang sudah sesuai peran: seluruh
-        // sekolah untuk Superadmin, hanya sekolah sendiri untuk Admin BOSP)
-        // - sesuai jawaban AskUserQuestion 2026-09-09 lanjutan ke-3: "Otomatis
-        // dihitung sistem (sum kolom)". Baris kosong (belum diisi) dihitung 0.
-        $totalBaris = [];
-        foreach ($this->daftarFieldAngka() as $field) {
-            $totalBaris[$field] = $daftarSekolah->sum(function ($sekolah) use ($field) {
-                return (int) ($sekolah->rekapRkasTahunIni?->{$field} ?? 0);
-            });
-        }
-
-        // Anggaran BOSP {tahun} pada baris "Jumlah" - sum dari nilai
-        // otomatis ($sekolah->anggaranBospOtomatis), sama seperti kolom
-        // lain di atas, BUKAN bagian daftarFieldAngka() lagi.
-        $totalBaris['anggaran_bosp'] = $daftarSekolah->sum(fn ($sekolah) => (int) ($sekolah->anggaranBospOtomatis ?? 0));
+        // Baris "Jumlah" (total) di bawah tabel - lihat hitungTotalBaris()
+        // (diekstrak 2026-09-26 supaya dipakai bareng oleh unduhExcel()/
+        // unduhPdf() juga, sesuai jawaban AskUserQuestion 2026-09-09
+        // lanjutan ke-3: "Otomatis dihitung sistem (sum kolom)").
+        $totalBaris = $this->hitungTotalBaris($daftarSekolah);
 
         return view('livewire.pendataan-bosp.rekap-rkas.index', [
             'daftarSekolah' => $daftarSekolah,

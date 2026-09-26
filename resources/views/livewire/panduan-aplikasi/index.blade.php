@@ -49,7 +49,9 @@
 
             <div class="bg-white shadow sm:rounded-lg overflow-hidden">
                 <div class="p-4 sm:p-8">
-                    <div class="flex justify-end mb-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2.5 mb-4">
+                        <x-zoom-controls :zoom="$zoomPercent" />
+
                         <x-primary-button wire:click="tambah">+ Tambah Panduan</x-primary-button>
                     </div>
 
@@ -62,7 +64,7 @@
                         Transisi halus pada scrollbar-nya ditambahkan di
                         resources/css/app.css.
                     --}}
-                    <div class="overflow-auto scrollbar-modern border border-slate-200 rounded-lg" style="max-height: 32rem;">
+                    <div class="overflow-auto scrollbar-modern border border-slate-200 rounded-lg" style="max-height: 32rem; zoom: {{ $zoomPercent }}%;">
                         <table class="min-w-full divide-y divide-slate-200 text-sm">
                             <thead class="sticky top-0 bg-white">
                                 <tr class="text-left text-slate-500">

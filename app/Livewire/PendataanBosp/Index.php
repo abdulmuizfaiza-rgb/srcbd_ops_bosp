@@ -24,6 +24,14 @@ class Index extends Component
 {
     use HasZoomTampilan;
 
+    /**
+     * Pencarian gabungan Nama Sekolah ATAU Nama Admin BOSP (permintaan
+     * user 2026-09-26) - satu kotak pencarian, mencocokkan salah satu
+     * dari kedua kolom (mengikuti pola search-box tunggal yang sudah
+     * dipakai di menu lain, mis. Lampiran 2c).
+     */
+    public string $search = '';
+
     public ?int $sekolahId = null;
 
     public ?int $editingId = null;
@@ -207,6 +215,15 @@ class Index extends Component
 
         if (! $this->bolehKelolaSemua()) {
             $query->where('id', auth()->user()->profil_sekolah_id);
+        }
+
+        if ($this->search !== '') {
+            $query->where(function ($q) {
+                $q->where('nama_sekolah', 'like', "%{$this->search}%")
+                    ->orWhereHas('identitasBosp', function ($q2) {
+                        $q2->where('nama', 'like', "%{$this->search}%");
+                    });
+            });
         }
 
         $daftarSekolah = $query

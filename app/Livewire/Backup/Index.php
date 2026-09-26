@@ -59,6 +59,31 @@ class Index extends Component
         }
     }
 
+    /**
+     * Kirim daftar URL unduh SEMUA backup yang sedang cocok dengan filter
+     * Tahun aktif (BUKAN cuma yang tampil di halaman pagination saat ini)
+     * ke browser lewat event, supaya JS di index.blade.php bisa memicu
+     * unduhan file-file itu SATU PER SATU secara otomatis (permintaan
+     * user 2026-09-26, jawaban AskUserQuestion "Unduh satu-satu otomatis
+     * (multi-download)" - BUKAN digabung jadi 1 file zip di server).
+     */
+    public function unduhSemua(): void
+    {
+        $urls = Backup::query()
+            ->when($this->filterTahun !== '', fn ($q) => $q->where('tahun', $this->filterTahun))
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn (Backup $backup) => route('backup.unduh', $backup))
+            ->values()
+            ->all();
+
+        if (empty($urls)) {
+            return;
+        }
+
+        $this->dispatch('unduh-semua-backup', urls: $urls);
+    }
+
     public function hapus(int $id): void
     {
         $backup = Backup::find($id);

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\TimelinePekerjaan;
 
+use App\Livewire\Concerns\HasZoomTampilan;
 use App\Models\DeadlinePekerjaan;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Layout;
@@ -68,6 +69,8 @@ use Livewire\Component;
 #[Title('Timeline Pekerjaan')]
 class Index extends Component
 {
+    use HasZoomTampilan;
+
     public int $tahun;
 
     public int $triwulan;

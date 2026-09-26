@@ -3,11 +3,13 @@
 namespace App\Livewire\PendataanBosp\PenerimaanHonorPtk;
 
 use App\Exports\PenerimaanHonorPtkExport;
+use App\Exports\PenerimaanHonorPtkSemuaTriwulanExport;
 use App\Imports\PenerimaanHonorPtkImport;
 use App\Livewire\Concerns\HasZoomTampilan;
 use App\Livewire\Concerns\MenolakEditJikaTerkunciVerval;
 use App\Models\PenerimaanHonorPtk;
 use App\Models\ProfilSekolah;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -643,6 +645,136 @@ class Index extends Component
                 $sekolah
             ),
             'penerimaan-honor-ptk-triwulan-'.$this->triwulan.'-'.$this->tahun.'.xlsx'
+        );
+    }
+
+    /**
+     * Daftar SEMUA sekolah (BUKAN dibatasi $filterSekolahId/$search seperti
+     * render() - permintaan user 2026-09-26 "unduh pdf per triwulan semua
+     * sekolah") untuk triwulan+tahun yang sedang aktif, berikut baris PTK-
+     * nya masing-masing. Admin BOSP tetap otomatis terbatas ke sekolahnya
+     * sendiri saja (mengikuti aturan akses menu ini, bukan pembatasan
+     * filter). Urutan Status(Negeri dulu)-Kecamatan-Nama Sekolah - jawaban
+     * AskUserQuestion 2026-09-26, SAMA dengan urutan yang sudah dipakai di
+     * render() menu ini & menu lain (Identitas Admin BOSP, Rekap RKAS,
+     * Unduhan Lampiran).
+     */
+    private function daftarSekolahSemuaUntukUnduhan()
+    {
+        $query = ProfilSekolah::with(['penerimaanHonorPtk' => function ($q) {
+            $q->where('tahun', $this->tahun)
+                ->where('triwulan', $this->triwulan)
+                ->orderBy('nama_penerima');
+        }]);
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('id', $this->sekolahSayaId());
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
+            ->orderByRaw('kecamatan IS NULL')
+            ->orderBy('kecamatan')
+            ->orderBy('nama_sekolah')
+            ->get();
+    }
+
+    /**
+     * Unduh PDF Penerimaan Honor PTK untuk TRIWULAN YANG SEDANG AKTIF,
+     * SEMUA SEKOLAH (permintaan user 2026-09-26, jawaban AskUserQuestion
+     * "Triwulan yang sedang aktif saja") - terpisah dari tombol Export
+     * Excel yang sudah ada (yang tetap mewajibkan pilih 1 sekolah untuk
+     * Superadmin, TIDAK diubah).
+     */
+    public function unduhPdfSemuaSekolah()
+    {
+        $daftarSekolah = $this->daftarSekolahSemuaUntukUnduhan();
+
+        $totalKeseluruhan = $daftarSekolah->sum(
+            fn (ProfilSekolah $sekolah) => $sekolah->penerimaanHonorPtk->sum('jumlah_honor')
+        );
+
+        $pdf = Pdf::loadView('pdf.penerimaan-honor-ptk', [
+            'daftarSekolah' => $daftarSekolah,
+            'triwulan' => $this->triwulan,
+            'tahun' => $this->tahun,
+            'totalKeseluruhan' => $totalKeseluruhan,
+        ])->setPaper('a4', 'landscape');
+
+        // PENTING: Pdf::download() bawaan mengembalikan Illuminate\Http\Response
+        // BIASA (bukan BinaryFileResponse/StreamedResponse) - Livewire hanya
+        // mengenali unduhan file dari method komponen kalau responsnya salah
+        // satu dari 2 jenis itu, jadi kalau langsung di-return apa adanya,
+        // isi PDF (biner) malah dicoba di-encode sebagai JSON oleh Livewire
+        // dan gagal ("Malformed UTF-8 characters"). Solusinya (mengikuti
+        // pola yang sudah dipakai di PendataanOps\Unduhan\Index::unduhPdf()):
+        // simpan dulu ke file sementara, lalu pakai response()->download()
+        // bawaan Laravel yang menghasilkan BinaryFileResponse.
+        $namaFile = 'penerimaan-honor-ptk-triwulan-'.$this->triwulan.'-'.$this->tahun.'.pdf';
+        $pathSementara = tempnam(sys_get_temp_dir(), 'honor-ptk-pdf-').'.pdf';
+        file_put_contents($pathSementara, $pdf->output());
+
+        return response()->download($pathSementara, $namaFile)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Baris PenerimaanHonorPtk (flat, BUKAN dikelompokkan per sekolah)
+     * untuk 1 triwulan tertentu & tahun yang sedang aktif, SEMUA sekolah
+     * (BUKAN dibatasi $filterSekolahId/$search seperti queryDasar() yang
+     * dipakai tombol Export Excel single-triwulan) - dipakai khusus untuk
+     * unduhExcelSemuaTriwulan() (permintaan user 2026-09-26, "unduh excel
+     * yang terdiri dari 4 sheet"). Admin BOSP tetap otomatis terbatas ke
+     * sekolahnya sendiri saja (mengikuti aturan akses menu ini, bukan
+     * pembatasan filter).
+     *
+     * Urutan Status(Negeri dulu)-Kecamatan-Nama Sekolah lalu Nama
+     * Penerima - jawaban AskUserQuestion 2026-09-26 (SAMA dengan urutan
+     * yang sudah dipakai render() menu ini & menu lain seperti Rekap
+     * RKAS) - BEDA dari queryDasar() yang hanya urut Nama Sekolah saja,
+     * makanya dibuat query terpisah di sini, bukan menambah parameter ke
+     * queryDasar() yang sudah dipakai di banyak tempat lain.
+     */
+    private function baruSemuaSekolahUntukTriwulan(int $triwulan)
+    {
+        $query = PenerimaanHonorPtk::query()
+            ->with('profilSekolah')
+            ->join('profil_sekolah', 'profil_sekolah.id', '=', 'penerimaan_honor_ptk.profil_sekolah_id')
+            ->where('penerimaan_honor_ptk.tahun', $this->tahun)
+            ->where('penerimaan_honor_ptk.triwulan', $triwulan)
+            ->select('penerimaan_honor_ptk.*');
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('penerimaan_honor_ptk.profil_sekolah_id', $this->sekolahSayaId());
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN profil_sekolah.status = 'negeri' THEN 0 WHEN profil_sekolah.status = 'swasta' THEN 1 ELSE 2 END")
+            ->orderByRaw('profil_sekolah.kecamatan IS NULL')
+            ->orderBy('profil_sekolah.kecamatan')
+            ->orderBy('profil_sekolah.nama_sekolah')
+            ->orderBy('penerimaan_honor_ptk.nama_penerima')
+            ->get();
+    }
+
+    /**
+     * Unduh Excel 4 sheet (Honor PTK TW-1 s.d. TW-4) SEMUA SEKOLAH untuk
+     * tahun yang sedang aktif (permintaan user 2026-09-26) - terpisah dari
+     * tombol Export Excel yang sudah ada (yang tetap 1 sheet/1 sekolah,
+     * TIDAK diubah). Membungkus 4x PenerimaanHonorPtkExport yang sudah
+     * ada (dgn $sekolah=null, sudah mendukung mode "REKAP SELURUH
+     * SEKOLAH" - lihat App\Exports\PenerimaanHonorPtkExport::tulisJudul())
+     * lewat WithMultipleSheets, mengikuti pola App\Exports\FormulirBosK7Export.
+     */
+    public function unduhExcelSemuaTriwulan()
+    {
+        $dataPerTriwulan = [];
+        foreach (array_keys(PenerimaanHonorPtk::TRIWULAN_OPTIONS) as $triwulan) {
+            $dataPerTriwulan[$triwulan] = $this->baruSemuaSekolahUntukTriwulan($triwulan);
+        }
+
+        return Excel::download(
+            new PenerimaanHonorPtkSemuaTriwulanExport($dataPerTriwulan, $this->tahun),
+            'penerimaan-honor-ptk-semua-triwulan-'.$this->tahun.'.xlsx'
         );
     }
 

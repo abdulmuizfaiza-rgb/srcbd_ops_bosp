@@ -98,9 +98,30 @@
                             </div>
 
                             <div class="flex items-center gap-1.5">
+                                {{--
+                                    Unduh PDF (permintaan user 2026-09-26) -
+                                    TERPISAH dari Export Excel di atas: PDF
+                                    ini SELALU semua sekolah untuk triwulan
+                                    yang sedang aktif (tidak perlu memilih 1
+                                    sekolah dulu seperti Export Excel).
+                                --}}
+                                <x-secondary-button wire:click="unduhPdfSemuaSekolah" wire:loading.attr="disabled" wire:target="unduhPdfSemuaSekolah" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                                    <x-icon name="printer" class="w-3.5 h-3.5 mr-1" />
+                                    Unduh PDF
+                                </x-secondary-button>
                                 <x-secondary-button wire:click="export" wire:loading.attr="disabled" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
                                     <x-icon name="download" class="w-3.5 h-3.5 mr-1" />
                                     Export Excel
+                                </x-secondary-button>
+                                {{--
+                                    Unduh Excel 4 sheet TW-1 s.d. TW-4,
+                                    SEMUA sekolah (permintaan user
+                                    2026-09-26) - TERPISAH dari Export
+                                    Excel single-triwulan/1-sekolah di atas.
+                                --}}
+                                <x-secondary-button wire:click="unduhExcelSemuaTriwulan" wire:loading.attr="disabled" wire:target="unduhExcelSemuaTriwulan" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                                    <x-icon name="download" class="w-3.5 h-3.5 mr-1" />
+                                    Unduh Excel 4 Triwulan
                                 </x-secondary-button>
                                 <x-primary-button type="button" wire:click="tambah" :disabled="$terkunciTriwulanIni" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
                                     <x-icon name="plus" class="w-3.5 h-3.5 mr-1" />
