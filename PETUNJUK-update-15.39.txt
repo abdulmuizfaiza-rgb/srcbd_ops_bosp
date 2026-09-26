@@ -1,0 +1,128 @@
+PETUNJUK UPDATE - update-15.39 (2026-09-18)
+Menu "Rincian Belanja Barang Habis Pakai": tambah Tab 2 baru "Stock
+Opname" (Stock Opname TW 1-4) sesuai gambar rincian yang diupload user,
+lengkap dengan Export/Import Excel, zoom in-zoom out, filter Tahun &
+Nama Sekolah, dan tombol +/- expand per sekolah.
+=======================================================================
+
+PENTING: Update ini ADA MIGRATION BARU (beda dengan beberapa update
+terakhir yang tidak ada migration) - WAJIB jalankan "php artisan
+migrate" (lihat langkah 5 di bawah), karena update ini membuat TABEL
+BARU di database untuk menyimpan data Stock Opname. Kalau langkah
+migrate ini dilewati, tab "Stock Opname" akan menampilkan error saat
+dibuka.
+
+Tidak ada pustaka baru yang perlu diunduh (tidak perlu "composer
+install"). TIDAK PERLU "npm install"/"npm run build" - file CSS/JS hasil
+build sudah disertakan langsung di dalam zip ini (folder
+public/build/assets & public/build/manifest.json).
+
+Ringkasan perubahan (permintaan user 2026-09-18):
+
+1. Menu "Rincian Belanja Barang Habis Pakai" sekarang punya 2 tab utama
+   di bagian atas: "Rincian Belanja Barang Habis Pakai" (tab lama, tidak
+   berubah sama sekali) dan "Stock Opname" (tab baru).
+
+2. Tab "Stock Opname" punya 4 sub-tab warna: Stock Opname TW-1 (biru),
+   TW-2 (hijau), TW-3 (kuning), TW-4 (ungu) - sama seperti gaya sub-tab
+   Triwulan pada tab lama.
+
+3. Kolom-kolom tabel Stock Opname mengikuti PERSIS gambar
+   "STOCK OPNAME RINCIAN BARANG PERSEDIAAN BOSP TAHUN ANGGARAN 2026"
+   yang diupload user: No, NPSN, Nama Sekolah, Subrayon, Nama Barang
+   Persediaan, Satuan (Unit, Harga), Saldo Awal (Kuantitas, Jumlah Rp),
+   Penerimaan (Kuantitas, Jumlah Rp), Pengeluaran (Kuantitas, Jumlah
+   Rp), Saldo Akhir (Kuantitas, Jumlah Rp), Keterangan.
+
+4. Kolom NPSN, Nama Sekolah, & Subrayon terisi OTOMATIS dari data Profil
+   Sekolah (sama seperti menu-menu lain) - TIDAK BISA diketik manual.
+
+5. Kolom "Nama Barang Persediaan" diisi MANUAL sendiri per baris (bukan
+   diambil dari menu Rincian Belanja Barang Habis Pakai) - sesuai
+   pilihan user saat ditanya.
+
+6. SEMUA kolom angka (Harga, Kuantitas & Jumlah Rp pada Saldo Awal/
+   Penerimaan/Pengeluaran/Saldo Akhir) untuk SEMENTARA masih INPUT
+   MANUAL sepenuhnya - BELUM ada rumus/hitung otomatis apapun pada
+   update ini (termasuk Saldo Akhir, carry-over Saldo Awal antar
+   triwulan, dan Jumlah Rp = Kuantitas x Harga). User sudah diberi tahu
+   & memilih "nanti saja" untuk keempat hal ini - akan dikerjakan pada
+   update berikutnya kalau user sudah siap menentukan rumusnya.
+
+7. Baris data Stock Opname per sekolah bisa di-expand/collapse dengan
+   simbol "+"/"-" pada kolom No (klik baris ringkasan "sekian data
+   sudah diinput" untuk membuka/menutup), sama seperti tab lama. Ada
+   baris placeholder kosong di bagian bawah tiap sekolah untuk menambah
+   baris baru (baris ini otomatis membuat data baru begitu salah satu
+   kotaknya diisi, lalu placeholder kosong baru muncul lagi).
+
+8. Tombol "Export Excel" & "Import Excel" khusus data Stock Opname
+   (terpisah dari tombol Export/Import tab lama), dengan kolom yang
+   sama persis seperti tabelnya (15 kolom: NPSN s.d. Keterangan).
+
+9. Kontrol "Zoom In"/"Zoom Out" & filter "Tahun"/"Nama Sekolah" pada tab
+   Stock Opname sama seperti tab lama (kontrol yang sama dipakai
+   bersama, jadi posisi zoom/filter yang dipilih tetap tersimpan saat
+   pindah antar tab).
+
+10. Tab "Stock Opname" TIDAK punya kotak pencarian (search box) - sesuai
+    permintaan user yang hanya minta filter Tahun & Nama Sekolah untuk
+    tab ini (kotak pencarian tetap ada & berfungsi seperti biasa di tab
+    "Rincian Belanja Barang Habis Pakai").
+
+11. Data tab "Rincian Belanja Barang Habis Pakai" (tab lama) & tab
+    "Stock Opname" (tab baru) TERSIMPAN DI TABEL DATABASE YANG BERBEDA -
+    sudah diuji supaya data kedua tab TIDAK TERCAMPUR sama sekali
+    (termasuk saat ID baris kedua tabel kebetulan sama).
+
+Cara memasang:
+
+1. Tutup dulu aplikasi (Ctrl+C pada terminal "php artisan serve" yang
+   sedang berjalan, kalau ada).
+
+2. Ekstrak isi zip "update-15.39 stock-opname.zip" ke folder aplikasi:
+   D:\Aplikasi SRCBD_OPS_BOSP\srcbd-ops-bosp-source
+   (timpa file yang sudah ada kalau diminta konfirmasi).
+
+3. Buka terminal/Command Prompt, arahkan ke folder proyek:
+   cd /d "D:\Aplikasi SRCBD_OPS_BOSP\srcbd-ops-bosp-source"
+
+4. php artisan optimize:clear
+
+5. WAJIB - jalankan migration supaya tabel baru Stock Opname dibuat di
+   database:
+   php artisan migrate
+
+6. Jalankan lagi:
+   php artisan serve
+
+7. Buka tab/Incognito baru (atau refresh keras Ctrl+Shift+R kalau tab
+   lama masih terbuka), login seperti biasa, lalu periksa:
+   - Buka menu "Rincian Belanja Barang Habis Pakai" - pastikan tab
+     "Rincian Belanja Barang Habis Pakai" (lama) masih berfungsi normal
+     seperti biasa.
+   - Klik tab "Stock Opname" di bagian atas - pastikan tabel Stock
+     Opname TW-1 s.d. TW-4 tampil sesuai gambar (No, NPSN, Nama Sekolah,
+     Subrayon, Nama Barang Persediaan, Satuan, Saldo Awal, Penerimaan,
+     Pengeluaran, Saldo Akhir, Keterangan).
+   - Coba klik tombol "+ Tambah" atau isi langsung kotak baris
+     placeholder untuk memastikan data baru bisa disimpan.
+   - Coba tombol "Export Excel" & "Import Excel" pada tab Stock Opname.
+   - Coba tombol Zoom In/Zoom Out & filter Tahun/Nama Sekolah.
+
+Kalau tidak bisa login sama sekali (akun superadmin hilang lagi), jalankan:
+   php artisan tinker --execute="App\Models\User::updateOrCreate(['username'=>'superadmin'],['password'=>bcrypt('password'),'level_akses'=>'superadmin']); echo 'akun superadmin dibuat';"
+lalu login pakai superadmin / password.
+
+File yang berubah/ditambah pada update ini:
+- database/migrations/2026_09_18_090000_create_stock_opname_barang_persediaan_table.php (BARU)
+- app/Models/StockOpnameBarangPersediaan.php (BARU)
+- app/Models/RincianBelanjaBarangHabisPakai.php
+- app/Models/ProfilSekolah.php
+- app/Livewire/PendataanBosp/RincianBelanjaBarangHabisPakai/Index.php
+- app/Exports/StockOpnameBarangPersediaanExport.php (BARU)
+- app/Imports/StockOpnameBarangPersediaanImport.php (BARU)
+- resources/views/components/stock-opname-tarif-cell.blade.php (BARU)
+- resources/views/livewire/pendataan-bosp/rincian-belanja-barang-habis-pakai/index.blade.php
+- resources/views/livewire/pendataan-bosp/rincian-belanja-barang-habis-pakai/_tabel-stock-opname.blade.php (BARU)
+- public/build/assets/app-DExQYGMw.css, public/build/assets/app-CtUx7YPw.js, public/build/manifest.json (hasil build ulang aset Tailwind/JS)

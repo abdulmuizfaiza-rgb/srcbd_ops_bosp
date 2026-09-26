@@ -1,0 +1,95 @@
+PETUNJUK PEMASANGAN UPDATE
+Aplikasi OPS_BOSP SR CBD - Part 7 (2026-09-05, lanjutan)
+==========================================================
+
+ISI UPDATE INI (7 poin sesuai permintaan):
+1. Format nomor WhatsApp Kepala Sekolah (menu Profil Sekolah) - wajib format
+   Indonesia: diawali "08", total 10-13 digit angka.
+2. Format NUPTK (16 digit angka) & NIP (18 digit angka untuk status ASN;
+   harus diisi tanda "-" untuk Honorer/PTT Yayasan) - menu Identitas OPS.
+3. Perbaikan bug: kolom SK OPS & Photo OPS tidak muncul (menu Identitas OPS).
+4. Semua tulisan pada landing page, form login, dan form registrasi Admin
+   OPS/Admin BOSP dibuat BOLD (tebal).
+5. Dropdown Nama Sekolah pada form Registrasi diurutkan Negeri dulu baru
+   Swasta; teks "Daftar sebagai Admin OPS/BOSP" diganti "Registrasi Admin
+   OPS / Admin BOSP" + ditambah ikon.
+6. Kotak landing page/login/registrasi digeser ke sebelah kanan-tengah.
+7. Perbaikan posisi tanda tangan Kepala Sekolah & Pengawas pada hasil
+   unduhan PDF Lampiran 2a/2b/2c (posisi kolom sesuai permintaan), dan
+   Lampiran 2c (13 kolom) otomatis diperkecil supaya tetap muat rapi dalam
+   1 halaman.
+
+LANGKAH PEMASANGAN
+-------------------
+1. Backup dulu folder aplikasi & database (seperti biasa sebelum update).
+2. Salin/timpa seluruh file dari update ini ke folder aplikasi (struktur
+   folder di dalam zip ini PERSIS sama dengan struktur folder aplikasi).
+3. TIDAK ADA migration baru pada update ini - TIDAK PERLU
+   `php artisan migrate`.
+4. TIDAK ADA pustaka Composer/npm baru pada update ini - TIDAK PERLU
+   `composer install` maupun `npm install`. File hasil `npm run build`
+   (folder `public/build/`) SUDAH TERMASUK di dalam zip ini karena CSS
+   berubah (aturan bold baru) - user TIDAK PERLU menjalankan `npm run
+   build` sendiri, cukup pastikan isi folder `public/build/` di server
+   sudah tertimpa dengan isi zip ini.
+5. Jalankan (disarankan, membersihkan cache lama):
+   php artisan optimize:clear
+6. Refresh browser (disarankan hard-refresh / Ctrl+F5 supaya file CSS/JS
+   baru benar-benar terpakai, bukan versi lama dari cache browser).
+
+CATATAN PENTING UNTUK DATA YANG SUDAH ADA
+-------------------------------------------
+- Poin 1 (No Whatsapp Kepala Sekolah) & Poin 2 (NUPTK/NIP): aturan format
+  baru ini HANYA berlaku saat data BARU disimpan/diedit ulang - data lama
+  yang sudah tersimpan dengan format lama TIDAK otomatis berubah/dihapus
+  dan TIDAK memblokir aplikasi berjalan. Tapi begitu Admin OPS membuka
+  ulang & menyimpan data yang formatnya tidak sesuai (mis. No WhatsApp
+  Kepala Sekolah cuma 12 digit tanpa awalan "08", atau NUPTK bukan 16
+  digit), sistem akan MEMINTA PERBAIKAN sebelum bisa disimpan ulang -
+  Admin OPS/Admin BOSP terkait perlu diberi tahu untuk memperbaiki data
+  itu sesuai format baru.
+- Poin 3 (Photo OPS/SK OPS tidak muncul): perbaikan ini murni cara sistem
+  MENAMPILKAN file yang sudah tersimpan sebelumnya (lewat route aplikasi,
+  bukan link storage statis yang bergantung APP_URL) - file yang SUDAH
+  ADA di server otomatis akan langsung muncul lagi setelah update ini
+  dipasang, TIDAK PERLU upload ulang.
+- Poin 5 (urutan dropdown & teks link Registrasi): murni tampilan, tidak
+  mempengaruhi data yang sudah ada.
+- Poin 7 (posisi tanda tangan PDF): hanya mempengaruhi TATA LETAK file PDF
+  yang diunduh (bukan file Excel, yang formatnya sudah benar sejak
+  sebelumnya) - tidak ada perubahan data.
+
+FILE YANG BERUBAH PADA UPDATE INI
+------------------------------------
+Baru:
+- app/Http/Controllers/PendataanOpsFileController.php
+
+Diubah:
+- app/Livewire/ProfilSekolah/Index.php
+- app/Livewire/PendataanOps/Index.php
+- app/Models/PendataanOps.php
+- database/factories/PendataanOpsFactory.php
+- routes/web.php
+- resources/css/app.css
+- resources/views/layouts/guest.blade.php
+- resources/views/components/icon.blade.php
+- resources/views/livewire/profil-sekolah/index.blade.php
+- resources/views/livewire/pendataan-ops/index.blade.php
+- resources/views/livewire/pages/auth/login.blade.php
+- resources/views/livewire/pages/auth/register.blade.php
+- resources/views/pdf/unduhan-lampiran.blade.php
+- public/build/ (hasil rebuild - WAJIB, karena CSS berubah)
+
+Test (tidak perlu disalin ke server produksi, disertakan untuk dokumentasi):
+- tests/Feature/ProfilSekolahNoWhatsappKepsekTest.php
+- tests/Feature/PendataanOpsTest.php
+- tests/Feature/PendataanOpsFotoSkTest.php
+- tests/Feature/Auth/RegistrationTest.php
+
+STATUS PENGUJIAN
+------------------
+182/182 test PHPUnit lulus (dijalankan di PostgreSQL, bukan cuma sqlite
+smoke DB) setelah seluruh perubahan Part 7 ini. Ketiga file hasil unduhan
+PDF (Lampiran 2a, 2b, 2c) juga sudah dirender langsung & diperiksa secara
+visual (posisi tanda tangan Pengawas/Kepala Sekolah sejajar kolom yang
+diminta, dan Lampiran 2c tetap rapi 1 halaman meski 13 kolom).

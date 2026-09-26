@@ -1,0 +1,42 @@
+PETUNJUK UPDATE - round27h-tes-versi-otomatis
+(2026-09-25, round kedua puluh tujuh, lanjutan/bagian 8)
+=======================================================================
+
+TIDAK ADA migration baru round ini. TIDAK ADA perubahan Tailwind/JS.
+
+Percobaan sebelumnya (round27g - redirect output ke file) TERNYATA
+masih gagal identik, padahal tes manual dengan pola yang sama persis
+terbukti berhasil. Daripada meminta Anda melakukan lagi eksperimen
+manual di Command Prompt (beresiko salah ketik seperti kemarin - maaf
+soal itu), round ini menambah SATU tes diagnostik OTOMATIS yang
+berjalan sendiri di dalam aplikasi, TANPA perlu tindakan tambahan dari
+Anda sama sekali:
+
+Kalau backup gagal, aplikasi sekarang juga mencoba menjalankan
+"pg_dump --version" (perintah paling sederhana, TANPA koneksi database,
+TANPA restrict-key sama sekali) lewat jalur yang PERSIS SAMA dengan
+yang dipakai untuk dump - hasilnya (berhasil/gagal, exit code, output)
+disertakan di pesan error. Ini akan menjawab pertanyaan penting: apakah
+masalahnya ada di LEVEL MENJALANKAN PROSES itu sendiri (kalau --version
+saja sudah gagal), atau spesifik ke perintah dump yang lebih rumit
+(kalau --version berhasil tapi dump tetap gagal).
+
+Langkah update (file ini SUDAH diterapkan langsung ke komputer Anda oleh
+Claude - PETUNJUK ini hanya sbg catatan):
+1. Backup folder aplikasi & database terlebih dahulu seperti biasa.
+2. 2 file berikut sudah ditimpa:
+   - app/Services/BackupService.php
+   - tests/Feature/BackupTest.php
+3. TIDAK PERLU migration.
+4. WAJIB restart PHP total: tutup TOTAL jendela Command Prompt yang
+   menjalankan "php artisan serve", buka baru, jalankan
+   "php artisan optimize:clear" lalu "php artisan serve" lagi (server
+   normal seperti biasa, TIDAK perlu memakai cara "php -S" manual lagi
+   dari sesi sebelumnya).
+5. Coba "Buat Backup Sekarang" lagi, lalu screenshot SELURUH pesan
+   errornya (sekarang ada baris baru "Tes pg_dump --version...").
+
+File yang disertakan dalam paket ini:
+- app/Services/BackupService.php
+- tests/Feature/BackupTest.php
+- PETUNJUK-UPDATE.txt (file ini)

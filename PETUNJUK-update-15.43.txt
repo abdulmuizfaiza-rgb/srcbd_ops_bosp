@@ -1,0 +1,148 @@
+====================================================================
+UPDATE 15.43 - PPK OTOMATIS, TANGGAL KALENDER, HAPUS TANDA TANGAN,
+                JUDUL TABEL, & TAB BARU "REKAP BMD TAHUN ANGGARAN"
+====================================================================
+
+RINGKASAN PERUBAHAN
+--------------------
+Menu Pendataan BOSP > Rincian Belanja Modal > tab "BMD".
+
+BAGIAN 1 - PERBAIKAN EXPORT EXCEL & FIELD PPK
+-----------------------------------------------
+1. Field "PPK" SEKARANG OTOMATIS (SEBELUMNYA manual) - diambil dari
+   field "Nama Kepala Sekolah" pada menu Profil Sekolah sekolah yang
+   bersangkutan. Berlaku DI APLIKASI (kotak tabel & modal Tambah/Edit
+   jadi tampilan kuning read-only, sama seperti NPSN/Lokasi/Subrayon)
+   MAUPUN DI HASIL EXPORT EXCEL. Kolom PPK juga TIDAK LAGI dibaca dari
+   file saat Import Excel - selalu dihitung ulang otomatis.
+   * Data PPK yang SUDAH ADA sebelumnya akan otomatis diperbarui saat
+     pemasangan (lihat bagian MIGRATION di bawah) mengikuti Nama Kepala
+     Sekolah yang tersimpan saat ini.
+2. Field "Tgl. Perolehan", "Tgl BAST", & "Tgl. Surat Pernyataan" pada
+   hasil Export Excel sekarang ditulis sebagai TANGGAL Excel sungguhan
+   (format dd-mm-yyyy), bukan teks biasa seperti sebelumnya - supaya
+   bisa diurutkan/dihitung sebagai tanggal saat dibuka di Excel.
+   CATATAN PENTING: PhpSpreadsheet (perangkat pembuat file Excel yang
+   dipakai aplikasi ini) TIDAK BISA membuat widget kalender popup
+   interaktif (yang muncul saat kolom diklik, seperti date-picker) di
+   dalam file .xlsx murni - ini keterbatasan teknis format file Excel
+   itu sendiri, bukan kekurangan aplikasi. Solusi di atas (kolom
+   bertipe tanggal sungguhan) adalah yang PALING DEKAT dengan hasil
+   tsb yang bisa dicapai: Excel akan mengenali kolom ini sebagai
+   tanggal (bisa diurutkan, dihitung, dan pada beberapa versi Excel
+   akan menampilkan kalender kecil bawaan Excel sendiri saat sel
+   diklik).
+3. Lembar tanda tangan "Mengetahui/Menyetujui" (Bendahara BOSP/Kepala
+   Sekolah) DIHAPUS dari hasil Export Excel tab BMD (baik per-Triwulan
+   maupun Rekap - lihat Bagian 2). Sebagai akibat langsungnya, aturan
+   "Superadmin wajib pilih 1 sekolah dulu sebelum Export Excel" pada
+   tab BMD JUGA DIHAPUS (aturan itu sebelumnya ada semata-mata karena
+   lembar tanda tangan hanya berlaku utk 1 sekolah) - sekarang
+   Superadmin bisa langsung Export Excel tab BMD tanpa memilih sekolah
+   dulu, hasilnya akan berisi data SELURUH sekolah (atau sesuai filter
+   sekolah yang aktif, kalau ada). Tab "Peralatan & Mesin (KIB B)" dan
+   "Aset Tetap Lainnya (KIB E)" TIDAK berubah - keduanya tetap punya
+   lembar tanda tangan sendiri & tetap wajib pilih 1 sekolah dulu.
+4. Judul di atas tabel hasil Export Excel tab BMD: "DAFTAR BELANJA
+   MODAL TAHUN ANGGARAN {tahun otomatis}" - ini sebenarnya SUDAH sesuai
+   sejak sebelumnya, dipastikan kembali tetap seperti itu.
+
+BAGIAN 2 - TAB BARU "REKAP TAHUN ANGGARAN {tahun}"
+-----------------------------------------------------
+Pada tab utama "BMD", sekarang ada SATU tombol tambahan di deretan
+tombol Triwulan 1-4: "Rekap Tahun Anggaran {tahun berjalan}".
+
+- Menampilkan GABUNGAN seluruh data BMD Triwulan 1 s.d. Triwulan 4
+  tahun berjalan dalam SATU tabel, dengan kolom tambahan "Triwulan" di
+  awal supaya jelas asal datanya.
+- Urutan baris: Triwulan (1->4), lalu sekolah Negeri dulu baru Swasta,
+  lalu Nama Sekolah A-Z, lalu Tgl. Perolehan.
+- Tab ini BERSIFAT READ-ONLY - HANYA untuk melihat & Export Excel.
+  TIDAK BISA menambah/mengedit/menghapus data dari tab ini (kotak
+  Import Excel & tombol Tambah disembunyikan saat tab ini aktif) -
+  untuk mengubah data, tetap lewat tab Triwulan 1/2/3/4 seperti biasa.
+- Ada baris "Jumlah BMD Triwulan ..." di akhir tiap kelompok Triwulan
+  & baris "Jumlah BMD Keseluruhan Tahun Anggaran {tahun}" di baris
+  paling akhir.
+- Tombol "Export Excel" pada tab ini menghasilkan file Excel TERPISAH
+  (nama file "rincian-belanja-modal-bmd-rekap-{tahun}.xlsx") dengan
+  kolom "Triwulan" di paling awal, TANPA lembar tanda tangan (sama
+  seperti Bagian 1 poin 3) & TANPA dropdown/formula Excel (file ini
+  murni laporan/snapshot utk dilihat & diarsipkan, tidak dirancang utk
+  diedit lalu di-Import kembali - TIDAK ADA menu Import khusus utk tab
+  Rekap ini).
+- Memilih salah satu tab Triwulan 1-4 akan otomatis keluar dari
+  tampilan Rekap & kembali ke tampilan per-Triwulan yang bisa diedit.
+
+** WAJIB MENJALANKAN MIGRATION **
+------------------------------------
+Update ini MEMBUTUHKAN 1 migration BARU (backfill data PPK lama supaya
+ikut otomatis terisi dari Nama Kepala Sekolah) - WAJIB dijalankan
+setelah menyalin file, lihat langkah pemasangan di bawah.
+
+LANGKAH PEMASANGAN
+-------------------
+1. Hentikan aplikasi (php artisan serve / server yang sedang jalan).
+2. Salin & timpakan (overwrite) SELURUH file & folder dalam zip ini ke
+   folder aplikasi Anda, dengan struktur folder yang SAMA PERSIS:
+   - app/Models/RincianBelanjaModalBmd.php
+   - database/migrations/2026_09_22_230000_backfill_ppk_otomatis_rincian_belanja_modal_bmd.php
+   - app/Livewire/PendataanBosp/RincianBelanjaModal/Index.php
+   - app/Imports/RincianBelanjaModalBmdImport.php
+   - app/Exports/RincianBelanjaModalBmdExport.php
+   - app/Exports/RincianBelanjaModalBmdRekapExport.php (file BARU)
+   - resources/views/livewire/pendataan-bosp/rincian-belanja-modal/_tabel-bmd.blade.php
+   - resources/views/livewire/pendataan-bosp/rincian-belanja-modal/_form-bmd.blade.php
+   - resources/views/livewire/pendataan-bosp/rincian-belanja-modal/index.blade.php
+   - resources/views/livewire/pendataan-bosp/rincian-belanja-modal/_tabel-rekap-bmd.blade.php (file BARU)
+   - public/build/manifest.json
+   - public/build/assets/app-6nx1R4Uw.css (file BARU - CSS hasil build terbaru)
+   - public/build/assets/app-CtUx7YPw.js (sama seperti sebelumnya, ikut
+     disalin supaya lengkap)
+3. WAJIB jalankan:
+       php artisan migrate
+   (migration backfill PPK akan berjalan otomatis mengisi ulang kolom
+   PPK seluruh data BMD yang sudah ada sesuai Nama Kepala Sekolah yang
+   tersimpan saat ini di Profil Sekolah masing-masing).
+4. TIDAK PERLU menjalankan "npm run build" - file CSS hasil build sudah
+   disertakan langsung dalam zip ini (poin 2 di atas).
+5. Jalankan kembali aplikasi seperti biasa.
+
+VERIFIKASI SETELAH PEMASANGAN
+------------------------------
+1. Buka menu "Pendataan BOSP" > "Rincian Belanja Modal" > tab "BMD" >
+   salah satu Triwulan yang sudah ada datanya:
+   - Pastikan kolom "PPK" sekarang tampil kuning (read-only), berisi
+     Nama Kepala Sekolah dari menu Profil Sekolah - BUKAN kotak isian
+     lagi.
+   - Buka modal Tambah/Edit - pastikan field "PPK" juga tampil kuning
+     read-only, ikut berubah otomatis kalau Sekolah yang dipilih
+     diganti.
+2. Klik "Export Excel" pada salah satu Triwulan:
+   - Pastikan TIDAK ADA lagi lembar tanda tangan Bendahara BOSP/Kepala
+     Sekolah di bagian bawah file.
+   - Pastikan kolom PPK, NPSN, Lokasi, Subrayon berwarna kuning &
+     terisi otomatis.
+   - Pastikan kolom Tgl. Perolehan/Tgl BAST/Tgl. Surat Pernyataan bisa
+     diurutkan sebagai tanggal (klik kanan kolom > Sort > pastikan
+     terurut sebagai tanggal, bukan sebagai teks).
+3. Sebagai Superadmin, coba klik "Export Excel" pada tab BMD TANPA
+   memilih sekolah pada filter di atas - pastikan file BERHASIL
+   terunduh (sebelumnya akan muncul pesan error, sekarang tidak lagi).
+4. Klik tombol baru "Rekap Tahun Anggaran {tahun}" di sebelah tombol
+   Triwulan 1-4:
+   - Pastikan data dari Triwulan 1 s.d. 4 tahun berjalan tampil
+     tergabung dalam satu tabel, terurut Triwulan -> Negeri/Swasta ->
+     Nama Sekolah -> Tgl. Perolehan.
+   - Pastikan TIDAK ADA tombol "Import Excel" & "Tambah" saat tab ini
+     aktif.
+   - Pastikan ada baris "Jumlah BMD Triwulan ..." & baris "Jumlah BMD
+     Keseluruhan Tahun Anggaran ..." di bagian bawah tabel.
+   - Klik "Export Excel" pada tab Rekap ini - pastikan file dengan
+     nama "rincian-belanja-modal-bmd-rekap-{tahun}.xlsx" berhasil
+     terunduh, berisi kolom "Triwulan" paling awal.
+   - Klik salah satu tab Triwulan 1-4 - pastikan tampilan kembali ke
+     tabel per-Triwulan yang bisa diedit seperti biasa.
+
+Kalau ada pertanyaan atau ada yang tidak sesuai harapan setelah
+pemasangan, kabari kembali sebelum melanjutkan pemakaian.

@@ -1,0 +1,133 @@
+PETUNJUK UPDATE - update-15.36 (2026-09-17, lanjutan Part 32 kelima)
+Laporan Realisasi BOSP (Form BPK): kolom Total Belanja Barang dan Jasa,
+Peralatan dan Mesin KIB B, Aset Tetap Lainnya KIB E, Total Belanja Modal,
+Total Realisasi Dana BOS, & Sisa Dana BOS (kolom 20-25) SEKARANG OTOMATIS
+- plus kolom Jumlah & Verifikasi Saldo (28-29) berubah jadi real-time.
+=======================================================================
+
+PENTING: Update ini TIDAK ADA migration baru - TIDAK PERLU jalankan
+"php artisan migrate". Tidak ada pustaka baru yang perlu diunduh (tidak
+perlu "composer install"/"npm install"). Tidak ada perubahan aset
+Tailwind - tidak perlu "npm run build".
+
+Ringkasan perubahan:
+
+1. Pada menu Laporan Realisasi BOSP (Form BPK), tab Laporan Realisasi
+   TW 1 s.d. TW 4, kolom-kolom berikut SEKARANG SUDAH OTOMATIS/READ-ONLY
+   (tidak bisa lagi diketik manual di kotak tabel), sama seperti kolom
+   11-19 pada update sebelumnya:
+
+   - "Total Belanja Barang dan Jasa" = jumlah kolom Jasa Tenaga Pendidik
+     dan Kependidikan + Daya dan Jasa + Pemeliharaan + Upah Pemeliharaan
+     + Biaya Pendaftaran Lomba/Bimtek/Workshop + Honor Kegiatan + Makan
+     dan Minum Kegiatan + Perjalanan Dinas. (Kolom "Belanja Barang Pakai
+     Habis/Persediaan" SENGAJA TIDAK diikutkan di kolom ini - sesuai
+     rumus yang diberikan - tapi tetap diikutkan di kolom "Total
+     Realisasi Dana BOS" di bawah.)
+   - "Peralatan dan Mesin KIB B" = diambil otomatis dari total kolom
+     "Total Harga" pada tab Belanja Modal Peralatan & Mesin (KIB B) TW
+     yang sama.
+   - "Aset Tetap Lainnya KIB E" = diambil otomatis dari total kolom
+     "Total Harga" pada tab Belanja Modal Aset Tetap Lainnya (KIB E) TW
+     yang sama.
+   - "Total Belanja Modal" = Peralatan dan Mesin KIB B + Aset Tetap
+     Lainnya KIB E.
+   - "Total Realisasi Dana BOS" = Belanja Barang Pakai Habis/Persediaan
+     + Total Belanja Barang dan Jasa + Total Belanja Modal.
+   - "Sisa Dana BOS" = Total Penerimaan (kolom ini MASIH manual) dikurangi
+     Total Realisasi Dana BOS.
+
+   Keenam kolom di atas otomatis ikut berubah begitu data di menu sumber
+   masing-masing (atau kolom lain yang jadi bagian rumusnya) ditambah,
+   diubah, atau dihapus - tidak perlu buka menu ini dulu untuk memicu
+   perhitungan ulang.
+
+2. Kolom "Jumlah" & "Verifikasi Saldo" (kolom 28-29) - yang sebelumnya
+   sudah otomatis tapi baru dihitung ulang saat kolom Sisa Dana BOS/
+   Saldo Rekening-Kas Bank/Saldo Kas Tunai diedit manual - SEKARANG
+   SELALU dihitung ulang REAL-TIME setiap halaman dibuka/direfresh,
+   sama seperti kolom-kolom otomatis lainnya. Ini PERLU diubah karena
+   kolom Sisa Dana BOS (salah satu bahan hitungannya) sendiri sekarang
+   sudah jadi kolom otomatis di atas, jadi tidak lagi masuk akal
+   disimpan sebagai angka "nempel" di database. TIDAK ADA perubahan
+   rumusnya (Jumlah = Saldo Rekening/Kas Bank + Saldo Kas Tunai;
+   Verifikasi Saldo = "SAMA" kalau Sisa Dana BOS sama dengan Jumlah,
+   atau "TIDAK SAMA" kalau berbeda) - hanya CARA & KAPAN dihitungnya
+   yang berubah jadi lebih akurat.
+
+3. Kolom yang MASIH manual (belum ada rumusnya, menunggu instruksi
+   selanjutnya): Saldo Awal Dana BOSP, Penerimaan Dana BOS, Total
+   Penerimaan (kolom 8-10), Saldo Rekening/Kas Bank, & Saldo Kas Tunai
+   (kolom 26-27). Kolom-kolom ini TIDAK disentuh sama sekali pada
+   update ini.
+
+4. Setelah update ini, SELURUH kolom di grup "REALISASI DANA BOS PUSAT"
+   (kolom 11 s.d. 25) beserta kolom Jumlah & Verifikasi Saldo (28-29)
+   sudah otomatis - HANYA kolom 8-10 & 26-27 di atas yang masih perlu
+   diisi manual.
+
+5. Tidak ada data lama yang hilang - nilai lama yang tadinya tersimpan
+   manual di kolom-kolom yang baru diubah jadi otomatis pada update ini
+   (kolom 20-25, 28, 29) SUDAH TIDAK DIPAKAI LAGI (digantikan hasil
+   hitungan real-time), tapi datanya tetap ada di database, tidak
+   dihapus. Menu-menu lain di aplikasi ini TIDAK terpengaruh sama
+   sekali oleh update ini.
+
+Langkah menerapkan update ini:
+
+1. Tutup dulu aplikasi (Ctrl+C pada terminal "php artisan serve" yang
+   sedang berjalan, kalau ada).
+
+2. Extract isi zip ini, timpa ke folder proyek:
+   D:\Aplikasi SRCBD_OPS_BOSP\srcbd-ops-bosp-source
+
+   File yang DITIMPA (sudah ada sebelumnya, ada perubahan):
+   - app\Models\LaporanRealisasiBosp.php
+   - app\Livewire\PendataanBosp\LaporanRealisasiBosp\Index.php
+   - resources\views\livewire\pendataan-bosp\laporan-realisasi-bosp\index.blade.php
+   - resources\views\livewire\pendataan-bosp\laporan-realisasi-bosp\_thead.blade.php
+
+   Tidak ada file baru maupun folder baru pada update ini.
+
+3. Buka terminal/Command Prompt, arahkan ke folder proyek:
+   cd /d "D:\Aplikasi SRCBD_OPS_BOSP\srcbd-ops-bosp-source"
+
+4. php artisan optimize:clear
+
+5. TIDAK PERLU "php artisan migrate" - tidak ada migration baru pada
+   update ini.
+
+6. Jalankan lagi:
+   php artisan serve
+
+7. Buka tab/Incognito baru (atau refresh keras Ctrl+Shift+R kalau tab
+   lama masih terbuka), login seperti biasa, lalu periksa:
+   - Buka menu "Laporan Realisasi BOSP (Form BPK)", tab TW 1 (atau TW
+     manapun yang sudah ada datanya) - pastikan kolom "Total Belanja
+     Barang dan Jasa", "Peralatan dan Mesin KIB B", "Aset Tetap Lainnya
+     KIB E", "Total Belanja Modal", "Total Realisasi Dana BOS", & "Sisa
+     Dana BOS" sudah tampil berwarna kuning (bertanda otomatis) dan
+     tidak bisa diklik/diketik lagi.
+   - Isi/ubah salah satu data di menu Belanja Modal Peralatan & Mesin
+     (KIB B) untuk TW & sekolah yang sama, lalu kembali ke menu Laporan
+     Realisasi BOSP - pastikan kolom "Peralatan dan Mesin KIB B" &
+     "Total Belanja Modal" ikut berubah otomatis.
+   - Bandingkan kolom "Total Belanja Barang dan Jasa" dengan jumlah
+     manual dari kolom Jasa Tenaga Pendidik dan Kependidikan s.d.
+     Perjalanan Dinas (8 kolom, TANPA kolom Belanja Barang Pakai
+     Habis/Persediaan) - pastikan angkanya cocok.
+   - Isi kolom "Saldo Rekening/Kas Bank" & "Saldo Kas Tunai" lalu
+     bandingkan kolom "Jumlah" & "Verifikasi Saldo" dengan Sisa Dana
+     BOS - pastikan hasilnya "SAMA" (biru, tebal) kalau cocok atau
+     "TIDAK SAMA" (merah, tebal) kalau berbeda, dan langsung ter-update
+     tanpa perlu mengedit kolom Sisa Dana BOS dulu (karena kolom itu
+     sekarang otomatis).
+   - Buka tab "Rekapitulasi Tahun Anggaran (otomatis)" - pastikan
+     rincian per TW & baris "Jumlah" untuk seluruh kolom di atas juga
+     tampil benar.
+   - Menu-menu lain di aplikasi ini masih berfungsi normal & datanya
+     tidak berubah.
+
+Kalau tidak bisa login sama sekali (akun superadmin hilang lagi), jalankan:
+   php artisan tinker --execute="App\Models\User::updateOrCreate(['username'=>'superadmin'],['password'=>bcrypt('password'),'level_akses'=>'superadmin']); echo 'akun superadmin dibuat';"
+lalu login pakai superadmin / password.

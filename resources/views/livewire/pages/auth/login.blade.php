@@ -10,6 +10,22 @@ new #[Layout('layouts.guest')] class extends Component
     public LoginForm $form;
 
     /**
+     * Gerbang verifikasi email + token (diminta user 2026-09-26) - halaman
+     * /login ini HANYA bisa dibuka setelah lolos
+     * resources/views/livewire/pages/auth/verifikasi-akses.blade.php, yang
+     * menandai session 'gerbang_akses_login_user_id' saat token benar.
+     * Kalau belum lolos (mis. akses langsung /login tanpa lewat gerbang,
+     * atau tab lama), arahkan balik ke gerbang. Logika login username/
+     * password DI BAWAH INI SAMA SEKALI TIDAK DIUBAH.
+     */
+    public function mount(): void
+    {
+        if (! session()->has('gerbang_akses_login_user_id')) {
+            $this->redirect(route('verifikasi-akses'), navigate: true);
+        }
+    }
+
+    /**
      * Handle an incoming authentication request.
      */
     public function login(): void

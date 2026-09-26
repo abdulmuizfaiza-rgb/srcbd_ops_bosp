@@ -1,0 +1,55 @@
+PETUNJUK UPDATE-10
+===================
+
+Isi update ini:
+1. Nama sheet hasil export Excel Lampiran 2a sekarang otomatis: "Lampiran 2a.TW1" / "Lampiran 2a.TW2" / "Lampiran 2a.TW3" / "Lampiran 2a.TW4" (sesuai triwulan yang di-export).
+2. Nama sheet hasil export Excel Lampiran 2b sekarang otomatis: "Lampiran 2b.TW1" / "Lampiran 2b.TW2" / "Lampiran 2b.TW3" / "Lampiran 2b.TW4" (sesuai triwulan yang di-export).
+3. Menu BARU: Lampiran 2c (Daftar Penyesuaian Gaji Pokok) di bawah menu Pendataan OPS, dengan field: NRG, NUPTK, Nama PTK, Tempat Tugas, Kecamatan, Jenis Kepangkatan, Golongan, Masa Kerja, Pangkat/Berkala, TMT, Gaji Pokok Lama, Gaji Pokok Baru, Keterangan - lengkap dengan Tambah/Edit/Hapus, Filter berdasarkan Nama Sekolah, dan Export Excel dengan format resmi (judul "DAFTAR PENYESUAIAN GAJI POKOK" + lembar tanda tangan Pengawas & Kepala Sekolah).
+
+LANGKAH-LANGKAH UPDATE
+-----------------------
+
+1. Backup dulu folder aplikasi & database sebelum update (jaga-jaga).
+
+2. Salin semua file/folder di dalam zip ini ke folder aplikasi, timpa (replace) file yang sudah ada:
+   - app/Exports/Lampiran2aExport.php
+   - app/Exports/Lampiran2bExport.php
+   - app/Exports/Lampiran2cExport.php  (file baru)
+   - app/Livewire/PendataanOps/Lampiran2c/Index.php  (folder & file baru)
+   - app/Models/Lampiran2c.php  (file baru)
+   - database/factories/Lampiran2cFactory.php  (file baru)
+   - database/migrations/2026_09_04_060000_create_lampiran_2c_table.php  (file baru)
+   - resources/views/livewire/layout/navigation.blade.php
+   - resources/views/livewire/pendataan-ops/lampiran2c/index.blade.php  (folder & file baru)
+   - routes/web.php
+   - tests/Feature/Lampiran2cTest.php  (file baru)
+   - tests/Feature/RoleAccessTest.php
+
+3. Buka Terminal/CMD di folder aplikasi, lalu jalankan:
+   php artisan migrate
+
+   (perintah ini akan membuat tabel baru "lampiran_2c" - data lain tidak akan terganggu)
+
+4. Bersihkan cache supaya perubahan langsung terpakai:
+   php artisan optimize:clear
+
+5. Selesai. Silakan buka aplikasi lagi dan cek:
+   - Menu Pendataan OPS > Lampiran 2a / Lampiran 2b > Export Excel > lihat nama tab/sheet di pojok kiri bawah Excel, harus sudah "Lampiran 2a.TWx" / "Lampiran 2b.TWx".
+   - Menu Pendataan OPS > Lampiran 2c sudah muncul, coba Tambah Data & Export Excel.
+
+CATATAN / ASUMSI YANG PERLU BAPAK KONFIRMASI
+----------------------------------------------
+
+Karena ada beberapa detail di permintaan Lampiran 2c yang saya tafsirkan sendiri, mohon dicek dan dikoreksi jika tidak sesuai:
+
+1. Tulisan "KECAMATAN : (otomatis)" pada hasil export Lampiran 2c saya ambil otomatis dari field Kecamatan pada BARIS DATA PERTAMA yang di-export (karena field Kecamatan itu diisi manual per-PTK, bukan dari menu Profil Sekolah). Kalau ternyata Bapak maksudnya field Kecamatan yang lain (misalnya dari menu Profil Sekolah), mohon infokan.
+
+2. Bapak menulis "1 baris SEBELUM baris terakhir" untuk posisi "Mengetahui/Menyetujui :", tapi pada Lampiran 2a & 2b sebelumnya Bapak menulis "1 baris SETELAH baris terakhir tabel". Saya asumsikan ini maksudnya sama seperti Lampiran 2a/2b (1 baris kosong SETELAH baris terakhir tabel, baru tulisan Mengetahui/Menyetujui), supaya formatnya konsisten. Mohon dikoreksi kalau bukan itu maksudnya.
+
+3. Lembar tanda tangan Pengawas tetap di kolom B (sebelah kiri), dan lembar Sukabumi/Kepala Sekolah saya taruh persis di kolom K sesuai yang Bapak sebutkan.
+
+4. Menu Lampiran 2c ini TIDAK saya buat per-Triwulan (tidak ada tab Triwulan 1-4 seperti Lampiran 2a/2b) karena tidak diminta di pesan Bapak - datanya berjalan sebagai satu daftar per sekolah.
+
+5. Fitur Import Excel TIDAK saya buat untuk Lampiran 2c karena tidak diminta - menu ini hanya punya Export Excel.
+
+6. Sama seperti Lampiran 2a/2b, saat Export Excel Superadmin WAJIB memilih 1 sekolah dulu di filter (karena header KECAMATAN & lembar tanda tangan Kepala Sekolah hanya berlaku untuk 1 sekolah). Admin OPS tidak perlu memilih karena sudah otomatis terkunci ke sekolahnya sendiri.

@@ -21,6 +21,7 @@ class UserSeeder extends Seeder
         User::firstOrCreate(
             ['username' => 'superadmin'],
             [
+                'email' => 'abdulmuizfaiza@gmail.com',
                 'password' => Hash::make('password'),
                 'level_akses' => 'superadmin',
                 'nama_sekolah' => null,

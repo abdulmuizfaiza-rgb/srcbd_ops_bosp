@@ -1,0 +1,72 @@
+PETUNJUK UPDATE (update ke-8)
+=============================
+
+PENTING - ada langkah baru "composer install" di update ini (lihat
+langkah 3 di bawah) karena ada 1 komponen baru (untuk fitur Export/
+Import Excel) yang perlu diunduh. Pastikan komputer terhubung internet
+saat menjalankan langkah itu.
+
+Isi update ini (kumulatif, sudah termasuk update ke-1 s/d ke-7 sebelumnya):
+
+BARU pada update ke-8:
+1. PERBAIKAN KECEPATAN - loading saat login & saat membuka menu
+   sekarang jauh lebih cepat:
+   - Pengaturan Tampilan (warna/huruf/background) sebelumnya dibaca
+     berulang-ulang dari database di setiap halaman - sekarang disimpan
+     sementara (cache) supaya tidak diambil berulang.
+   - Halaman sebelumnya memuat 5 jenis huruf sekaligus (Figtree, Inter,
+     Poppins, Roboto, Nunito) dari internet setiap kali dibuka - sekarang
+     hanya memuat jenis huruf yang benar-benar dipakai (biasanya cuma 1),
+     jadi jauh lebih ringan terutama kalau koneksi internet pas-pasan.
+2. BARU - Menu "Pendataan OPS" sekarang punya submenu tambahan
+   "Lampiran 2a" (di bawah "Identitas OPS"), berupa 4 tab: Triwulan 1,
+   Triwulan 2, Triwulan 3, Triwulan 4 - masing-masing field yang sama:
+   NRG (12 digit angka), NUPTK (16 digit angka), Nama PTK, Status
+   Kepegawaian (PNS/PPPK/PPPK-PW/GTY/GTT), Nama Sekolah (pilihan dari
+   Profil Sekolah), Gaji Pokok Bulan Januari [tahun berjalan otomatis],
+   NPWP (15-16 digit angka). Sudah lengkap dengan tambah/edit/hapus,
+   filter berdasarkan Nama Sekolah, tombol Export Excel, dan Import
+   Excel (format kolom sama seperti hasil Export, supaya gampang isi
+   ulang lewat Excel lalu upload).
+   Catatan: Admin OPS hanya bisa mengisi & melihat data sekolahnya
+   sendiri (Nama Sekolah otomatis terkunci ke sekolahnya, tidak bisa
+   pilih sekolah lain, termasuk saat import). Superadmin bisa melihat &
+   mengelola semua sekolah dan memilih sekolah manapun.
+
+Ringkasan update ke-1 s/d ke-7 sebelumnya:
+- Sidebar kiri; multi-sekolah; tabel Profil Sekolah dengan kolom No,
+  data Bendahara & Status Kepegawaian, scroll modern, dan data sekolah
+  yang tampil hanya sekolah sendiri untuk Admin OPS/BOSP; pemulihan
+  akun; registrasi mandiri dengan persetujuan Superadmin; menu Pengguna
+  3 tab; perbaikan logout; filter sekolah; ikon mata password; landing
+  page pemilihan akses & form login modern/transparan; menu Tampilan
+  khusus Superadmin; menu Identitas OPS & Identitas Admin BOSP.
+
+Langkah menerapkan update ini:
+
+1. Extract zip ini, timpa ke folder proyek:
+   D:\Aplikasi SRCBD_OPS_BOSP\srcbd-ops-bosp-source
+
+2. cd /d "D:\Aplikasi SRCBD_OPS_BOSP\srcbd-ops-bosp-source"
+
+3. composer install
+   (WAJIB dijalankan di update ini - menambahkan pustaka untuk fitur
+   Export/Import Excel. Perlu koneksi internet. Kalau muncul pesan
+   "composer: command not found", buka lagi Command Prompt/Terminal
+   dari Laragon supaya PATH composer terbaca.)
+
+4. php artisan migrate
+   (ADA tabel baru: lampiran_2a - aman dijalankan, JANGAN pakai --seed
+   / migrate:fresh)
+
+5. php artisan optimize:clear
+
+6. Tutup terminal "php artisan serve" lama (Ctrl+C), jalankan ulang:
+   php artisan serve
+
+7. Buka tab/Incognito baru, login seperti biasa. Menu "Pendataan OPS"
+   sekarang punya 2 submenu: "Identitas OPS" dan "Lampiran 2a".
+
+Kalau tidak bisa login sama sekali (akun superadmin hilang lagi), jalankan:
+   php artisan tinker --execute="App\Models\User::updateOrCreate(['username'=>'superadmin'],['password'=>bcrypt('password'),'level_akses'=>'superadmin']); echo 'akun superadmin dibuat';"
+lalu login pakai superadmin / password.

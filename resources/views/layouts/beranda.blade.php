@@ -60,7 +60,7 @@
                     <span class="text-white font-semibold text-sm sm:text-base truncate">Aplikasi OPS_BOSP SR CBD</span>
                 </a>
 
-                <a href="{{ route('login') }}" wire:navigate
+                <a href="{{ route('verifikasi-akses') }}" wire:navigate
                     class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md ring-1 ring-white/30 text-white text-sm font-semibold transition shadow-lg">
                     Masuk
                     <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 010-1.06L10.94 10 7.21 6.29a.75.75 0 111.06-1.06l4.25 4.25a.75.75 0 010 1.06l-4.25 4.25a.75.75 0 01-1.06 0z" clip-rule="evenodd" /></svg>

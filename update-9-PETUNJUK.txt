@@ -1,0 +1,56 @@
+PETUNJUK UPDATE (update ke-9)
+=============================
+
+Tidak ada langkah baru "composer install" di update ini - tidak ada
+pustaka tambahan yang perlu diunduh.
+
+BARU pada update ke-9:
+1. Menu "Pendataan OPS" sekarang punya submenu tambahan "Lampiran 2b"
+   (di bawah "Lampiran 2a"), berupa 4 tab: Triwulan 1, Triwulan 2,
+   Triwulan 3, Triwulan 4 - masing-masing field: NRG, NUPTK, Nama PTK,
+   Nama Sekolah, Keterangan, TMT. Sudah lengkap dengan tambah/edit/hapus,
+   filter berdasarkan Nama Sekolah, tombol Export Excel, dan Import
+   Excel.
+
+   Catatan penting:
+   - NRG & NUPTK SELALU terisi otomatis begitu Nama PTK dipilih -
+     diambil dari data Lampiran 2a pada sekolah & triwulan yang sama
+     (tidak bisa diketik manual, field-nya sengaja dibuat non-aktif/
+     abu-abu).
+   - Nama PTK berupa pilihan (dropdown), isinya diambil dari Nama PTK
+     yang sudah pernah diisi di Lampiran 2a untuk sekolah & triwulan
+     tersebut. Kalau dropdown Nama PTK kosong, artinya Lampiran 2a
+     triwulan itu untuk sekolah tersebut belum diisi - harus isi
+     Lampiran 2a dulu sebelum bisa menambah Lampiran 2b untuk PTK itu.
+   - Saat Import Excel: kolom NRG & NUPTK pada file yang diupload akan
+     DIABAIKAN dan tetap dihitung ulang otomatis dari Lampiran 2a
+     (supaya selalu konsisten) - jadi kolom itu boleh diisi apa saja
+     atau dikosongkan saat menyiapkan file import, yang penting kolom
+     Nama PTK-nya benar & sudah ada di Lampiran 2a.
+   - Sama seperti Lampiran 2a: Admin OPS hanya bisa mengisi & melihat
+     data sekolahnya sendiri (Nama Sekolah otomatis terkunci), dan saat
+     import kolom Nama Sekolah di file akan diabaikan untuk Admin OPS.
+
+Langkah menerapkan update ini:
+
+1. Extract zip ini, timpa ke folder proyek:
+   D:\Aplikasi SRCBD_OPS_BOSP\srcbd-ops-bosp-source
+
+2. cd /d "D:\Aplikasi SRCBD_OPS_BOSP\srcbd-ops-bosp-source"
+
+3. php artisan migrate
+   (ADA tabel baru: lampiran_2b - aman dijalankan, JANGAN pakai --seed
+   / migrate:fresh)
+
+4. php artisan optimize:clear
+
+5. Tutup terminal "php artisan serve" lama (Ctrl+C), jalankan ulang:
+   php artisan serve
+
+6. Buka tab/Incognito baru, login seperti biasa. Menu "Pendataan OPS"
+   sekarang punya 3 submenu: "Identitas OPS", "Lampiran 2a", dan
+   "Lampiran 2b".
+
+Kalau tidak bisa login sama sekali (akun superadmin hilang lagi), jalankan:
+   php artisan tinker --execute="App\Models\User::updateOrCreate(['username'=>'superadmin'],['password'=>bcrypt('password'),'level_akses'=>'superadmin']); echo 'akun superadmin dibuat';"
+lalu login pakai superadmin / password.

@@ -65,6 +65,7 @@ new #[Layout('layouts.guest')] class extends Component
 
         User::create([
             'username' => $validated['email'],
+            'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'level_akses' => $validated['level_akses'],
             'profil_sekolah_id' => $sekolah->id,
@@ -111,6 +112,8 @@ new #[Layout('layouts.guest')] class extends Component
             <h1 class="text-lg font-semibold text-[color:var(--warna-huruf-registrasi)]">Registrasi Admin OPS / Admin BOSP</h1>
             <p class="text-sm text-[color:var(--warna-huruf-registrasi)]">Akun baru perlu disetujui Superadmin sebelum bisa login.</p>
         </div>
+
+        <x-auth-session-status class="mb-4" :status="session('status')" />
 
         <form wire:submit="daftar" class="space-y-4">
             <div>

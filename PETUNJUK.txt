@@ -1,0 +1,138 @@
+====================================================================
+UPDATE APLIKASI OPS_BOSP SR CBD - ROUND KESEMBILAN BAGIAN C
+POP-UP INFO TIMELINE SAAT LOGIN + RUNNING TEXT (MARQUEE)
+====================================================================
+Tanggal paket dibuat : 23 September 2026
+
+INI BAGIAN C (TERAKHIR) DARI PERMINTAAN 2026-09-23 - poin 4. Bagian A
+(panel validasi + kuncian verval) dan Bagian B (Timeline Pekerjaan per
+triwulan + Terapkan ke Semua) sudah dikirim di update-update sebelumnya.
+
+PENTING - ADA FILE CSS/JS (BUKAN CUMA PHP/BLADE) PADA UPDATE INI - lihat
+CARA PASANG di bawah, urutannya sedikit berbeda dari update-update
+sebelumnya.
+
+====================================================================
+ISI UPDATE INI
+====================================================================
+
+Sesuai permintaan: "informasi timeline ini muncul di bagian tengah
+berupa halaman pop-up berukuran kecil ketika admin bosp/admin OPS
+berhasil login dan muncul selama 5 detik dengan pop-up bergaya Animasi
+dan berwarna menarik. kemudian setelah 5 detik info timeline ini muncul
+sebagai running text di bagian atas judul menu yang muncul dari sebelah
+kanan yang berjalan sampai tulisan judul huruf terakhir."
+
+1. POP-UP SAAT LOGIN (Admin OPS/Admin BOSP saja)
+
+   Begitu Admin OPS atau Admin BOSP berhasil login, muncul kotak kecil
+   di tengah layar (gradien warna ungu-pink, ada animasi lembut) berisi
+   ringkasan: jumlah tahap kerja yang SUDAH LEWAT deadline tahun ini
+   (dari menu Timeline Pekerjaan), plus yang PALING MENDESAK (tahap
+   kerja yang paling lama terlambat). Otomatis hilang setelah 5 detik.
+
+   Superadmin TIDAK pernah melihat pop-up ini (sesuai permintaan yang
+   hanya menyebut "admin bosp/admin OPS").
+
+   Kalau TIDAK ADA tahap kerja yang terlambat sama sekali (kategori OPS
+   untuk Admin OPS, kategori BOSP untuk Admin BOSP), pop-up ini
+   DILEWATI SAJA (tidak muncul apa-apa) - ini pilihan Bapak sendiri
+   waktu ditanya sebelumnya.
+
+2. RUNNING TEXT/MARQUEE SETELAH 5 DETIK
+
+   Begitu pop-up di tengah hilang, ringkasan yang sama muncul sebagai
+   teks berjalan (marquee) di bagian paling atas halaman, di atas judul
+   menu - masuk dari sebelah kanan, terus BERPUTAR/LOOPING selama Bapak
+   masih di halaman itu (sesuai pilihan Bapak: "Berputar terus").
+   Pindah ke halaman lain (menu lain) akan memuat ulang pop-up+marquee
+   dari awal HANYA KALAU baru saja login - kalau bukan baru login,
+   marquee/pop-up ini tidak muncul lagi sampai login ulang berikutnya.
+
+3. CATATAN TAFSIRAN (mohon dikoreksi kalau kurang sesuai)
+
+   - "Sudah lewat deadline" di sini memakai definisi yang PERSIS SAMA
+     dengan status "Terlambat" yang sudah ada di menu Timeline
+     Pekerjaan sendiri (murni tanggal deadline sudah lewat hari ini,
+     TIDAK mengecek apakah datanya sudah diisi/selesai atau belum).
+     SEMUA triwulan (TW1-TW4) tahun berjalan dicek sekaligus, bukan
+     cuma triwulan yang sedang aktif - supaya deadline TW1/TW2 yang
+     terlewat tidak "hilang" dari ringkasan begitu tahun berjalan
+     sudah masuk TW3/TW4.
+   - "Paling mendesak" = tahap kerja yang PALING LAMA terlambat (bukan
+     yang paling baru terlambat).
+   - TIDAK ada konsep "mendekati deadline" (mis. "kurang 3 hari lagi")
+     di update ini - hanya yang SUDAH lewat yang dihitung, karena
+     aplikasi ini sebelumnya memang belum punya konsep jangka waktu
+     seperti itu di manapun, dan kami tidak ingin menambah aturan baru
+     yang belum pernah diminta Bapak. Kalau Bapak ingin ditambahkan
+     peringatan "mendekati deadline" (mis. H-3, H-7), mohon beri tahu
+     berapa hari yang dimaksud supaya bisa dibuatkan di update
+     berikutnya.
+
+MASIH SAMA SEPERTI SEBELUMNYA (belum berubah di update ini):
+- Sumber data ringkasan (deadline per tahap kerja) tetap dari menu
+  Timeline Pekerjaan yang sudah ada (Round 9 Bagian B) - update ini
+  TIDAK menambah tabel/data baru, murni menampilkan ulang data yang
+  sudah ada dengan cara baru.
+
+====================================================================
+FILE YANG BERUBAH
+====================================================================
+Diperbarui (PHP/Blade - sama seperti update-update sebelumnya):
+- app/Models/DeadlinePekerjaan.php (2 method baru: hitung ringkasan
+  terlambat & pembungkusnya untuk user yang sedang login)
+- resources/views/layouts/app.blade.php (tampilan pop-up + marquee)
+- resources/views/livewire/pages/auth/login.blade.php (menandai "baru
+  saja login")
+- tests/Feature/InfoTimelinePopupLoginTest.php (test otomatis, opsional)
+
+BARU (file tampilan/CSS - PENTING, lihat CARA PASANG di bawah):
+- public/build/manifest.json (DIGANTI, bukan ditambah)
+- public/build/assets/app-DQI418Gh.css (file BARU)
+- public/build/assets/app-CtUx7YPw.js (sama isinya seperti sebelumnya,
+  disertakan supaya manifest.json cocok - aman ditimpa)
+
+Update ini menambah beberapa gaya tampilan (warna gradien, animasi,
+posisi pop-up/marquee) yang HARUS ikut "dibangun ulang" ke file CSS
+final aplikasi - makanya ada file baru di folder public/build/ di atas
+(hasil build sudah kami siapkan, Bapak TIDAK perlu install Node.js/npm
+apapun di komputer, cukup salin file seperti biasa).
+
+====================================================================
+CARA PASANG UPDATE (TIDAK ADA migration - TIDAK perlu artisan migrate)
+====================================================================
+1. Tutup dulu aplikasi (matikan server jika sedang jalan).
+2. Salin (copy) semua file & folder di dalam paket update ini ke
+   folder aplikasi (D:\Aplikasi SRCBD_OPS_BOSP\srcbd-ops-bosp-source),
+   timpa (overwrite) file yang lama dengan yang baru - termasuk folder
+   public/build/ (biarkan file lama app-BVHAl9Rz.css di folder itu
+   tetap ada, tidak masalah walau tidak lagi dipakai - TIDAK perlu
+   dihapus manual).
+3. Jalankan/nyalakan kembali aplikasi seperti biasa (TIDAK ada
+   perintah migrate/artisan tambahan yang perlu dijalankan).
+4. Coba login sebagai Admin OPS atau Admin BOSP yang PUNYA setidaknya
+   1 deadline yang sudah lewat di menu Timeline Pekerjaan (kalau belum
+   ada deadline yang diatur Superadmin sama sekali, atau semuanya
+   belum lewat, pop-up TIDAK akan muncul - ini sesuai desain, lihat
+   poin 1 di atas).
+
+Sudah diuji lengkap sebelum dikirim:
+- 14 test otomatis baru (33 assertion) - LULUS SEMUA, baik di database
+  SQLite maupun diuji ulang memakai database PostgreSQL asli.
+- Suite penuh 866 test (2191 assertion) - LULUS SEMUA, tidak ada menu
+  lain yang ikut terganggu oleh perubahan ini.
+- Diuji langsung lewat browser (Playwright): pop-up muncul dengan
+  gaya warna & animasi yang benar tepat setelah login, otomatis
+  berubah jadi running text setelah 5 detik (dicek presisi lewat jejak
+  timer browser, bukan cuma dilihat sekilas), TIDAK muncul lagi saat
+  pindah ke halaman lain (kecuali login ulang), dan halaman
+  login/menu lain tetap tampil normal setelah pembaruan file tampilan.
+
+====================================================================
+CATATAN UNTUK PUTARAN 9 SECARA KESELURUHAN
+====================================================================
+Dengan update ini, SEMUA 4 poin permintaan 2026-09-23 (Bagian A, B, C
+di atas) sudah selesai dikirim. Poin ke-5 pada pesan awal Bapak masih
+kosong/belum dijelaskan - mohon kabari kalau ada yang ingin ditambahkan
+untuk poin itu.

@@ -1,0 +1,109 @@
+PETUNJUK PEMASANGAN UPDATE
+Aplikasi OPS_BOSP SR CBD - Part 8 (2026-09-05, lanjutan)
+==========================================================
+
+ISI UPDATE INI
+----------------
+1-3. Ikon landing page (pilihan Superadmin/Admin OPS/Admin BOSP) diganti
+   dengan ilustrasi baru bertema serupa dengan gambar yang Anda kirim
+   (Superadmin = sosok berkacamata + headphone, Admin OPS = ikon headset
+   customer support, Admin BOSP = sosok di depan laptop) - CATATAN
+   PENTING: 3 gambar yang Anda upload semuanya bergambar watermark
+   "pngtree" (preview stok foto berbayar, bukan file final berlisensi
+   bebas pakai), jadi TIDAK saya pasang langsung - saya buatkan ilustrasi
+   ikon (SVG) orisinal baru bertema serupa sebagai gantinya. Kalau Anda
+   sudah beli/punya file resmi tanpa watermark dari pngtree (atau sumber
+   lain) dan tetap ingin memakai gambar itu persis, kirimkan filenya dan
+   saya pasang di update berikutnya.
+4. Ketiga ikon (Superadmin/Admin OPS/Admin BOSP) sekarang transparan
+   (gaya "glass"/kaca buram) dan melayang terus-menerus (animasi naik-
+   turun halus, tidak berhenti).
+5. Perbaikan poin "email reset password tidak sampai": SUDAH DICEK -
+   sistem pengiriman emailnya sendiri sudah benar (sama seperti update
+   sebelumnya), tapi server ini masih memakai konfigurasi default
+   `MAIL_MAILER=log` di file `.env`, yang artinya isi email HANYA dicatat
+   ke file log di server, TIDAK PERNAH benar-benar dikirim ke inbox
+   manapun. Ini BUKAN bug kode, tapi konfigurasi yang memang belum diisi.
+   Cara mengisi SMTP asli ada di bagian "WAJIB DIBACA: Supaya Email Reset
+   Password Benar-Benar Terkirim" di bawah.
+   Selain itu, saya perkuat kodenya (jaga-jaga): kalau ternyata SMTP sudah
+   diisi tapi ada kesalahan/gangguan lain (kredensial salah, server email
+   sedang down, dll), password akun tetap berhasil diganti seperti biasa
+   dan Superadmin tetap melihat pesan yang jelas ("email GAGAL terkirim")
+   beserta password cadangannya untuk disampaikan manual - sebelumnya
+   kalau pengiriman email gagal, Superadmin bisa saja tidak melihat pesan
+   apapun sama sekali.
+6. Poin "kirim password reset ke WhatsApp": DITUNDA dulu sesuai
+   kesepakatan - fitur ini butuh berlangganan/menyambungkan ke layanan API
+   WhatsApp pihak ketiga (Fonnte/Wablas/WhatsApp Cloud API resmi Meta/dll)
+   yang belum diputuskan. Akan dikerjakan di update terpisah setelah
+   Anda memilih & punya akun/API key layanan yang dimaksud.
+
+WAJIB DIBACA: Supaya Email Reset Password Benar-Benar Terkirim
+------------------------------------------------------------------
+Buka file `.env` di folder aplikasi, cari baris-baris `MAIL_...`, lalu isi
+sesuai layanan email yang Anda pakai. Contoh paling umum & gratis (pakai
+akun Gmail):
+
+1. Aktifkan verifikasi 2 langkah di akun Gmail Anda (kalau belum).
+2. Buat "App Password" khusus di https://myaccount.google.com/apppasswords
+   (pilih aplikasi "Mail", nanti Google kasih kode 16 karakter). yinh epawlvawzvhi
+3. Isi file `.env` seperti ini (ganti bagian dalam tanda kurung siku):
+
+   MAIL_MAILER=smtp
+   MAIL_HOST=smtp.gmail.com
+   MAIL_PORT=587
+   MAIL_USERNAME=[abdulmuizfaiza@gmail.com]
+   MAIL_PASSWORD=[epawlvawzvhi]
+   MAIL_ENCRYPTION=tls
+   MAIL_FROM_ADDRESS=[komisariat.cibadak@gmail.com]
+   MAIL_FROM_NAME="Aplikasi OPS_BOSP SR CBD"
+
+4. Simpan file `.env`, lalu jalankan:
+   php artisan config:clear
+5. Coba lagi reset password salah satu akun Admin OPS/BOSP dari menu
+   Kelola Pengguna - email seharusnya sudah benar-benar sampai (cek juga
+   folder Spam/Promosi kalau belum kelihatan di kotak masuk utama).
+
+Kalau Anda sudah punya email hosting sendiri (bukan Gmail, mis. dari
+cPanel/domain sekolah), gunakan host/port/username/password SMTP dari
+provider hosting email tersebut - biasanya ada di menu "Email Accounts"
+panel hosting Anda, bukan Gmail.
+
+Password hasil reset SELALU tetap ditampilkan di layar Superadmin setelah
+klik "Reset Password" (baik email berhasil maupun gagal terkirim) - jadi
+walau SMTP belum sempat diisi, Superadmin tetap bisa menyampaikan password
+itu secara manual (WhatsApp/lisan/dll) ke Admin OPS/BOSP yang bersangkutan.
+
+LANGKAH PEMASANGAN
+-------------------
+1. Backup dulu folder aplikasi & database (seperti biasa sebelum update).
+2. Salin/timpa seluruh file dari update ini ke folder aplikasi.
+3. TIDAK ADA migration baru pada update ini - TIDAK PERLU
+   `php artisan migrate`.
+4. TIDAK ADA pustaka Composer/npm baru pada update ini - TIDAK PERLU
+   `composer install`/`npm install`. File hasil `npm run build` (folder
+   `public/build/`) SUDAH TERMASUK di dalam zip ini (CSS berubah sedikit
+   karena style ikon baru) - tidak perlu build ulang sendiri.
+5. Jalankan: php artisan optimize:clear
+6. Ikuti bagian "WAJIB DIBACA" di atas untuk mengisi SMTP asli supaya
+   email reset password benar-benar terkirim.
+7. Refresh browser (disarankan hard-refresh / Ctrl+F5).
+
+FILE YANG BERUBAH PADA UPDATE INI
+------------------------------------
+Diubah:
+- resources/views/livewire/pages/auth/login.blade.php (3 ikon baru + efek
+  transparan/melayang)
+- app/Livewire/Pengguna/Index.php (penanganan gagal-kirim email reset
+  password lebih kuat)
+- public/build/ (hasil rebuild - CSS berubah sedikit)
+
+Test (tidak perlu disalin ke server produksi, disertakan untuk dokumentasi):
+- tests/Feature/PenggunaResetPasswordTest.php (+1 test regresi baru)
+
+STATUS PENGUJIAN
+------------------
+183/183 test PHPUnit lulus (dijalankan di PostgreSQL). Tampilan ikon baru
+& animasi melayang sudah diverifikasi langsung lewat browser (screenshot +
+pemeriksaan animasi CSS sungguhan, bukan cuma baca kode).

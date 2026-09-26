@@ -4,6 +4,9 @@ use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
 Route::middleware('guest')->group(function () {
+    Volt::route('verifikasi-akses', 'pages.auth.verifikasi-akses')
+        ->name('verifikasi-akses');
+
     Volt::route('login', 'pages.auth.login')
         ->name('login');
 

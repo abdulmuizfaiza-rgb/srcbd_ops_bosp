@@ -1,0 +1,67 @@
+PETUNJUK UPDATE-11
+===================
+
+Update ini MELANJUTKAN/MEREVISI menu Lampiran 2c yang baru dikirim di
+update-10.zip (Bapak menyampaikan sebelum sempat dipakai bahwa Lampiran 2c
+harusnya dibagi per Triwulan, dan minta ditambahkan tombol Export & Import
+Excel). Update ini WAJIB dipasang SETELAH update-10.zip (kalau update-10
+belum dipasang, pasang dulu update-10, baru lanjut update-11).
+
+Perubahan pada Lampiran 2c:
+1. Sekarang dibagi per Triwulan (Tab Triwulan 1/2/3/4), sama seperti
+   Lampiran 2a & 2b. Data yang sudah sempat diisi sebelum update ini akan
+   otomatis masuk ke Triwulan 1 (nilai default), jadi tidak hilang.
+2. Tombol "Export Excel" DAN "Import Excel" sekarang tersedia (sebelumnya
+   di update-10 baru ada Export saja).
+3. Nama sheet hasil export Excel Lampiran 2c sekarang otomatis
+   "Lampiran 2c.TW1" / "TW2" / "TW3" / "TW4" sesuai triwulan yang di-export
+   (menyesuaikan pola yang sama seperti Lampiran 2a & 2b).
+4. Nama file hasil export juga menyesuaikan: "lampiran-2c-triwulan-N.xlsx".
+
+LANGKAH-LANGKAH UPDATE
+-----------------------
+
+1. Backup dulu folder aplikasi & database sebelum update (jaga-jaga).
+
+2. Salin semua file/folder di dalam zip ini ke folder aplikasi, timpa file
+   yang sudah ada:
+   - app/Exports/Lampiran2cExport.php
+   - app/Imports/Lampiran2cImport.php  (file baru)
+   - app/Livewire/PendataanOps/Lampiran2c/Index.php
+   - app/Models/Lampiran2c.php
+   - database/factories/Lampiran2cFactory.php
+   - database/migrations/2026_09_04_070000_add_triwulan_to_lampiran_2c_table.php  (file baru)
+   - resources/views/livewire/pendataan-ops/lampiran2c/index.blade.php
+   - tests/Feature/Lampiran2cTest.php
+
+3. Buka Terminal/CMD di folder aplikasi, lalu jalankan:
+   php artisan migrate
+
+   (perintah ini menambahkan kolom "triwulan" ke tabel lampiran_2c - data
+   yang sudah ada tidak hilang, otomatis diberi nilai Triwulan 1)
+
+4. Bersihkan cache:
+   php artisan optimize:clear
+
+5. Selesai. Silakan cek menu Pendataan OPS > Lampiran 2c:
+   - Sudah ada Tab Triwulan 1-4.
+   - Tombol Import Excel & Export Excel sudah muncul di kanan atas, sejajar
+     Lampiran 2a/2b.
+   - Format kolom Excel untuk Import HARUS SAMA PERSIS dengan hasil Export
+     (urutan kolom: NRG, NUPTK, Nama PTK, Tempat Tugas, Kecamatan, Jenis
+     Kepangkatan, Golongan, Masa Kerja, Pangkat/Berkala, TMT, Gaji Pokok
+     Lama, Gaji Pokok Baru, Keterangan). Cara paling aman: Export dulu dari
+     aplikasi, edit/isi datanya di file hasil export itu, baru Import lagi.
+
+CATATAN
+--------
+- Fitur Import Lampiran 2c memvalidasi seluruh baris sekaligus: kalau ada
+  1 baris saja yang salah (misalnya Kecamatan bukan salah satu dari
+  Caringin/Cicantayan/Cibadak/Nagrak/Cikidang, atau NRG bukan 12 digit),
+  SELURUH file akan ditolak dan tidak ada data yang masuk - pesan error
+  akan menyebutkan baris & kolom mana yang bermasalah supaya mudah
+  diperbaiki. Ini sama seperti perilaku Import di Lampiran 2a & 2b.
+- Kolom judul "Pangkat/Berkala" di file Excel akan terbaca sistem sebagai
+  satu kata "pangkatberkala" (tanda garis miring tidak dianggap pemisah) -
+  ini murni istilah teknis di balik layar, tidak memengaruhi tampilan judul
+  kolom di Excel maupun di aplikasi.

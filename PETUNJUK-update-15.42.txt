@@ -1,0 +1,93 @@
+====================================================================
+UPDATE 15.42 - EXPORT EXCEL TAB "BMD" DISAMAKAN OTOMATIS/PILIHAN/
+                MANUAL PERSIS SEPERTI DI APLIKASI
+====================================================================
+
+RINGKASAN PERUBAHAN
+--------------------
+Memperbaiki hasil Export Excel pada tab "BMD" (menu Pendataan BOSP >
+Rincian Belanja Modal) supaya PERSIS mengikuti perilaku field di
+aplikasi, sesuai permintaan:
+
+1. Field yang di aplikasi OTOMATIS (hasil perhitungan/relasi) sekarang
+   di Excel JUGA otomatis lewat FORMULA Excel sungguhan, bukan cuma
+   angka/teks mati:
+   - "Jenis Aset (KIB)" = FORMULA yang otomatis mengikuti pilihan
+     "Rekening Belanja" pada baris yang sama (kalau Rekening Belanja
+     diganti di Excel, Jenis Aset ikut berubah otomatis - sama seperti
+     di aplikasi).
+   - "Total" = FORMULA "= Jumlah x Harga Satuan" (kalau Jumlah/Harga
+     Satuan diedit di Excel, Total ikut terhitung ulang otomatis).
+   - Kedua kolom "Keterangan" & "Program"/"Kegiatan"/"Kode Sub
+     Kegiatan"/"Nama Sub Kegiatan" tetap terisi otomatis di SETIAP
+     baris (termasuk baris kosong tambahan).
+2. Field yang di aplikasi berupa PILIHAN (dropdown) sekarang di Excel
+   JUGA berupa dropdown sungguhan (klik kolomnya, muncul panah pilihan
+   dengan daftar yang SAMA PERSIS seperti di aplikasi):
+   - "Bentuk Kontrak / Transaksi" (Surat Pesanan / Kuitansi).
+   - "Rekening Belanja" (Belanja Modal Peralatan dan Mesin BOSP-BOS
+     Reguler / Belanja Modal Aset Tetap Lainnya BOSP-BOS Reguler).
+3. Field yang di aplikasi MANUAL (diketik bebas) tetap manual di
+   Excel seperti sebelumnya - TIDAK ada perubahan pada field ini.
+4. Kolom-kolom otomatis di atas (Jenis Aset, Total, Program, Kegiatan,
+   Kode Sub Kegiatan, Nama Sub Kegiatan, kedua Keterangan) sekarang
+   diberi warna latar KUNING supaya admin BOSP langsung tahu kolom ini
+   TIDAK perlu diisi manual (sama seperti kotak "otomatis/read-only"
+   berwarna kuning di aplikasi).
+
+Fitur di atas juga berlaku untuk beberapa baris kosong TAMBAHAN
+langsung di bawah baris data (sama seperti tempat garis tabel kosong
+yang sudah ada sebelumnya) - jadi kalau admin BOSP menambah barang
+baru langsung di file Excel pada baris kosong tsb, dropdown/formula-nya
+SUDAH SIAP tanpa perlu disalin manual.
+
+** TIDAK ADA PERUBAHAN DATA/MIGRATION **
+-------------------------------------------
+Update ini HANYA memperbaiki tampilan/format hasil Export Excel (1
+file PHP saja) - TIDAK ada migration baru, TIDAK ada perubahan pada
+data yang sudah tersimpan di database, TIDAK ada perubahan pada
+tampilan aplikasi (Import Excel & field OTOMATIS di aplikasi TETAP
+dihitung ulang sendiri oleh sistem seperti biasa - dropdown/formula
+pada file Excel hasil export murni untuk kenyamanan & supaya lebih
+akurat SAAT file dibuka/diisi di Excel, bukan untuk mengubah cara
+Import bekerja).
+
+LANGKAH PEMASANGAN
+-------------------
+1. Hentikan aplikasi (php artisan serve / server yang sedang jalan) -
+   opsional untuk update sekecil ini, tapi tetap disarankan.
+2. Salin & timpakan (overwrite) 1 file dalam zip ini ke folder aplikasi
+   Anda:
+   - app/Exports/RincianBelanjaModalBmdExport.php
+3. TIDAK PERLU menjalankan "php artisan migrate" pada update ini (tidak
+   ada migration baru).
+4. TIDAK PERLU menjalankan "npm run build" pada update ini (tidak ada
+   perubahan file Blade/CSS/JS).
+5. Jalankan kembali aplikasi seperti biasa.
+
+VERIFIKASI SETELAH PEMASANGAN
+------------------------------
+1. Buka menu "Pendataan BOSP" > "Rincian Belanja Modal" > tab "BMD" >
+   klik "Export Excel" pada salah satu Triwulan yang sudah ada
+   datanya.
+2. Buka file Excel hasil export, pastikan:
+   - Kolom "Bentuk Kontrak / Transaksi" & "Rekening Belanja" muncul
+     tanda panah dropdown saat kolomnya diklik, berisi pilihan yang
+     sama seperti di aplikasi.
+   - Kolom "Jenis Aset (KIB)", "Total", "Program", "Kegiatan", "Kode
+     Sub Kegiatan", "Nama Sub Kegiatan", & kedua kolom "Keterangan"
+     berwarna latar KUNING & sudah terisi otomatis.
+   - Coba ganti pilihan "Rekening Belanja" di salah satu baris lewat
+     dropdown - pastikan "Jenis Aset (KIB)" pada baris yang sama ikut
+     berubah otomatis.
+   - Coba ubah angka "Jumlah" atau "Harga Satuan" di salah satu baris -
+     pastikan "Total" pada baris yang sama ikut terhitung ulang
+     otomatis.
+3. Pastikan lembar tanda tangan (Bendahara BOSP / Kepala Sekolah) di
+   bagian bawah file TETAP tampil normal, tidak tertimpa/rusak.
+4. Coba Import kembali file Excel yang sudah diedit tsb - pastikan
+   data tersimpan dengan benar seperti biasa (field otomatis tetap
+   dihitung ulang oleh sistem, bukan diambil dari file).
+
+Kalau ada pertanyaan atau ada yang tidak sesuai harapan setelah
+pemasangan, kabari kembali sebelum melanjutkan pemakaian.

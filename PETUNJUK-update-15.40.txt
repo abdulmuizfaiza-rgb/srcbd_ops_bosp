@@ -1,0 +1,134 @@
+====================================================================
+UPDATE 15.40 - RUMUS STOCK OPNAME OTOMATIS & KETERKAITAN DENGAN
+                RINCIAN BELANJA BARANG HABIS PAKAI (RBBHP)
+                + BARIS "JUMLAH STOCK OPNAME"
+====================================================================
+
+RINGKASAN PERUBAHAN
+--------------------
+Melanjutkan tab "Stock Opname" yang ditambahkan di update-15.39,
+update ini melengkapi 8 permintaan berikut:
+
+1. Baris "JUMLAH STOCK OPNAME" ditambahkan di paling bawah tabel
+   Stock Opname (kolom 1-7: No/NPSN/Nama Sekolah/Subrayon/Nama
+   Barang/Satuan/Harga di-merge jadi 1 sel label, kolom 8-15
+   dijumlah dari seluruh baris yang sedang ditampilkan).
+2-4. Kolom "Jumlah (Rp)" pada ketiga grup (Saldo Awal, Penerimaan,
+   Pengeluaran) sekarang OTOMATIS = Harga x Kuantitas pada grup yang
+   sama. Berlaku sama di TW-1 s.d. TW-4.
+5. Kolom "Kuantitas" Saldo Akhir sekarang OTOMATIS = Kuantitas Saldo
+   Awal + Kuantitas Penerimaan - Kuantitas Pengeluaran.
+6. Kolom "Jumlah (Rp)" Saldo Akhir sekarang OTOMATIS = Jumlah Saldo
+   Awal + Jumlah Penerimaan - Jumlah Pengeluaran.
+7. Kolom "Nama Barang Persediaan" TIDAK LAGI diketik manual - sekarang
+   OTOMATIS mengikuti "Nama Barang" pada menu Rincian Belanja Barang
+   Habis Pakai (RBBHP) triwulan yang sama.
+8. Kolom "Keterangan" TIDAK LAGI diketik manual - sekarang OTOMATIS
+   berisi "BOSP Triwulan {triwulan} Tahun {tahun}".
+
+PERUBAHAN PENTING AKIBAT POIN 7 (KETERKAITAN OTOMATIS DENGAN RBBHP)
+--------------------------------------------------------------------
+Poin 7 mengubah cara baris Stock Opname dibuat. Sebelumnya (update-
+15.39) baris Stock Opname ditambah/diedit/dihapus bebas lewat modal
+Tambah/Edit & tombol Hapus, dengan Nama Barang Persediaan diketik
+manual sendiri.
+
+SEKARANG: 1 baris Rincian Belanja Barang Habis Pakai (RBBHP) = 1 baris
+Stock Opname, dibuat OTOMATIS begitu baris RBBHP-nya dibuat (lewat
+modal Tambah, kotak placeholder, atau Import Excel - SEMUA jalur ikut
+membuat baris Stock Opname otomatis). Kalau baris RBBHP-nya dihapus,
+baris Stock Opname terkait ikut OTOMATIS terhapus.
+
+Akibatnya:
+- Tombol "Tambah" & kolom "Aksi" (Edit/Hapus) pada tab Stock Opname
+  SUDAH DIHAPUS - jumlah baris Stock Opname sepenuhnya mengikuti
+  jumlah baris RBBHP pada triwulan yang sama, tidak bisa
+  ditambah/dihapus langsung dari tab ini.
+- Kotak "Nama Barang Persediaan" & "Keterangan" pada tabel SEKARANG
+  READ-ONLY (tidak bisa diklik/diketik) - nilainya otomatis.
+- Kotak "Jumlah (Rp)" (keempat grup) & "Kuantitas" Saldo Akhir JUGA
+  READ-ONLY - hasil hitungan otomatis begitu Satuan/Harga/Kuantitas
+  manual (Saldo Awal, Penerimaan, Pengeluaran) diisi/diubah.
+- Yang MASIH BISA diedit langsung di kotak tabel: Satuan (Unit),
+  Harga, Kuantitas Saldo Awal, Kuantitas Penerimaan, & Kuantitas
+  Pengeluaran.
+- Import Excel Stock Opname SEKARANG hanya mengisi field manual di
+  atas pada baris yang SUDAH ADA (dicocokkan lewat Nama Barang yang
+  sama persis dengan RBBHP triwulan tsb) - TIDAK BISA lagi membuat
+  baris baru bebas dari Import. Kalau Nama Barang pada file Excel
+  tidak ditemukan di RBBHP triwulan yang sama, baris tsb GAGAL diimport
+  dengan pesan jelas.
+
+DATA STOCK OPNAME YANG SUDAH ADA SEBELUM UPDATE INI (data lama, hasil
+update-15.39) TIDAK DIUBAH ATAU DIHAPUS SAMA SEKALI - kalau Nama
+Barangnya kebetulan TIDAK cocok dengan barang manapun di RBBHP
+triwulan yang sama, baris tsb tetap tersimpan apa adanya dan tetap
+tampil dengan Nama Barang yang sudah diketik sebelumnya (hanya baris
+BARU sejak update ini yang mengikuti aturan otomatis di atas).
+
+** WAJIB MENJALANKAN "php artisan migrate" **
+-----------------------------------------------
+Update ini ADA MIGRATION BARU (menambah kolom
+`rincian_belanja_barang_habis_pakai_id` pada tabel
+`stock_opname_barang_persediaan`). Migration ini JUGA otomatis
+membuatkan (backfill) 1 baris Stock Opname untuk SETIAP baris RBBHP
+yang sudah ada di database Anda dan belum punya baris Stock Opname
+terkait - jadi kalau data RBBHP Anda sudah banyak, akan muncul cukup
+banyak baris Stock Opname baru (kosong, siap diisi Satuan/Harga/
+Kuantitas) setelah migration ini dijalankan. Ini normal dan sesuai
+aturan baru di atas.
+
+LANGKAH PEMASANGAN
+-------------------
+1. Hentikan aplikasi (php artisan serve / server yang sedang jalan).
+2. Backup folder aplikasi & database Anda terlebih dahulu (opsional
+   tapi disarankan, terutama sebelum migration).
+3. Salin & timpakan (overwrite) seluruh file dalam zip ini ke folder
+   aplikasi Anda, sesuai struktur folder yang ada di dalam zip:
+   - database/migrations/2026_09_19_070000_add_rincian_link_dan_rumus_stock_opname.php
+   - app/Models/StockOpnameBarangPersediaan.php
+   - app/Models/RincianBelanjaBarangHabisPakai.php
+   - app/Livewire/PendataanBosp/RincianBelanjaBarangHabisPakai/Index.php
+   - app/Exports/StockOpnameBarangPersediaanExport.php
+   - app/Imports/StockOpnameBarangPersediaanImport.php
+   - resources/views/livewire/pendataan-bosp/rincian-belanja-barang-habis-pakai/_tabel-stock-opname.blade.php
+   - resources/views/livewire/pendataan-bosp/rincian-belanja-barang-habis-pakai/index.blade.php
+4. Jalankan:
+       php artisan migrate
+   (WAJIB - lihat penjelasan di atas. Kalau ada pertanyaan konfirmasi
+   dari Laravel karena dijalankan di environment production, jawab
+   "yes"/ketik "yes" untuk melanjutkan.)
+5. TIDAK PERLU menjalankan "npm run build" pada update ini - tidak ada
+   perubahan tampilan CSS/JS baru (seluruh kelas Tailwind yang dipakai
+   sudah ada sebelumnya), file public/build yang sudah ada TETAP
+   DIPAKAI apa adanya.
+6. Jalankan kembali aplikasi seperti biasa.
+
+VERIFIKASI SETELAH PEMASANGAN
+------------------------------
+1. Buka menu "Rincian Belanja Barang Habis Pakai" > tab "Stock
+   Opname" > salah satu Triwulan.
+2. Pastikan TIDAK ADA lagi tombol "Tambah" & kolom "Aksi" pada tab
+   ini.
+3. Pastikan jumlah baris pada tab Stock Opname SAMA dengan jumlah
+   baris pada tab "Rincian Belanja Barang Habis Pakai" untuk triwulan
+   yang sama, dan Nama Barang Persediaan-nya SAMA (mengikuti RBBHP).
+4. Coba isi kotak Harga & salah satu Kuantitas (Saldo Awal/Penerimaan/
+   Pengeluaran) pada satu baris - pastikan keempat kotak "Jumlah (Rp)"
+   & "Kuantitas" Saldo Akhir langsung terisi otomatis sesuai rumus
+   (Jumlah = Harga x Kuantitas per grup; Saldo Akhir Kuantitas = Saldo
+   Awal + Penerimaan - Pengeluaran; Saldo Akhir Jumlah = Jumlah Saldo
+   Awal + Jumlah Penerimaan - Jumlah Pengeluaran).
+5. Pastikan kolom "Keterangan" otomatis terisi "BOSP Triwulan {n}
+   Tahun {tahun}".
+6. Scroll ke baris paling bawah tabel - pastikan ada baris "JUMLAH
+   STOCK OPNAME" dengan total Kuantitas & Jumlah (Rp) yang benar.
+7. Coba tambah baris baru di tab "Rincian Belanja Barang Habis Pakai"
+   - pastikan baris Stock Opname baru OTOMATIS ikut muncul di tab
+   Stock Opname (kosong, siap diisi).
+8. Coba hapus baris di tab "Rincian Belanja Barang Habis Pakai" -
+   pastikan baris Stock Opname terkait ikut OTOMATIS hilang.
+9. Coba Export & Import Excel pada tab Stock Opname seperti biasa.
+
+Kalau ada pertanyaan atau ada yang tidak sesuai harapan setelah
+pemasangan, kabari kembali sebelum melanjutkan pemakaian.

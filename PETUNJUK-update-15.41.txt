@@ -1,0 +1,114 @@
+====================================================================
+UPDATE 15.41 - TAB BARU "BMD" PADA MENU RINCIAN BELANJA MODAL
+====================================================================
+
+RINGKASAN PERUBAHAN
+--------------------
+Menambahkan TAB UTAMA KETIGA "BMD" pada menu Pendataan BOSP > Rincian
+Belanja Modal, DI SAMPING 2 tab yang sudah ada dan TIDAK DIUBAH sama
+sekali (Rincian Belanja Modal Peralatan & Mesin (KIB B) & Rincian
+Belanja Modal Aset Tetap Lainnya (KIB E)). Tab BMD sesuai gambar acuan
+"DAFTAR BELANJA MODAL TAHUN ANGGARAN 2026" yang diberikan, terdiri
+dari 4 sub-tab Triwulan dengan tahun otomatis (sama seperti 2 tab yang
+sudah ada).
+
+Field pada tab BMD:
+- OTOMATIS/read-only (tidak bisa diketik manual dari jalur manapun):
+  NPSN, Lokasi (Nama Sekolah), Subrayon (mengikuti Profil Sekolah);
+  Program, Kegiatan, Kode Sub Kegiatan, Nama Sub Kegiatan (nilai
+  tetap/konstan untuk setiap baris); Jenis Aset (KIB) (otomatis
+  mengikuti pilihan Rekening Belanja); Total (otomatis = Jumlah x
+  Harga Satuan); dan 2 kolom "Keterangan" (otomatis berisi "BOS SMPN
+  TRIWULAN {n} TAHUN {tahun} (REGULER)" dan "BOSP TRIWULAN {n} TAHUN
+  {tahun}").
+- Pilihan (dropdown): Bentuk Kontrak / Transaksi (Surat Pesanan/
+  Kuitansi); Rekening Belanja (Belanja Modal Peralatan dan Mesin
+  BOSP-BOS Reguler / Belanja Modal Aset Tetap Lainnya BOSP-BOS
+  Reguler) - begitu dipilih, Jenis Aset (KIB) otomatis ikut berubah.
+- Diisi manual (lewat modal Tambah/Edit ATAUPUN kotak isi langsung di
+  tabel - SAMA seperti menu lain di aplikasi ini): Atribusi, Jumlah
+  Termin, PPK, Nomor Dokumen, Tgl. Perolehan, Penyedia, Kode Belanja,
+  Sub Sub Rincian Objek, Jumlah, Satuan, Harga Satuan, No BAST, Tgl
+  BAST, Nomor Surat Pernyataan, Tgl. Surat Pernyataan, Nama Pengurus
+  Barang, Jabatan, Pejabat Penata Usaha, Nama Barang, Spesifikasi Nama
+  Barang, Spesifikasi Lain (Serial Nomor), Merk/Pengarang.
+
+Tab BMD juga dilengkapi tombol Zoom In/Out, Export Excel (kolom sesuai
+urutan di atas, field otomatis & pilihan ikut ditulis apa adanya),
+Import Excel (field otomatis TETAP dihitung ulang sendiri oleh sistem
+walau ada isinya di file Excel - TIDAK diambil dari file), tombol
+Tambah, & pencarian berdasarkan Nama Barang / Nama Sekolah (mengikuti
+Tahun & Triwulan yang aktif).
+
+** TIDAK MENGUBAH TAB YANG SUDAH ADA **
+-----------------------------------------
+Sesuai permintaan, update ini MURNI ADDITIVE - tabel, model, query, &
+tampilan 2 tab "jenis" (KIB B/KIB E) yang sudah berjalan SAMA SEKALI
+TIDAK disentuh. Tab BMD memakai TABEL BARU TERPISAH
+(rincian_belanja_modal_bmd) dan jalur kode (method Livewire, query
+render, Export/Import) yang SEPENUHNYA TERPISAH dari tab "jenis".
+Sudah diuji ulang: seluruh 717 test otomatis aplikasi (termasuk 37
+test lama khusus menu Rincian Belanja Modal) tetap 100% lolos setelah
+perubahan ini.
+
+** WAJIB MENJALANKAN "php artisan migrate" **
+-----------------------------------------------
+Update ini ADA MIGRATION BARU - membuat TABEL BARU
+`rincian_belanja_modal_bmd` (tidak mengubah tabel manapun yang sudah
+ada, jadi TIDAK ADA risiko data lama hilang/berubah).
+
+LANGKAH PEMASANGAN
+-------------------
+1. Hentikan aplikasi (php artisan serve / server yang sedang jalan).
+2. Backup folder aplikasi & database Anda terlebih dahulu (opsional
+   tapi disarankan, terutama sebelum migration).
+3. Salin & timpakan (overwrite) seluruh file dalam zip ini ke folder
+   aplikasi Anda, sesuai struktur folder yang ada di dalam zip:
+   - database/migrations/2026_09_22_220000_create_rincian_belanja_modal_bmd_table.php
+   - app/Models/RincianBelanjaModalBmd.php (file BARU)
+   - app/Models/ProfilSekolah.php
+   - app/Models/RincianBelanjaModal.php
+   - app/Livewire/PendataanBosp/RincianBelanjaModal/Index.php
+   - app/Exports/RincianBelanjaModalBmdExport.php (file BARU)
+   - app/Imports/RincianBelanjaModalBmdImport.php (file BARU)
+   - resources/views/components/bmd-tarif-cell.blade.php (file BARU)
+   - resources/views/livewire/pendataan-bosp/rincian-belanja-modal/_tabel-bmd.blade.php (file BARU)
+   - resources/views/livewire/pendataan-bosp/rincian-belanja-modal/_form-bmd.blade.php (file BARU)
+   - resources/views/livewire/pendataan-bosp/rincian-belanja-modal/index.blade.php
+   - public/build/manifest.json
+   - public/build/assets/app-DwdIBpRn.css (file BARU - hasil build ulang, ADA perubahan tampilan)
+   - public/build/assets/app-CtUx7YPw.js (isinya SAMA seperti yang sudah ada, ditimpakan ulang saja)
+4. Jalankan:
+       php artisan migrate
+   (WAJIB - membuat tabel baru rincian_belanja_modal_bmd. Kalau ada
+   pertanyaan konfirmasi dari Laravel karena dijalankan di environment
+   production, jawab "yes"/ketik "yes" untuk melanjutkan.)
+5. TIDAK PERLU menjalankan "npm run build" - file CSS/JS hasil build
+   sudah disertakan langsung di dalam zip ini (folder public/build).
+6. Jalankan kembali aplikasi seperti biasa.
+
+VERIFIKASI SETELAH PEMASANGAN
+------------------------------
+1. Buka menu "Pendataan BOSP" > "Rincian Belanja Modal".
+2. Pastikan ADA 3 tab utama: "Rincian Belanja Modal Peralatan & Mesin
+   (KIB B)", "Rincian Belanja Modal Aset Tetap Lainnya (KIB E)", &
+   "BMD" (tab baru, paling kanan).
+3. Pastikan tab KIB B & KIB E TETAP tampil & berfungsi PERSIS seperti
+   sebelum update ini (data, tombol Tambah/Edit/Hapus, input langsung
+   di kotak tabel, Export/Import - semua tidak berubah).
+4. Klik tab "BMD" - pastikan ada 4 sub-tab Triwulan (TW-1 s.d. TW-4),
+   tabel dengan kolom NPSN/Lokasi/Subrayon/dst. sesuai gambar acuan
+   (kolom kuning = otomatis/read-only), tombol Zoom In/Out, Import
+   Excel, Export Excel, & Tambah.
+5. Klik "Tambah" pada tab BMD - pastikan modal muncul dengan seluruh
+   field, Program/Kegiatan/Kode Sub Kegiatan/Nama Sub Kegiatan terisi
+   otomatis (kotak kuning), & Jenis Aset (KIB) + Total ikut berubah
+   otomatis saat memilih Rekening Belanja / mengisi Jumlah & Harga
+   Satuan.
+6. Coba isi salah satu kotak langsung di tabel tab BMD (mis. Bentuk
+   Kontrak / Transaksi atau Nama Barang pada baris placeholder paling
+   bawah tiap sekolah) - pastikan baris baru otomatis tersimpan.
+7. Coba Export Excel & Import Excel pada tab BMD.
+
+Kalau ada pertanyaan atau ada yang tidak sesuai harapan setelah
+pemasangan, kabari kembali sebelum melanjutkan pemakaian.
