@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Forms;
 
+use App\Models\LoginHistory;
 use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Auth;
@@ -21,6 +22,20 @@ class LoginForm extends Form
 
     #[Validate('boolean')]
     public bool $remember = false;
+
+    /**
+     * Titik koordinat (lat/long) saat login - diisi dari Browser
+     * Geolocation API di halaman login (lihat login.blade.php, dipicu
+     * saat user memilih jenis akses). Permintaan user (2026-09-26):
+     * menu Pengguna > tab Riwayat Login menampilkan kolom ini. Kalau
+     * user menolak izin lokasi browser, kedua properti ini tetap NULL -
+     * baris riwayat login tetap dibuat, hanya kolom koordinatnya kosong.
+     */
+    #[Validate('nullable|numeric')]
+    public ?float $latitude = null;
+
+    #[Validate('nullable|numeric')]
+    public ?float $longitude = null;
 
     /**
      * Jumlah percobaan login gagal secara beruntun pada form ini.
@@ -76,6 +91,8 @@ class LoginForm extends Form
 
         RateLimiter::clear($this->throttleKey());
         $this->percobaanGagal = 0;
+
+        $this->catatRiwayatLogin(Auth::user());
     }
 
     /**
@@ -123,6 +140,30 @@ class LoginForm extends Form
 
         RateLimiter::clear($this->throttleKey());
         $this->percobaanGagal = 0;
+
+        $this->catatRiwayatLogin($user);
+    }
+
+    /**
+     * Catat satu baris riwayat login (permintaan user 2026-09-26, menu
+     * Pengguna > tab Riwayat Login) - dipanggil tepat setelah Auth::attempt
+     * atau Auth::login berhasil, baik dari jalur login normal maupun
+     * jalur pemulihan akun. Kolom nama_sekolah/email disalin (snapshot)
+     * dari data akun saat ini supaya riwayat lama tidak berubah kalau
+     * data akun diedit belakangan.
+     */
+    private function catatRiwayatLogin(User $user): void
+    {
+        LoginHistory::create([
+            'user_id' => $user->id,
+            'level_akses' => $user->level_akses,
+            'email' => $user->email,
+            'nama_sekolah' => $user->profilSekolah?->nama_sekolah ?? $user->nama_sekolah,
+            'login_at' => now(),
+            'ip_address' => request()->ip(),
+            'latitude' => $this->latitude,
+            'longitude' => $this->longitude,
+        ]);
     }
 
     /**

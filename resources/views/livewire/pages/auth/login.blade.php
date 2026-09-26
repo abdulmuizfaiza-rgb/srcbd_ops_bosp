@@ -63,7 +63,36 @@ new #[Layout('layouts.guest')] class extends Component
     }
 }; ?>
 
-<div x-data="{ step: 'pilih', aksesTerpilih: null }">
+<div x-data="{
+    step: 'pilih',
+    aksesTerpilih: null,
+    /**
+     * Permintaan user (2026-09-26, menu Pengguna > tab Riwayat Login):
+     * ambil titik koordinat (lat/long) lewat Browser Geolocation API tepat
+     * saat user memilih jenis akses (Superadmin/Admin OPS/Admin BOSP) -
+     * dipanggil di sini (bukan saat submit form) supaya browser sudah
+     * sempat minta izin & dapat posisinya SEBELUM user selesai mengetik
+     * username/password. Kalau user menolak izin lokasi, tidak apa-apa -
+     * form.latitude/form.longitude tetap kosong (null), baris riwayat
+     * login tetap dibuat tanpa koordinat.
+     */
+    ambilKoordinatLogin() {
+        if (! navigator.geolocation) {
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (posisi) => {
+                $wire.set('form.latitude', posisi.coords.latitude);
+                $wire.set('form.longitude', posisi.coords.longitude);
+            },
+            () => {
+                // Izin ditolak / gagal / timeout - dibiarkan kosong, bukan error.
+            },
+            { timeout: 8000 }
+        );
+    },
+}">
     {{--
         Permintaan user (2026-09-24, round ketujuh belas): tombol kembali
         ke landing page publik (route "beranda", halaman "/" - lihat
@@ -110,7 +139,7 @@ new #[Layout('layouts.guest')] class extends Component
                 efek melayang yang baru.
             --}}
             {{-- Superadmin --}}
-            <button type="button" @click="aksesTerpilih = 'Superadmin'; step = 'login'"
+            <button type="button" @click="aksesTerpilih = 'Superadmin'; step = 'login'; ambilKoordinatLogin()"
                 class="group flex flex-col items-center gap-2 focus:outline-none">
                 <span class="relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center animate-float-logo">
                     <span class="relative flex h-full w-full items-center justify-center rounded-full bg-white/10 backdrop-blur-md ring-2 ring-violet-300/70 shadow-lg shadow-indigo-900/30 transition-transform duration-300 group-hover:scale-110">
@@ -130,7 +159,7 @@ new #[Layout('layouts.guest')] class extends Component
             </button>
 
             {{-- Admin OPS --}}
-            <button type="button" @click="aksesTerpilih = 'Admin OPS'; step = 'login'"
+            <button type="button" @click="aksesTerpilih = 'Admin OPS'; step = 'login'; ambilKoordinatLogin()"
                 class="group flex flex-col items-center gap-2 focus:outline-none">
                 <span class="relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center animate-float-logo" style="animation-delay:.3s">
                     <span class="relative flex h-full w-full items-center justify-center rounded-full bg-white/10 backdrop-blur-md ring-2 ring-sky-300/70 shadow-lg shadow-blue-900/30 transition-transform duration-300 group-hover:scale-110">
@@ -147,7 +176,7 @@ new #[Layout('layouts.guest')] class extends Component
             </button>
 
             {{-- Admin BOSP --}}
-            <button type="button" @click="aksesTerpilih = 'Admin BOSP'; step = 'login'"
+            <button type="button" @click="aksesTerpilih = 'Admin BOSP'; step = 'login'; ambilKoordinatLogin()"
                 class="group flex flex-col items-center gap-2 focus:outline-none">
                 <span class="relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center animate-float-logo" style="animation-delay:.6s">
                     <span class="relative flex h-full w-full items-center justify-center rounded-full bg-white/10 backdrop-blur-md ring-2 ring-emerald-300/70 shadow-lg shadow-emerald-900/30 transition-transform duration-300 group-hover:scale-110">

@@ -32,10 +32,98 @@
                                 @endif
                             </button>
                         @endforeach
+
+                        {{--
+                            Tab "Riwayat Login" (permintaan user 2026-09-26) -
+                            TIDAK ikut $levelOptions di atas (itu khusus 3 tab
+                            kelola-akun) supaya badge "menunggu" milik tab
+                            kelola-akun tidak ikut tertempel di tab ini.
+                        --}}
+                        <button
+                            wire:click="pindahTab('riwayat_login')"
+                            class="pb-3 text-sm font-medium border-b-2 transition
+                                @if ($tab === 'riwayat_login') border-blue-600 text-blue-600 @else border-transparent text-slate-500 hover:text-slate-700 @endif"
+                        >
+                            Riwayat Login
+                        </button>
                     </nav>
                 </div>
 
                 <div class="p-4 sm:p-8">
+                    @if ($tab === 'riwayat_login')
+                        {{-- Sub-tab Riwayat Login: Superadmin / Admin OPS / Admin BOSP --}}
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            @foreach ($levelOptions as $value => $label)
+                                <button
+                                    wire:click="pindahTabRiwayat('{{ $value }}')"
+                                    type="button"
+                                    class="px-3 py-1.5 text-xs font-medium rounded-full border transition
+                                        @if ($subTabRiwayat === $value) bg-blue-600 border-blue-600 text-white @else bg-white border-slate-300 text-slate-600 hover:bg-slate-50 @endif"
+                                >
+                                    Riwayat Login {{ $label }}
+                                </button>
+                            @endforeach
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                            <input wire:model.live.debounce.300ms="searchRiwayat" type="text" placeholder="Cari nama sekolah / alamat email..." class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm sm:w-80">
+
+                            <x-zoom-controls :zoom="$zoomPercent" />
+                        </div>
+
+                        <div class="overflow-auto scrollbar-modern border border-slate-200 rounded-lg" style="max-height: 28rem; zoom: {{ $zoomPercent }}%;">
+                            <table class="min-w-full divide-y divide-slate-200 text-sm">
+                                <thead class="sticky top-0 bg-slate-50">
+                                    <tr class="text-left text-slate-500">
+                                        <th class="px-3 py-2">Nama Sekolah</th>
+                                        <th class="px-3 py-2">Alamat Email</th>
+                                        <th class="px-3 py-2">Hari & Tanggal</th>
+                                        <th class="px-3 py-2">Waktu Mulai</th>
+                                        <th class="px-3 py-2">Waktu Akhir</th>
+                                        <th class="px-3 py-2">Lama Login</th>
+                                        <th class="px-3 py-2">IP Address</th>
+                                        <th class="px-3 py-2">Titik Koordinat</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 bg-white">
+                                    @forelse ($riwayatLogin as $item)
+                                        <tr>
+                                            <td class="px-3 py-2 text-slate-700 whitespace-nowrap">{{ $item->nama_sekolah ?: '-' }}</td>
+                                            <td class="px-3 py-2 text-slate-700 whitespace-nowrap">{{ $item->email ?: '-' }}</td>
+                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->login_at?->translatedFormat('l, d F Y') }}</td>
+                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->login_at?->format('H:i:s') }}</td>
+                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">
+                                                @if ($item->logout_at)
+                                                    {{ $item->logout_at->format('H:i:s') }}
+                                                @else
+                                                    <span class="text-emerald-600 font-medium">Masih berlangsung</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->durasi ?? '-' }}</td>
+                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->ip_address ?: '-' }}</td>
+                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">
+                                                @if ($item->latitude !== null && $item->longitude !== null)
+                                                    <a href="https://www.google.com/maps?q={{ $item->latitude }},{{ $item->longitude }}" target="_blank" rel="noopener" class="text-blue-600 hover:underline">
+                                                        {{ number_format((float) $item->latitude, 5) }}, {{ number_format((float) $item->longitude, 5) }}
+                                                    </a>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="8" class="px-3 py-6 text-center text-slate-400">Belum ada riwayat login untuk tab ini.</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-4">
+                            {{ $riwayatLogin->links() }}
+                        </div>
+                    @else
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
                         <div class="flex flex-col sm:flex-row gap-3">
                             <input wire:model.live.debounce.300ms="search" type="text" placeholder="Cari username / nama sekolah..." class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
@@ -106,6 +194,7 @@
                     <div class="mt-4">
                         {{ $pengguna->links() }}
                     </div>
+                    @endif
                 </div>
             </div>
         </div>

@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Pengguna;
 
+use App\Livewire\Concerns\HasZoomTampilan;
 use App\Mail\PasswordDiresetSuperadmin;
+use App\Models\LoginHistory;
 use App\Models\ProfilSekolah;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -21,6 +23,7 @@ use Livewire\WithPagination;
 class Index extends Component
 {
     use WithPagination;
+    use HasZoomTampilan;
 
     #[Url(as: 'tab')]
     public string $tab = User::LEVEL_SUPERADMIN;
@@ -28,6 +31,16 @@ class Index extends Component
     public string $search = '';
 
     public ?int $filterSekolahId = null;
+
+    /**
+     * State untuk tab "Riwayat Login" (permintaan user 2026-09-26) - sub-tab
+     * (Superadmin/Admin OPS/Admin BOSP) dan pencarian berdasarkan nama
+     * sekolah/alamat email, TERPISAH dari $tab & $search milik tab
+     * kelola-akun di atas supaya kedua tab tidak saling mempengaruhi.
+     */
+    public string $subTabRiwayat = User::LEVEL_SUPERADMIN;
+
+    public string $searchRiwayat = '';
 
     // State form modal
     public bool $showForm = false;
@@ -67,6 +80,18 @@ class Index extends Component
         $this->tab = $tab;
         $this->filterSekolahId = null;
         $this->resetPage();
+    }
+
+    public function pindahTabRiwayat(string $subTab): void
+    {
+        $this->subTabRiwayat = $subTab;
+        $this->searchRiwayat = '';
+        $this->resetPage('riwayatPage');
+    }
+
+    public function updatedSearchRiwayat(): void
+    {
+        $this->resetPage('riwayatPage');
     }
 
     public function updatedFilterSekolahId(): void
@@ -356,18 +381,39 @@ class Index extends Component
 
     public function render()
     {
-        $pengguna = User::query()
-            ->where('level_akses', $this->tab)
-            ->when($this->search, fn ($q) => $q->where(function ($q) {
-                $q->where('username', 'like', "%{$this->search}%")
-                    ->orWhere('nama_sekolah', 'like', "%{$this->search}%");
-            }))
-            ->when($this->filterSekolahId, fn ($q) => $q->where('profil_sekolah_id', $this->filterSekolahId))
-            ->orderBy('username')
-            ->paginate(10);
+        $pengguna = null;
+        $riwayatLogin = null;
+
+        if ($this->tab === 'riwayat_login') {
+            // Tab "Riwayat Login" (permintaan user 2026-09-26) - query
+            // TERPISAH dari tab kelola-akun di bawah, memakai kolom
+            // snapshot nama_sekolah/email yang tersimpan langsung di baris
+            // login_histories (lihat model LoginHistory), bukan join ke
+            // tabel users, supaya riwayat lama tetap benar walau data akun
+            // berubah/dihapus belakangan.
+            $riwayatLogin = LoginHistory::query()
+                ->where('level_akses', $this->subTabRiwayat)
+                ->when($this->searchRiwayat, fn ($q) => $q->where(function ($q) {
+                    $q->where('nama_sekolah', 'like', "%{$this->searchRiwayat}%")
+                        ->orWhere('email', 'like', "%{$this->searchRiwayat}%");
+                }))
+                ->orderByDesc('login_at')
+                ->paginate(10, ['*'], 'riwayatPage');
+        } else {
+            $pengguna = User::query()
+                ->where('level_akses', $this->tab)
+                ->when($this->search, fn ($q) => $q->where(function ($q) {
+                    $q->where('username', 'like', "%{$this->search}%")
+                        ->orWhere('nama_sekolah', 'like', "%{$this->search}%");
+                }))
+                ->when($this->filterSekolahId, fn ($q) => $q->where('profil_sekolah_id', $this->filterSekolahId))
+                ->orderBy('username')
+                ->paginate(10);
+        }
 
         return view('livewire.pengguna.index', [
             'pengguna' => $pengguna,
+            'riwayatLogin' => $riwayatLogin,
             'levelOptions' => User::levelAksesOptions(),
             'sekolahOptions' => ProfilSekolah::orderBy('nama_sekolah')->get(),
             'jumlahMenunggu' => [
