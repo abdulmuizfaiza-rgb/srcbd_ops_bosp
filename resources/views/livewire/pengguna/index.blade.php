@@ -155,6 +155,15 @@
                     <x-input-error :messages="$errors->get('username')" class="mt-2" />
                 </div>
 
+                @if ($level_akses === 'superadmin')
+                    <div>
+                        <x-input-label for="email" value="Email" />
+                        <x-text-input wire:model="email" id="email" class="block mt-1 w-full" type="email" />
+                        <p class="text-xs text-slate-400 mt-1">Dipakai untuk gerbang Verifikasi Akses sebelum halaman login (bukan untuk login/username).</p>
+                        <x-input-error :messages="$errors->get('email')" class="mt-2" />
+                    </div>
+                @endif
+
                 <div>
                     <x-input-label for="password" :value="$editingId ? 'Password (kosongkan jika tidak diubah)' : 'Password'" />
                     <x-password-input wire:model="password" id="password" class="block mt-1" />

@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\PendataanBosp;
+use App\Models\PendataanOps;
 use App\Models\ProfilSekolah;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -15,6 +17,8 @@ new #[Layout('layouts.guest')] class extends Component
     public string $npsn = '';
 
     public string $email = '';
+
+    public string $no_whatsapp = '';
 
     public string $password = '';
 
@@ -47,7 +51,10 @@ new #[Layout('layouts.guest')] class extends Component
                 'required', 'string', 'email', 'max:255',
                 Rule::unique('users', 'username'),
             ],
+            'no_whatsapp' => ['required', 'regex:/^[0-9]{1,12}$/'],
             'password' => ['required', 'string', Password::defaults(), 'confirmed'],
+        ], [
+            'no_whatsapp.regex' => 'No Whatsapp harus berupa angka, maksimal 12 digit.',
         ]);
 
         $sudahAda = User::where('profil_sekolah_id', $validated['profil_sekolah_id'])
@@ -63,7 +70,7 @@ new #[Layout('layouts.guest')] class extends Component
 
         $sekolah = ProfilSekolah::findOrFail($validated['profil_sekolah_id']);
 
-        User::create([
+        $user = User::create([
             'username' => $validated['email'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
@@ -74,6 +81,18 @@ new #[Layout('layouts.guest')] class extends Component
             'must_change_password' => true,
             'is_approved' => false,
         ]);
+
+        // Simpan No Whatsapp langsung ke menu Identitas OPS/Identitas Admin
+        // BOSP milik sekolah ini (diminta user, 2026-09-26) - supaya Admin
+        // OPS/BOSP tidak perlu isi ulang manual lewat menu Identitas
+        // setelah akunnya disetujui. Field identitas lain (nama, NIP, dst)
+        // TETAP diisi sendiri nanti lewat menu Identitas OPS/BOSP - tidak
+        // dikumpulkan di form registrasi ini.
+        $modelIdentitas = $validated['level_akses'] === User::LEVEL_ADMIN_OPS ? PendataanOps::class : PendataanBosp::class;
+        $modelIdentitas::updateOrCreate(
+            ['profil_sekolah_id' => $sekolah->id],
+            ['no_whatsapp' => $validated['no_whatsapp'], 'created_by' => $user->id]
+        );
 
         $this->selesai = true;
     }
@@ -147,6 +166,13 @@ new #[Layout('layouts.guest')] class extends Component
                 <x-input-label for="email" value="Email (akan menjadi username)" class="!text-[color:var(--warna-huruf-registrasi)]" />
                 <x-text-input wire:model="email" id="email" class="block mt-1 w-full" type="email" required autocomplete="username" />
                 <x-input-error :messages="$errors->get('email')" class="mt-2" />
+            </div>
+
+            <div>
+                <x-input-label for="no_whatsapp" value="No Whatsapp" class="!text-[color:var(--warna-huruf-registrasi)]" />
+                <x-text-input wire:model="no_whatsapp" id="no_whatsapp" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="12" required />
+                <p class="text-xs text-[color:var(--warna-huruf-registrasi)] mt-1">Otomatis tersimpan ke menu Identitas OPS/Identitas Admin BOSP sekolah ini.</p>
+                <x-input-error :messages="$errors->get('no_whatsapp')" class="mt-2" />
             </div>
 
             <div>

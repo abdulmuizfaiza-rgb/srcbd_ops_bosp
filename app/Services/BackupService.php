@@ -129,6 +129,16 @@ class BackupService
 
     protected function dumpPgsql(): string
     {
+        // Round 28 (2026-09-26) - Windows TIDAK LAGI memakai pg_dump.exe
+        // sama sekali, lihat dumpPgsqlViaPdo() utk penjelasan lengkap.
+        // Server ONLINE (Linux) tidak terpengaruh - lanjut ke kode pg_dump
+        // asli di bawah persis seperti sebelumnya (permintaan eksplisit
+        // user 2026-09-26: perubahan ini tidak boleh mempengaruhi aplikasi
+        // online yang pg_dump-nya sudah berjalan normal).
+        if (PHP_OS_FAMILY === 'Windows') {
+            return $this->dumpPgsqlViaPdo();
+        }
+
         $c = config('database.connections.pgsql');
 
         $binary = $this->resolveBinary(
@@ -375,6 +385,143 @@ class BackupService
     private function kutipArgumenWindows(string $nilai): string
     {
         return '"'.str_replace('"', '""', $nilai).'"';
+    }
+
+    /**
+     * Dump database PostgreSQL manual lewat PDO (TANPA binary pg_dump.exe
+     * sama sekali) - KHUSUS dipakai di Windows, lihat percabangan di
+     * dumpPgsql() di atas.
+     *
+     * Round 28 (2026-09-26) - menggantikan pendekatan pg_dump.exe dari
+     * round 27/27b-27h yang SELALU gagal ("could not generate restrict
+     * key") di komputer user walau sudah 8 kali dicoba diperbaiki (ganti
+     * binary, restrict-key manual sendiri, redirect output ke file, dst -
+     * bahkan "pg_dump --version" polos pun berhasil, tapi dump asli tetap
+     * gagal). Akar masalahnya: pg_dump 18+ (proteksi CVE-2025-8714)
+     * men-generate "restrict key" acak lewat Windows CryptoAPI, dan di
+     * komputer ini proses tsb gagal saat dipanggil lewat PHP (walau
+     * berhasil kalau dijalankan manual dari Command Prompt) - di luar
+     * kendali kode aplikasi, jadi diputuskan (via AskUserQuestion,
+     * 2026-09-26) utk berhenti mengandalkan pg_dump.exe di Windows sama
+     * sekali & gantikan dgn dump manual spt ini.
+     *
+     * Server ONLINE (Linux) TIDAK terpengaruh sama sekali - tetap memakai
+     * pg_dump.exe asli via dumpPgsql() (permintaan eksplisit user,
+     * 2026-09-26: "kalau ganti metode berpengaruh tidak antara aplikasi
+     * online dan aplikasi lokal nya" - jawaban: TIDAK, hanya Windows yang
+     * kena percabangan ini).
+     *
+     * Cakupan: struktur tabel (kolom, tipe data, default, nullable),
+     * primary key/unique/check constraint & index (lewat pg_get_constraintdef/
+     * pg_indexes - Postgres sendiri yg menghasilkan teks SQL-nya, bukan
+     * disusun manual, supaya presisi), sequence (termasuk nilai
+     * berjalannya), foreign key (ditambahkan di paling akhir stlh semua
+     * tabel ada, supaya urutan antar tabel tidak jadi masalah), & seluruh
+     * data lewat INSERT. TIDAK mencakup view/function/trigger/custom type/
+     * extension - dicek 2026-09-26 lewat seluruh file migration, aplikasi
+     * ini TIDAK memakai satu pun dari itu (murni tabel biasa), jadi aman.
+     */
+    protected function dumpPgsqlViaPdo(): string
+    {
+        $pdo = DB::connection()->getPdo();
+        $skema = 'public';
+        $sql = '-- PostgreSQL dump manual lewat PDO (BackupService, khusus Windows) - '.now()->toDateTimeString()."\n\n";
+        $sql .= "SET statement_timeout = 0;\nSET client_encoding = 'UTF8';\n\n";
+
+        // 1. Sequence dulu (supaya bisa dirujuk kolom DEFAULT nextval() di tabel)
+        $sequences = $pdo->query("
+            SELECT sequencename, start_value, increment_by, min_value, max_value, cache_size, cycle, last_value
+            FROM pg_sequences WHERE schemaname = '{$skema}'
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($sequences as $s) {
+            $sql .= "CREATE SEQUENCE IF NOT EXISTS \"{$s['sequencename']}\" START WITH {$s['start_value']} INCREMENT BY {$s['increment_by']} MINVALUE {$s['min_value']} MAXVALUE {$s['max_value']} CACHE {$s['cache_size']}".($s['cycle'] ? ' CYCLE' : '').";\n";
+        }
+        $sql .= "\n";
+
+        // 2. Tabel satu per satu: struktur -> constraint (kecuali FK) -> index -> data
+        $tabel = $pdo->query("SELECT tablename FROM pg_tables WHERE schemaname = '{$skema}' ORDER BY tablename")->fetchAll(PDO::FETCH_COLUMN);
+
+        $semuaFk = [];
+
+        foreach ($tabel as $namaTabel) {
+            $kolom = $pdo->query('
+                SELECT column_name, udt_name, character_maximum_length, numeric_precision, numeric_scale, is_nullable, column_default
+                FROM information_schema.columns
+                WHERE table_schema = '.$pdo->quote($skema).' AND table_name = '.$pdo->quote($namaTabel).'
+                ORDER BY ordinal_position
+            ')->fetchAll(PDO::FETCH_ASSOC);
+
+            $definisiKolom = [];
+            foreach ($kolom as $k) {
+                $baris = "\"{$k['column_name']}\" ".$this->tipeKolomSql($k);
+                if ($k['column_default'] !== null) {
+                    $baris .= ' DEFAULT '.$k['column_default'];
+                }
+                if ($k['is_nullable'] === 'NO') {
+                    $baris .= ' NOT NULL';
+                }
+                $definisiKolom[] = $baris;
+            }
+
+            $sql .= "CREATE TABLE \"{$namaTabel}\" (\n    ".implode(",\n    ", $definisiKolom)."\n);\n\n";
+
+            $constraints = $pdo->query('SELECT conname, contype, pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conrelid = '.$pdo->quote('"'.$namaTabel.'"').'::regclass')->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($constraints as $con) {
+                if ($con['contype'] === 'f') {
+                    $semuaFk[] = "ALTER TABLE \"{$namaTabel}\" ADD CONSTRAINT \"{$con['conname']}\" {$con['def']};";
+
+                    continue;
+                }
+
+                $sql .= "ALTER TABLE \"{$namaTabel}\" ADD CONSTRAINT \"{$con['conname']}\" {$con['def']};\n";
+            }
+            $sql .= "\n";
+
+            $namaConstraint = array_column($constraints, 'conname');
+            $indexes = $pdo->query('SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = '.$pdo->quote($skema).' AND tablename = '.$pdo->quote($namaTabel))->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($indexes as $idx) {
+                if (in_array($idx['indexname'], $namaConstraint, true)) {
+                    continue;
+                }
+
+                $sql .= $idx['indexdef'].";\n";
+            }
+            $sql .= "\n";
+
+            $baris = $pdo->query("SELECT * FROM \"{$namaTabel}\"")->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($baris as $row) {
+                $namaKolom = array_keys($row);
+                $nilai = array_map(fn ($v) => $v === null ? 'NULL' : $pdo->quote((string) $v), $row);
+                $sql .= "INSERT INTO \"{$namaTabel}\" (\"".implode('","', $namaKolom).'") VALUES ('.implode(',', $nilai).");\n";
+            }
+            $sql .= "\n";
+        }
+
+        // 3. Foreign key di paling akhir (semua tabel sudah pasti ada)
+        if ($semuaFk !== []) {
+            $sql .= implode("\n", $semuaFk)."\n\n";
+        }
+
+        // 4. Samakan posisi sequence dgn nilai terakhirnya (supaya nextval() berikutnya tidak bentrok dgn data yg baru di-restore)
+        foreach ($sequences as $s) {
+            $nilaiTerakhir = $s['last_value'] ?? $s['start_value'];
+            $sql .= "SELECT setval('\"{$s['sequencename']}\"', {$nilaiTerakhir}, true);\n";
+        }
+
+        return $sql;
+    }
+
+    /** @param  array<string, mixed>  $k  Satu baris hasil query information_schema.columns. */
+    private function tipeKolomSql(array $k): string
+    {
+        return match (true) {
+            in_array($k['udt_name'], ['varchar', 'bpchar'], true) && $k['character_maximum_length'] !== null => "{$k['udt_name']}({$k['character_maximum_length']})",
+            $k['udt_name'] === 'numeric' && $k['numeric_precision'] !== null => "numeric({$k['numeric_precision']},{$k['numeric_scale']})",
+            default => $k['udt_name'],
+        };
     }
 
     protected function dumpMysql(): string

@@ -36,6 +36,8 @@ class Index extends Component
 
     public string $username = '';
 
+    public string $email = '';
+
     public string $password = '';
 
     public string $level_akses = '';
@@ -96,6 +98,7 @@ class Index extends Component
 
         $this->editingId = $user->id;
         $this->username = $user->username;
+        $this->email = (string) $user->email;
         $this->password = '';
         $this->level_akses = $user->level_akses;
         $this->profil_sekolah_id = $user->profil_sekolah_id;
@@ -106,7 +109,7 @@ class Index extends Component
 
     public function resetForm(): void
     {
-        $this->reset(['editingId', 'username', 'password', 'level_akses', 'profil_sekolah_id', 'jabatan']);
+        $this->reset(['editingId', 'username', 'email', 'password', 'level_akses', 'profil_sekolah_id', 'jabatan']);
         $this->resetErrorBag();
     }
 
@@ -137,6 +140,18 @@ class Index extends Component
                 'nullable',
                 Rule::exists('profil_sekolah', 'id'),
             ],
+            // Email KHUSUS dikumpulkan lewat field terpisah utk Superadmin
+            // (username Superadmin adalah string 'superadmin', bukan email -
+            // lihat migration add_email_to_users_table). Utk Admin OPS/Admin
+            // BOSP, email diturunkan otomatis dari username di bawah (lihat
+            // $data['email']), karena username mereka SUDAH divalidasi wajib
+            // berupa email di atas - jadi tidak perlu field terpisah lagi di
+            // sini, konsisten dgn jalur registrasi mandiri (register.blade.php).
+            'email' => [
+                Rule::requiredIf($this->level_akses === User::LEVEL_SUPERADMIN),
+                'nullable', 'email', 'max:255',
+                Rule::unique('users', 'email')->ignore($this->editingId),
+            ],
         ];
 
         $rules['password'] = $this->editingId
@@ -162,6 +177,13 @@ class Index extends Component
 
         $data = [
             'username' => $validated['username'],
+            // Admin OPS/Admin BOSP: email = username (username mereka SUDAH
+            // wajib berupa email dari validasi di atas) - dibuat otomatis di
+            // sini SUPAYA akun yg ditambahkan Superadmin langsung lewat menu
+            // ini (bukan lewat registrasi mandiri) tetap bisa lolos gerbang
+            // Verifikasi Akses, konsisten dgn register.blade.php.
+            // Superadmin: pakai nilai field Email terpisah di atas.
+            'email' => $butuhSekolah ? $validated['username'] : ($validated['email'] ?? null),
             'level_akses' => $validated['level_akses'],
             'profil_sekolah_id' => $butuhSekolah ? $validated['profil_sekolah_id'] : null,
             'nama_sekolah' => $butuhSekolah
