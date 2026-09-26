@@ -228,6 +228,13 @@ new #[Layout('layouts.guest')] class extends Component
                 <x-primary-button>Lanjutkan</x-primary-button>
             </div>
         </form>
+
+        <div class="mt-4 text-center">
+            <a href="{{ route('register') }}" wire:navigate class="inline-flex items-center gap-1.5 text-sm text-[color:var(--warna-huruf-login)] hover:text-slate-700 underline">
+                <x-icon name="user-plus" class="w-4 h-4" />
+                Registrasi Admin OPS / Admin BOSP
+            </a>
+        </div>
     @else
         <div class="mb-6 text-center">
             <h1 class="text-lg font-semibold text-[color:var(--warna-huruf-login)]">Verifikasi Token</h1>
