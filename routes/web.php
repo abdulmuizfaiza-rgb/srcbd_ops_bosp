@@ -13,6 +13,7 @@ use App\Livewire\Backup\Index as BackupIndex;
 use App\Livewire\Beranda\Index as BerandaIndex;
 use App\Livewire\Dashboard\Index as DashboardIndex;
 use App\Livewire\PanduanAplikasi\Index as PanduanAplikasiIndex;
+use App\Livewire\Pengumuman\Index as PengumumanIndex;
 use App\Livewire\PendataanBosp\BelanjaHonorKegiatan\Index as BelanjaHonorKegiatanIndex;
 use App\Livewire\PendataanBosp\BelanjaPemeliharaanBangunan\Index as BelanjaPemeliharaanBangunanIndex;
 use App\Livewire\PendataanBosp\BelanjaPemeliharaanPc\Index as BelanjaPemeliharaanPcIndex;
@@ -145,6 +146,13 @@ Route::middleware(['auth', 'can:akses-panduan-aplikasi'])->group(function () {
 Route::middleware(['auth', 'can:akses-backup'])->group(function () {
     Route::get('backup', BackupIndex::class)->name('backup.index');
     Route::get('backup/{backup}/unduh', [BackupFileController::class, 'unduh'])->name('backup.unduh');
+});
+
+// Menu "Pengumuman" (BARU, 2026-09-26, permintaan user - running text di
+// landing page) - HANYA Superadmin (Gate 'akses-pengumuman', lihat
+// App\Providers\AppServiceProvider).
+Route::middleware(['auth', 'can:akses-pengumuman'])->group(function () {
+    Route::get('pengumuman', PengumumanIndex::class)->name('pengumuman.index');
 });
 
 require __DIR__.'/auth.php';

@@ -78,5 +78,9 @@ class AppServiceProvider extends ServiceProvider
         // tahun, khusus Superadmin", sama seperti pola gate-gate lain di
         // atas.
         Gate::define('akses-backup', fn (User $user) => $user->isSuperadmin());
+
+        // Menu Pengumuman (permintaan user 2026-09-26) - khusus Superadmin,
+        // sama seperti pola gate-gate lain di atas.
+        Gate::define('akses-pengumuman', fn (User $user) => $user->isSuperadmin());
     }
 }

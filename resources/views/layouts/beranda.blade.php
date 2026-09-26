@@ -40,6 +40,27 @@
                 --font-halaman: '{{ $tampilanHalaman->jenis_huruf_halaman }}', sans-serif;
                 --ukuran-halaman: {{ $tampilanHalaman->ukuran_huruf_halaman_px }};
             }
+
+            /*
+             * Animasi teks berjalan (marquee) untuk pengumuman aktif
+             * (permintaan user 2026-09-26) - SENGAJA disalin persis dari
+             * resources/views/layouts/app.blade.php (bukan
+             * @keyframes/class baru), supaya layout INI (dipakai
+             * halaman publik "beranda", TERPISAH dari layouts/app.blade.php
+             * yang dipakai halaman setelah login) tidak perlu ikut
+             * memuat file itu. Ditaruh inline (bukan
+             * resources/css/app.css) dengan alasan yang SAMA seperti di
+             * app.blade.php: tidak perlu "npm run build" ulang.
+             */
+            @keyframes infoTimelineMarquee {
+                0%   { transform: translateX(100%); }
+                100% { transform: translateX(-100%); }
+            }
+            .animate-info-timeline-marquee {
+                display: inline-block;
+                white-space: nowrap;
+                animation: infoTimelineMarquee 16s linear infinite;
+            }
         </style>
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -53,12 +74,75 @@
                 <div class="absolute -bottom-32 left-1/3 h-96 w-96 rounded-full bg-indigo-500/20 blur-3xl animate-blob-c"></div>
             </div>
 
-            {{-- Bar atas: logo + nama aplikasi (kiri), tombol Masuk (kanan atas) --}}
-            <div class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between gap-4 animate-fade-in-down">
+            {{--
+                Pengumuman aktif (permintaan user 2026-09-26) - diambil
+                LANGSUNG di sini via @php (pola yang sama dgn
+                $tampilanHalaman di atas), karena layout ini ada di LUAR
+                komponen Livewire Beranda\Index (bar atas ini dipakai di
+                semua halaman berlayout "beranda", bukan cuma di dalam
+                $slot). Kalau lebih dari satu pengumuman aktif bersamaan
+                (tanggal hari ini ada di antara Tanggal Aktif & Tanggal
+                Non Aktif masing-masing - lihat
+                App\Models\Pengumuman::scopeAktifSaatIni()), SEMUA
+                digabung jadi satu teks berjalan yang sama (dipisah "•"),
+                bukan cuma yang terbaru - sesuai jawaban AskUserQuestion.
+                Klik teks berjalan membuka 1 modal berisi Judul + Isi
+                LENGKAP semua pengumuman yang sedang aktif (bukan
+                mencoba mendeteksi kata mana yang diklik saat teks
+                sedang bergerak - tidak memungkinkan secara teknis).
+                Animasi teks berjalan (.animate-info-timeline-marquee)
+                memakai ULANG class yang SUDAH ADA di
+                resources/views/layouts/app.blade.php (info Timeline
+                Pekerjaan), bukan bikin keyframe baru.
+            --}}
+            @php($pengumumanAktif = \App\Models\Pengumuman::aktifSaatIni()->get())
+
+            {{-- Bar atas: logo + nama aplikasi (kiri), pengumuman berjalan (tengah, kalau ada), tombol Masuk (kanan atas) --}}
+            <div class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between gap-3 sm:gap-4 animate-fade-in-down">
                 <a href="{{ route('beranda') }}" wire:navigate class="flex items-center gap-2.5 min-w-0">
                     <x-application-logo class="w-9 h-9 shrink-0 fill-current text-blue-300 drop-shadow animate-float-logo" />
                     <span class="text-white font-semibold text-sm sm:text-base truncate">Aplikasi OPS_BOSP SR CBD</span>
                 </a>
+
+                @if ($pengumumanAktif->isNotEmpty())
+                    <div x-data="{ tampilDetailPengumuman: false }" class="flex-1 min-w-0">
+                        <button type="button" @click="tampilDetailPengumuman = true"
+                            class="w-full overflow-hidden rounded-lg border border-amber-300/40 bg-gradient-to-r from-amber-400/90 via-orange-400/90 to-rose-400/90 px-3 py-2 text-left hover:brightness-110 transition">
+                            <span class="animate-info-timeline-marquee inline-block text-xs sm:text-sm font-semibold text-white drop-shadow-sm">
+                                @foreach ($pengumumanAktif as $p)
+                                    📢 {{ $p->judul }}&nbsp;&nbsp;&nbsp;•&nbsp;&nbsp;&nbsp;
+                                @endforeach
+                            </span>
+                        </button>
+
+                        {{-- Modal detail (klik teks berjalan untuk membuka) --}}
+                        <div x-show="tampilDetailPengumuman" x-cloak style="display: none"
+                            class="fixed inset-0 z-[80] flex items-center justify-center px-4"
+                            x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                            x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+                            <div class="fixed inset-0 bg-slate-900/60" @click="tampilDetailPengumuman = false"></div>
+
+                            <div class="relative w-full max-w-lg max-h-[80vh] overflow-y-auto scrollbar-modern rounded-xl bg-white p-6 shadow-2xl">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="text-lg font-semibold text-slate-900">Pengumuman</h3>
+                                    <button type="button" @click="tampilDetailPengumuman = false" class="text-slate-400 hover:text-slate-600">
+                                        <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                                    </button>
+                                </div>
+
+                                <div class="space-y-5">
+                                    @foreach ($pengumumanAktif as $p)
+                                        <div class="{{ ! $loop->last ? 'pb-5 border-b border-slate-100' : '' }}">
+                                            <h4 class="font-semibold text-slate-800">{{ $p->judul }}</h4>
+                                            <p class="text-xs text-slate-400 mt-0.5">{{ $p->tanggal_aktif->translatedFormat('d F Y') }} - {{ $p->tanggal_nonaktif->translatedFormat('d F Y') }}</p>
+                                            <p class="text-sm text-slate-600 mt-2 whitespace-pre-line">{{ $p->isi }}</p>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
 
                 <a href="{{ route('verifikasi-akses') }}" wire:navigate
                     class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md ring-1 ring-white/30 text-white text-sm font-semibold transition shadow-lg">

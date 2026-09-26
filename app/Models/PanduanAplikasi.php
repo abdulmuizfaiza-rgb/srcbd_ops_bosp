@@ -48,7 +48,7 @@ class PanduanAplikasi extends Model
      *
      * @var list<string>
      */
-    public const EKSTENSI_DIIZINKAN = ['pdf', 'zip', 'rar', 'doc', 'docx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg', 'html'];
+    public const EKSTENSI_DIIZINKAN = ['pdf', 'zip', 'rar', 'doc', 'docx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg', 'html', 'md'];
 
     /** Ukuran maksimal file yang diupload dalam KILOBYTE (dipakai aturan validasi Livewire "max:") - "maksimal 20 mb" permintaan user. */
     public const UKURAN_MAKS_KB = 20 * 1024;

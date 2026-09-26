@@ -239,6 +239,12 @@ new class extends Component
                         {{ __('Backup') }}
                     </x-sidebar-link>
                 @endcan
+
+                @can('akses-pengumuman')
+                    <x-sidebar-link :href="route('pengumuman.index')" :active="request()->routeIs('pengumuman.*')" wire:navigate.hover>
+                        {{ __('Pengumuman') }}
+                    </x-sidebar-link>
+                @endcan
             </nav>
 
             <div class="border-t border-slate-800 px-4 py-4">
@@ -401,6 +407,12 @@ new class extends Component
             @can('akses-backup')
                 <x-sidebar-link :href="route('backup.index')" :active="request()->routeIs('backup.*')" wire:navigate.hover>
                     {{ __('Backup') }}
+                </x-sidebar-link>
+            @endcan
+
+            @can('akses-pengumuman')
+                <x-sidebar-link :href="route('pengumuman.index')" :active="request()->routeIs('pengumuman.*')" wire:navigate.hover>
+                    {{ __('Pengumuman') }}
                 </x-sidebar-link>
             @endcan
         </nav>

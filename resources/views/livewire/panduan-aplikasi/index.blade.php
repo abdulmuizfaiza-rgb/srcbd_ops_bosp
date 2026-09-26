@@ -224,7 +224,7 @@
                 <div>
                     <x-input-label for="fileBaruList" value="Tambah Upload File (boleh pilih lebih dari satu sekaligus)" />
                     <input type="file" wire:model="fileBaruList" id="fileBaruList" multiple class="block mt-2 w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200">
-                    <p class="text-xs text-slate-400 mt-1">Format: PDF, ZIP, RAR, DOC/DOCX, XLS/XLSX, PNG, JPG, HTML - maksimal 20 MB per file.</p>
+                    <p class="text-xs text-slate-400 mt-1">Format: PDF, ZIP, RAR, DOC/DOCX, XLS/XLSX, PNG, JPG, HTML, MD - maksimal 20 MB per file.</p>
                     <div wire:loading wire:target="fileBaruList" class="text-xs text-slate-400 mt-1">Mengunggah file...</div>
                     <x-input-error :messages="collect($errors->get('fileBaruList.*'))->flatten()->all()" class="mt-2" />
                 </div>
