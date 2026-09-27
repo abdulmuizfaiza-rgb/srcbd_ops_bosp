@@ -70,6 +70,18 @@ class Index extends Component
      */
     public bool $tampilkanSuksesProfilLengkap = false;
 
+    /**
+     * Konfirmasi hapus manual identitas Admin BOSP (id
+     * App\Models\PendataanBosp) per sekolah - permintaan user
+     * 2026-09-27, meniru pola App\Livewire\PendataanBosp\
+     * PajakBospReguler\Index::konfirmasiHapusBulan()/batalHapusBulan()/
+     * hapusBulan(). TIDAK ada auto-hapus-jika-kosong di menu ini krn
+     * nama/jk/status_kepegawaian/pendidikan_terakhir/no_whatsapp wajib
+     * diisi (required) sebelum simpan() bisa tersimpan, jadi baris
+     * "seluruh field kosong" tidak mungkin terjadi lewat alur normal.
+     */
+    public ?int $confirmingHapusId = null;
+
     public function mount(): void
     {
         $user = auth()->user();
@@ -207,6 +219,45 @@ class Index extends Component
         // BOSP baru saja selesai diisi, tanpa perlu F5/refresh manual.
         $this->dispatch('kelengkapan-diperbarui');
         session()->flash('status', 'Identitas Admin BOSP berhasil disimpan.');
+    }
+
+    /**
+     * Konfirmasi hapus manual SELURUH data identitas Admin BOSP 1
+     * sekolah - permintaan user 2026-09-27, meniru App\Livewire\
+     * PendataanBosp\PajakBospReguler\Index::konfirmasiHapusBulan(). $id
+     * di sini adalah id App\Models\PendataanBosp (mirip $editingId pada
+     * isi()), BUKAN profil_sekolah_id.
+     */
+    public function konfirmasiHapus(int $id): void
+    {
+        $identitas = PendataanBosp::find($id);
+
+        if (! $identitas || ! $this->bolehEdit($identitas->profil_sekolah_id)) {
+            return;
+        }
+
+        $this->confirmingHapusId = $id;
+        $this->dispatch('open-modal', 'identitas-bosp-hapus');
+    }
+
+    public function batalHapus(): void
+    {
+        $this->confirmingHapusId = null;
+        $this->dispatch('close-modal', 'identitas-bosp-hapus');
+    }
+
+    public function hapus(): void
+    {
+        $identitas = $this->confirmingHapusId ? PendataanBosp::find($this->confirmingHapusId) : null;
+
+        if ($identitas && $this->bolehEdit($identitas->profil_sekolah_id)) {
+            $identitas->delete();
+
+            session()->flash('status', 'Identitas Admin BOSP berhasil dihapus.');
+        }
+
+        $this->confirmingHapusId = null;
+        $this->dispatch('close-modal', 'identitas-bosp-hapus');
     }
 
     public function render()

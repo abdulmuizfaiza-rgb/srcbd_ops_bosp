@@ -86,6 +86,12 @@
                                             <x-icon name="pencil" class="w-3.5 h-3.5" />
                                             {{ $sekolah->identitasOps ? 'Edit' : 'Isi' }}
                                         </button>
+                                        @if ($sekolah->identitasOps)
+                                            <button wire:click="konfirmasiHapus({{ $sekolah->identitasOps->id }})" class="inline-flex items-center gap-1 text-red-600 hover:underline ml-3">
+                                                <x-icon name="trash" class="w-3.5 h-3.5" />
+                                                Hapus
+                                            </button>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty
@@ -256,6 +262,21 @@
 
             <div class="mt-6 flex justify-end">
                 <x-primary-button wire:click="tutupSuksesProfilLengkap">Mengerti</x-primary-button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- Modal Konfirmasi Hapus (identitas OPS 1 sekolah) --}}
+    <x-modal name="identitas-ops-hapus" :show="$confirmingHapusId !== null" maxWidth="md">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900">
+                Hapus seluruh data Identitas OPS ini?
+            </h2>
+            <p class="mt-1 text-sm text-slate-600">Tindakan ini tidak dapat dibatalkan - seluruh data Identitas OPS sekolah ini (termasuk Photo OPS & file SK OPS yang sudah diupload) akan dihapus.</p>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-secondary-button wire:click="batalHapus" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
+                <x-danger-button wire:click="hapus" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Hapus</x-danger-button>
             </div>
         </div>
     </x-modal>

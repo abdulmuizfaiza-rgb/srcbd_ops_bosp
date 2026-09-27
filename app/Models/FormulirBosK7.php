@@ -78,6 +78,46 @@ class FormulirBosK7 extends Model
     /** 4 pecahan keping uang logam, urutan besar->kecil sesuai gambar contoh. */
     public const NOMINAL_UANG_LOGAM = [1000, 500, 200, 100];
 
+    /**
+     * 15 field NOT NULL DEFAULT 0 (bukan nullable) yang menentukan apakah
+     * 1 baris Formulir BOS K7 dianggap "kosong total" - harus bernilai 0
+     * (BUKAN null, lihat catatan "BUG DITEMUKAN 2026-09-23" pada
+     * Livewire\PendataanBosp\FormulirBosK7\Index::simpanField()) supaya
+     * dianggap kosong. Dipakai bareng FIELD_DATA_NULL oleh
+     * semuaFieldDataKosong() (permintaan user 2026-09-27).
+     */
+    public const FIELD_DATA_NOL = [
+        'lembar_100000',
+        'lembar_50000',
+        'lembar_20000',
+        'lembar_10000',
+        'lembar_5000',
+        'lembar_2000',
+        'lembar_1000',
+        'keping_1000',
+        'keping_500',
+        'keping_200',
+        'keping_100',
+        'saldo_rekening_bank',
+        'saldo_kas_tunai_manual',
+        'jumlah_total_penerimaan_bku',
+        'jumlah_total_pengeluaran_bku',
+    ];
+
+    /**
+     * 5 field nullable (bukan NOT NULL DEFAULT 0) yang menentukan apakah 1
+     * baris Formulir BOS K7 dianggap "kosong total" - harus bernilai null
+     * untuk dianggap kosong. Dipakai bareng FIELD_DATA_NOL oleh
+     * semuaFieldDataKosong() (permintaan user 2026-09-27).
+     */
+    public const FIELD_DATA_NULL = [
+        'penjelasan_perbedaan',
+        'no_sk_kepala_sekolah',
+        'tanggal_sk_kepala_sekolah',
+        'no_sk_bendahara',
+        'tanggal_sk_bendahara',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -111,6 +151,21 @@ class FormulirBosK7 extends Model
     public function pembuat(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * true kalau SEMUA 15 field FIELD_DATA_NOL bernilai 0 DAN semua 5
+     * field FIELD_DATA_NULL bernilai null pada baris ini - dipakai supaya
+     * baris "kosong total" tidak ikut tertinggal di database (lihat
+     * Livewire\PendataanBosp\FormulirBosK7\Index::simpanField(),
+     * permintaan user 2026-09-27).
+     */
+    public function semuaFieldDataKosong(): bool
+    {
+        $semuaNol = collect(self::FIELD_DATA_NOL)->every(fn (string $field) => (int) $this->{$field} === 0);
+        $semuaNull = collect(self::FIELD_DATA_NULL)->every(fn (string $field) => $this->{$field} === null);
+
+        return $semuaNol && $semuaNull;
     }
 
     /** Nama field kolom "lembar_{nominal}" untuk 1 pecahan uang kertas. */

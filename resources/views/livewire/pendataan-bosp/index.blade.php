@@ -64,6 +64,11 @@
                                         <button wire:click="isi({{ $sekolah->id }})" class="text-blue-600 hover:underline">
                                             {{ $sekolah->identitasBosp ? 'Edit' : 'Isi' }}
                                         </button>
+                                        @if ($sekolah->identitasBosp)
+                                            <button wire:click="konfirmasiHapus({{ $sekolah->identitasBosp->id }})" class="text-red-600 hover:underline ml-3">
+                                                Hapus
+                                            </button>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty
@@ -195,6 +200,21 @@
 
             <div class="mt-6 flex justify-end">
                 <x-primary-button wire:click="tutupSuksesProfilLengkap">Mengerti</x-primary-button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- Modal Konfirmasi Hapus (identitas Admin BOSP 1 sekolah) --}}
+    <x-modal name="identitas-bosp-hapus" :show="$confirmingHapusId !== null" maxWidth="md">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900">
+                Hapus seluruh data Identitas Admin BOSP ini?
+            </h2>
+            <p class="mt-1 text-sm text-slate-600">Tindakan ini tidak dapat dibatalkan - seluruh data Identitas Admin BOSP sekolah ini akan dihapus.</p>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-secondary-button wire:click="batalHapus" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
+                <x-danger-button wire:click="hapus" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Hapus</x-danger-button>
             </div>
         </div>
     </x-modal>

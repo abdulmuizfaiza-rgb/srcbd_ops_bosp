@@ -142,6 +142,14 @@ class Index extends Component
 
     public bool $tampilSettingMargin = false;
 
+    /**
+     * Konfirmasi hapus manual surat aktif (sekolah+tahun+triwulan+jenis
+     * tab) - permintaan user 2026-09-27, meniru pola
+     * App\Livewire\PendataanBosp\PajakBospReguler\Index::
+     * konfirmasiHapusBulan()/batalHapusBulan()/hapusBulan().
+     */
+    public bool $confirmingHapusSurat = false;
+
     public function mount(): void
     {
         $this->tahun = now()->year;
@@ -369,6 +377,64 @@ class Index extends Component
                 $field => $nilai,
             ]);
         }
+
+        // Auto-hapus baris "kosong" sisa auto-save per keystroke (mis.
+        // user isi lalu hapus lagi seluruh Nomor Surat/Tahun Pelajaran/
+        // Tanggal Surat) - permintaan user 2026-09-27, supaya baris tsb
+        // tidak nyangkut sbg baris "kosong" di laporan/cek kecocokan data.
+        $suratTerbaru = SuratTpg::where('profil_sekolah_id', $sekolahId)
+            ->where('tahun', $this->tahun)
+            ->where('triwulan', $this->triwulan)
+            ->where('jenis', $this->tabAktif)
+            ->first();
+
+        if ($suratTerbaru && $suratTerbaru->semuaFieldDataKosong()) {
+            $suratTerbaru->delete();
+        }
+    }
+
+    /**
+     * Konfirmasi hapus manual SELURUH data surat aktif (sekolah+tahun+
+     * triwulan+jenis tab yang sedang dibuka) - permintaan user
+     * 2026-09-27, meniru App\Livewire\PendataanBosp\PajakBospReguler\
+     * Index::konfirmasiHapusBulan().
+     */
+    public function konfirmasiHapusSurat(): void
+    {
+        $sekolahId = $this->sekolahAktifId();
+
+        if (! $sekolahId || ! $this->bolehKelola($sekolahId)) {
+            return;
+        }
+
+        $this->confirmingHapusSurat = true;
+        $this->dispatch('open-modal', 'surat-tpg-hapus');
+    }
+
+    public function batalHapusSurat(): void
+    {
+        $this->confirmingHapusSurat = false;
+        $this->dispatch('close-modal', 'surat-tpg-hapus');
+    }
+
+    public function hapusSurat(): void
+    {
+        $sekolahId = $this->sekolahAktifId();
+
+        if ($sekolahId && $this->bolehKelola($sekolahId)) {
+            SuratTpg::where('profil_sekolah_id', $sekolahId)
+                ->where('tahun', $this->tahun)
+                ->where('triwulan', $this->triwulan)
+                ->where('jenis', $this->tabAktif)
+                ->delete();
+
+            $this->muatSurat();
+
+            session()->flash('status', 'Data surat berhasil dihapus.');
+        }
+
+        $this->confirmingHapusSurat = false;
+        $this->dispatch('close-modal', 'surat-tpg-hapus');
     }
 
     /**

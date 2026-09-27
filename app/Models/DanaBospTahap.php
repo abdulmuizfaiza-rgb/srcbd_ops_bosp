@@ -106,6 +106,42 @@ class DanaBospTahap extends Model
     ];
 
     /**
+     * Seluruh field "data" (23 kolom) yang menentukan apakah 1 baris
+     * Dana BOSP Tahap dianggap "kosong total" - dipakai oleh
+     * semuaFieldDataKosong() untuk auto-hapus baris begitu SEMUA field ini
+     * kembali null (permintaan user 2026-09-27: baris kosong yang
+     * tertinggal di database tidak boleh ikut terhitung sebagai "sekolah
+     * ini sudah punya data"). SENGAJA TIDAK termasuk profil_sekolah_id,
+     * tahun, created_by, maupun timestamp - itu bukan field data, selalu
+     * terisi selama baris ada.
+     */
+    public const FIELD_DATA = [
+        'saldo_bosp_tahun_sebelumnya',
+        'jumlah_siswa',
+        'jumlah_dana_bosp_per_tahun',
+        'total_penerimaan_setahun',
+        'penerimaan_tahap_1',
+        'penerimaan_tahap_2',
+        'saldo_bosp_tw4_tahun_sebelumnya',
+        'tarik_tunai_tw1',
+        'tarik_tunai_tw2',
+        'tarik_tunai_tw3',
+        'tarik_tunai_tw4',
+        'saldo_kas_bank_tw1',
+        'saldo_kas_bank_tw2',
+        'saldo_kas_bank_tw3',
+        'saldo_kas_bank_tw4',
+        'saldo_kas_tunai_tw1',
+        'saldo_kas_tunai_tw2',
+        'saldo_kas_tunai_tw3',
+        'saldo_kas_tunai_tw4',
+        'saldo_tw1',
+        'saldo_tw2',
+        'saldo_tw3',
+        'saldo_tw4',
+    ];
+
+    /**
      * Label field Tab 2 yang berdiri sendiri (bukan bagian grup TW 1-4) -
      * dipakai pada form vertikal Admin BOSP maupun blok vertikal per
      * sekolah (expand) milik Superadmin. Grup TW 1-4 (Tarik Tunai + Saldo
@@ -158,6 +194,17 @@ class DanaBospTahap extends Model
     public static function hitungSaldoTw(?int $saldoKasBank, ?int $saldoKasTunai): int
     {
         return (int) $saldoKasBank + (int) $saldoKasTunai;
+    }
+
+    /**
+     * true kalau SEMUA 23 field data (FIELD_DATA) pada baris ini null -
+     * dipakai supaya baris "kosong total" tidak ikut tertinggal di
+     * database (lihat Livewire\PendataanBosp\DanaBospTahap\Index::updated(),
+     * permintaan user 2026-09-27).
+     */
+    public function semuaFieldDataKosong(): bool
+    {
+        return collect(self::FIELD_DATA)->every(fn (string $field) => $this->{$field} === null);
     }
 
     protected function casts(): array

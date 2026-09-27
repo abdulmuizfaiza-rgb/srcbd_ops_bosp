@@ -82,6 +82,14 @@ class Index extends Component
      */
     public array $revisiBaris = [];
 
+    /**
+     * ID sekolah (profil_sekolah_id) yang sedang dikonfirmasi untuk
+     * dihapus SELURUH baris Dana BOSP Tahap-nya (tahun aktif) - lihat
+     * konfirmasiHapus()/hapus(), pola sama seperti
+     * PajakBospReguler::$confirmingHapusBulan.
+     */
+    public ?int $confirmingHapusSekolah = null;
+
     public function mount(): void
     {
         $this->tahun = now()->year;
@@ -249,12 +257,69 @@ class Index extends Component
             $data["saldo_tw{$tw}"] = DanaBospTahap::hitungSaldoTw($kasBank, $kasTunai);
         }
 
-        DanaBospTahap::updateOrCreate(
+        $baris = DanaBospTahap::updateOrCreate(
             ['profil_sekolah_id' => $sekolahId, 'tahun' => $this->tahun],
             array_merge($data, ['created_by' => auth()->id()])
         );
 
+        // Baris "kosong total" (semua 23 field data kembali null - mis.
+        // user sempat mengetik lalu menghapus lagi) tidak boleh ikut
+        // tertinggal di database, karena masih terhitung "sekolah ini
+        // sudah punya data" pada laporan/pengecekan konsistensi lain
+        // (permintaan user 2026-09-27).
+        if ($baris->semuaFieldDataKosong()) {
+            $baris->delete();
+        }
+
         $this->revisiBaris[$sekolahId] = ($this->revisiBaris[$sekolahId] ?? 0) + 1;
+    }
+
+    /**
+     * Konfirmasi hapus SELURUH baris Dana BOSP Tahap sekolah aktif+tahun
+     * aktif (Delete penuh, bukan cuma mengosongkan 1 kotak) - menyediakan
+     * operasi "Delete" yang eksplisit selain auto-hapus baris kosong di
+     * atas, mengikuti pola PajakBospReguler::konfirmasiHapusBulan().
+     */
+    public function konfirmasiHapus(int $sekolahId): void
+    {
+        if (! $this->bolehEdit($sekolahId)) {
+            return;
+        }
+
+        $this->confirmingHapusSekolah = $sekolahId;
+        $this->dispatch('open-modal', 'dana-bosp-tahap-hapus');
+    }
+
+    public function batalHapus(): void
+    {
+        $this->confirmingHapusSekolah = null;
+        $this->dispatch('close-modal', 'dana-bosp-tahap-hapus');
+    }
+
+    public function hapus(): void
+    {
+        $sekolahId = $this->confirmingHapusSekolah;
+
+        if ($sekolahId && $this->bolehEdit($sekolahId)) {
+            DanaBospTahap::where('profil_sekolah_id', $sekolahId)
+                ->where('tahun', $this->tahun)
+                ->delete();
+
+            // Dana BOSP Tahap kosong -> Rekap RKAS ikut terhapus (aturan
+            // sama seperti updated() di atas, permintaan user 2026-09-26)
+            // - dijaga konsisten di sini supaya hapus manual juga
+            // membersihkan Rekap RKAS terkait, bukan hanya lewat
+            // pengosongan kotak Jumlah Siswa/Jumlah Dana BOSP Per Tahun.
+            RekapRkas::where('profil_sekolah_id', $sekolahId)
+                ->where('tahun', $this->tahun)
+                ->delete();
+
+            $this->revisiBaris[$sekolahId] = ($this->revisiBaris[$sekolahId] ?? 0) + 1;
+            session()->flash('status', 'Data Dana BOSP Tahap sekolah ini berhasil dihapus.');
+        }
+
+        $this->confirmingHapusSekolah = null;
+        $this->dispatch('close-modal', 'dana-bosp-tahap-hapus');
     }
 
     public function render()

@@ -119,6 +119,14 @@
                                 <x-icon name="download" class="w-3.5 h-3.5 mr-1" />
                                 PDF
                             </x-secondary-button>
+
+                            {{-- Hapus seluruh data Formulir BOS K7 bulan yang sedang
+                                 ditampilkan (sekolah+tahun aktif) - lihat
+                                 Index::konfirmasiHapusBulan(). --}}
+                            <button type="button" wire:click="konfirmasiHapusBulan" @disabled($terkunciTriwulanIni) class="inline-flex items-center px-2.5 py-1.5 bg-white border border-red-300 rounded-md font-semibold text-[10px] text-red-600 uppercase tracking-widest shadow-sm hover:bg-red-50 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed">
+                                <x-icon name="trash" class="w-3.5 h-3.5 mr-1" />
+                                Hapus
+                            </button>
                         </div>
                     </div>
 
@@ -523,4 +531,19 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal Konfirmasi Hapus (seluruh data Formulir BOS K7 bulan aktif) --}}
+    <x-modal name="formulir-bos-k7-hapus" :show="$confirmingHapusBulan !== null" maxWidth="md">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900">
+                Hapus seluruh data Formulir BOS K7 bulan {{ $confirmingHapusBulan ? (\App\Models\FormulirBosK7::BULAN_OPTIONS[$confirmingHapusBulan] ?? '') : '' }}?
+            </h2>
+            <p class="mt-1 text-sm text-slate-600">Tindakan ini tidak dapat dibatalkan - seluruh data Register Penutupan Kas (K7b) dan Berita Acara Pemeriksaan Kas (K7c) bulan ini akan dikosongkan kembali.</p>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-secondary-button wire:click="batalHapusBulan" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
+                <x-danger-button wire:click="hapusBulan" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Hapus</x-danger-button>
+            </div>
+        </div>
+    </x-modal>
 </div>

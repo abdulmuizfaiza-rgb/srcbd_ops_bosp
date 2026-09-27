@@ -87,6 +87,13 @@ class Index extends Component
     /** Dinaikkan setiap kali ada input yang ditolak validasi - bagian wire:key kotak (wire:ignore). */
     public int $revisiBaris = 0;
 
+    /**
+     * Bulan (1-12) yang sedang dikonfirmasi untuk dihapus datanya (sekolah
+     * & tahun aktif) - lihat konfirmasiHapusBulan()/hapusBulan(), pola
+     * sama seperti PajakBospReguler::$confirmingHapusBulan.
+     */
+    public ?int $confirmingHapusBulan = null;
+
     public ?string $errorExport = null;
 
     /**
@@ -366,7 +373,65 @@ class Index extends Component
             ]);
         }
 
+        // Baris "kosong total" (semua field data kembali ke default -
+        // mis. user sempat mengetik lalu menghapus lagi) tidak boleh ikut
+        // tertinggal di database, karena masih terhitung "sekolah ini
+        // sudah punya data" pada laporan/pengecekan konsistensi lain
+        // (permintaan user 2026-09-27).
+        $barisTerbaru = FormulirBosK7::where('profil_sekolah_id', $sekolahId)
+            ->where('tahun', $this->tahun)
+            ->where('bulan', $this->bulan)
+            ->first();
+
+        if ($barisTerbaru && $barisTerbaru->semuaFieldDataKosong()) {
+            $barisTerbaru->delete();
+        }
+
         $this->revisiBaris++;
+    }
+
+    /**
+     * Konfirmasi hapus SELURUH data Formulir BOS K7 bulan aktif (Delete
+     * penuh, bukan cuma mengosongkan 1 kotak) untuk sekolah aktif+tahun
+     * aktif - mengikuti pola PajakBospReguler::konfirmasiHapusBulan().
+     */
+    public function konfirmasiHapusBulan(): void
+    {
+        $sekolahId = $this->sekolahAktifId();
+
+        if (! $sekolahId || ! $this->bolehKelola($sekolahId)) {
+            return;
+        }
+
+        $this->confirmingHapusBulan = $this->bulan;
+        $this->dispatch('open-modal', 'formulir-bos-k7-hapus');
+    }
+
+    public function batalHapusBulan(): void
+    {
+        $this->confirmingHapusBulan = null;
+        $this->dispatch('close-modal', 'formulir-bos-k7-hapus');
+    }
+
+    public function hapusBulan(): void
+    {
+        $sekolahId = $this->sekolahAktifId();
+        $bulan = $this->confirmingHapusBulan;
+
+        if ($sekolahId && $bulan && $this->bolehKelola($sekolahId)) {
+            $this->abortJikaTerkunciVerval($sekolahId, $this->tahun, PajakBospReguler::triwulanDariBulan($bulan));
+
+            FormulirBosK7::where('profil_sekolah_id', $sekolahId)
+                ->where('tahun', $this->tahun)
+                ->where('bulan', $bulan)
+                ->delete();
+
+            $this->revisiBaris++;
+            session()->flash('status', 'Data Formulir BOS K7 bulan '.(FormulirBosK7::BULAN_OPTIONS[$bulan] ?? $bulan).' berhasil dihapus.');
+        }
+
+        $this->confirmingHapusBulan = null;
+        $this->dispatch('close-modal', 'formulir-bos-k7-hapus');
     }
 
     /**

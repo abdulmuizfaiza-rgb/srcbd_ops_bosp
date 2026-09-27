@@ -127,6 +127,13 @@
                                 <x-icon name="download" class="w-3.5 h-3.5 mr-1" />
                                 Unduh Word
                             </x-secondary-button>
+
+                            @if ($sekolah)
+                                <button type="button" wire:click="konfirmasiHapusSurat" class="inline-flex items-center px-2.5 py-1.5 bg-white border border-red-300 rounded-md font-semibold text-[10px] text-red-600 uppercase tracking-widest shadow-sm hover:bg-red-50 whitespace-nowrap">
+                                    <x-icon name="trash" class="w-3.5 h-3.5 mr-1" />
+                                    Hapus
+                                </button>
+                            @endif
                         </div>
                     </div>
 
@@ -198,4 +205,19 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal Konfirmasi Hapus (surat aktif: sekolah+tahun+triwulan+jenis tab) --}}
+    <x-modal name="surat-tpg-hapus" :show="$confirmingHapusSurat" maxWidth="md">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900">
+                Hapus seluruh data surat ini?
+            </h2>
+            <p class="mt-1 text-sm text-slate-600">Tindakan ini tidak dapat dibatalkan - Nomor Surat, Tahun Pelajaran, & Tanggal Surat untuk tab, tahun, & triwulan yang sedang dibuka akan dikosongkan kembali.</p>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-secondary-button wire:click="batalHapusSurat" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
+                <x-danger-button wire:click="hapusSurat" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Hapus</x-danger-button>
+            </div>
+        </div>
+    </x-modal>
 </div>

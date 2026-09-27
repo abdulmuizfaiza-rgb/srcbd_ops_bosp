@@ -90,6 +90,18 @@ class Index extends Component
      */
     public bool $tampilkanSuksesProfilLengkap = false;
 
+    /**
+     * Konfirmasi hapus manual identitas OPS (id App\Models\PendataanOps)
+     * per sekolah - permintaan user 2026-09-27, meniru pola
+     * App\Livewire\PendataanBosp\PajakBospReguler\Index::
+     * konfirmasiHapusBulan()/batalHapusBulan()/hapusBulan(). TIDAK ada
+     * auto-hapus-jika-kosong di menu ini krn nama/jk/status_kepegawaian/
+     * pendidikan_terakhir/no_whatsapp wajib diisi (required) sebelum
+     * simpan() bisa tersimpan, jadi baris "seluruh field kosong" tidak
+     * mungkin terjadi lewat alur normal.
+     */
+    public ?int $confirmingHapusId = null;
+
     public function mount(): void
     {
         $user = auth()->user();
@@ -264,6 +276,52 @@ class Index extends Component
         // F5/refresh manual.
         $this->dispatch('kelengkapan-diperbarui');
         session()->flash('status', 'Identitas OPS berhasil disimpan.');
+    }
+
+    /**
+     * Konfirmasi hapus manual SELURUH data identitas OPS 1 sekolah -
+     * permintaan user 2026-09-27, meniru App\Livewire\PendataanBosp\
+     * PajakBospReguler\Index::konfirmasiHapusBulan(). $id di sini adalah
+     * id App\Models\PendataanOps (mirip $editingId pada isi()), BUKAN
+     * profil_sekolah_id.
+     */
+    public function konfirmasiHapus(int $id): void
+    {
+        $identitas = PendataanOps::find($id);
+
+        if (! $identitas || ! $this->bolehEdit($identitas->profil_sekolah_id)) {
+            return;
+        }
+
+        $this->confirmingHapusId = $id;
+        $this->dispatch('open-modal', 'identitas-ops-hapus');
+    }
+
+    public function batalHapus(): void
+    {
+        $this->confirmingHapusId = null;
+        $this->dispatch('close-modal', 'identitas-ops-hapus');
+    }
+
+    public function hapus(): void
+    {
+        $identitas = $this->confirmingHapusId ? PendataanOps::find($this->confirmingHapusId) : null;
+
+        if ($identitas && $this->bolehEdit($identitas->profil_sekolah_id)) {
+            if ($identitas->foto_ops) {
+                Storage::disk('public')->delete($identitas->foto_ops);
+            }
+            if ($identitas->sk_ops) {
+                Storage::disk('public')->delete($identitas->sk_ops);
+            }
+
+            $identitas->delete();
+
+            session()->flash('status', 'Identitas OPS berhasil dihapus.');
+        }
+
+        $this->confirmingHapusId = null;
+        $this->dispatch('close-modal', 'identitas-ops-hapus');
     }
 
     /**

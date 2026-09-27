@@ -52,6 +52,15 @@ class SuratTpg extends Model
 
     public const JENIS_PERNYATAAN = 'pernyataan';
 
+    /**
+     * Daftar kolom "data" surat_tpg - dipakai semuaFieldDataKosong() utk
+     * mendeteksi baris yang seluruh field datanya sudah kosong (mis.
+     * user isi lalu hapus lagi lewat auto-save per keystroke), supaya
+     * baris tsb otomatis dihapus & tidak nyangkut sbg baris "kosong" di
+     * laporan/cek kecocokan data (permintaan user 2026-09-27).
+     */
+    public const FIELD_DATA = ['nomor_surat', 'tahun_pelajaran', 'tanggal_surat'];
+
     /** Triwulan (angka) -> angka Romawi, dipakai pada teks badan surat ("Triwulan II ..."). */
     private const TRIWULAN_ROMAWI = [1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV'];
 
@@ -68,6 +77,16 @@ class SuratTpg extends Model
     public function profilSekolah(): BelongsTo
     {
         return $this->belongsTo(ProfilSekolah::class);
+    }
+
+    /**
+     * True jika SELURUH field data (FIELD_DATA) baris ini null - dipakai
+     * simpanSurat() utk auto-hapus baris "kosong" sisa auto-save per
+     * keystroke (permintaan user 2026-09-27).
+     */
+    public function semuaFieldDataKosong(): bool
+    {
+        return collect(self::FIELD_DATA)->every(fn (string $field) => $this->{$field} === null);
     }
 
     /**

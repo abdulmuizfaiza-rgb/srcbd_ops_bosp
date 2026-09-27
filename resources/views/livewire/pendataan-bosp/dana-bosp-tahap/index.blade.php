@@ -70,6 +70,7 @@
                                     <th class="px-2 py-2.5 border-2 border-blue-300 bg-yellow-100 font-bold">Total Penerimaan BOSP Setahun</th>
                                     <th class="px-2 py-2.5 border-2 border-blue-300 bg-yellow-100 font-bold">Penerimaan BOSP Tahap 1</th>
                                     <th class="px-2 py-2.5 border-2 border-blue-300 bg-yellow-100 font-bold">Penerimaan BOSP Tahap 2</th>
+                                    <th class="px-2 py-2.5 border-2 border-blue-300">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-blue-100">
@@ -104,10 +105,15 @@
                                         <td class="px-2 py-2 whitespace-nowrap text-right font-bold text-slate-700 border border-blue-100 bg-yellow-50">
                                             Rp {{ number_format((int) ($baris[$sekolah->id]['penerimaan_tahap_2'] ?? 0), 0, ',', '.') }}
                                         </td>
+                                        <td class="px-2 py-2 whitespace-nowrap text-center border border-blue-100">
+                                            <button type="button" wire:click="konfirmasiHapus({{ $sekolah->id }})" class="inline-flex items-center gap-1 text-[10px] text-red-600 hover:underline">
+                                                <x-icon name="trash" class="w-3 h-3" />Hapus
+                                            </button>
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="px-2 py-4 text-center text-slate-400">Belum ada data sekolah.</td>
+                                        <td colspan="9" class="px-2 py-4 text-center text-slate-400">Belum ada data sekolah.</td>
                                     </tr>
                                 @endforelse
 
@@ -124,6 +130,7 @@
                                         <td class="px-2 py-2 text-right border border-blue-100">Rp {{ number_format($totalTab1['total_penerimaan_setahun'] ?? 0, 0, ',', '.') }}</td>
                                         <td class="px-2 py-2 text-right border border-blue-100">Rp {{ number_format($totalTab1['penerimaan_tahap_1'] ?? 0, 0, ',', '.') }}</td>
                                         <td class="px-2 py-2 text-right border border-blue-100">Rp {{ number_format($totalTab1['penerimaan_tahap_2'] ?? 0, 0, ',', '.') }}</td>
+                                        <td class="px-2 py-2 border border-blue-100"></td>
                                     </tr>
                                 @endif
                             </tbody>
@@ -312,4 +319,19 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal Konfirmasi Hapus (seluruh baris Dana BOSP Tahap 1 sekolah, tahun aktif) --}}
+    <x-modal name="dana-bosp-tahap-hapus" :show="$confirmingHapusSekolah !== null" maxWidth="md">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900">
+                Hapus seluruh data Dana BOSP Tahap 1 &amp; 2 sekolah ini untuk tahun {{ $tahun }}?
+            </h2>
+            <p class="mt-1 text-sm text-slate-600">Tindakan ini tidak dapat dibatalkan - seluruh data Penerimaan BOSP dan Tarik Tunai BOSP sekolah ini pada tahun berjalan akan dikosongkan kembali.</p>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-secondary-button wire:click="batalHapus" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
+                <x-danger-button wire:click="hapus" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Hapus</x-danger-button>
+            </div>
+        </div>
+    </x-modal>
 </div>
