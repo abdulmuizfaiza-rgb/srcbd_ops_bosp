@@ -92,7 +92,7 @@
                                         <td class="px-3 py-2 text-slate-600">{{ $item->tahun }}</td>
                                         <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->ukuranManusiawi() ?: '-' }}</td>
                                         <td class="px-3 py-2 text-slate-600 whitespace-nowrap">
-                                            {{ $item->created_at->translatedFormat('d M Y H:i') }}
+                                            {{ $item->created_at->keWaktuLokal()->translatedFormat('d M Y H:i') }}
                                             @if ($item->dibuatOleh)
                                                 <span class="text-slate-400">oleh {{ $item->dibuatOleh->display_name }}</span>
                                             @endif

@@ -90,11 +90,11 @@
                                         <tr>
                                             <td class="px-3 py-2 text-slate-700 whitespace-nowrap">{{ $item->nama_sekolah ?: '-' }}</td>
                                             <td class="px-3 py-2 text-slate-700 whitespace-nowrap">{{ $item->email ?: '-' }}</td>
-                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->login_at?->translatedFormat('l, d F Y') }}</td>
-                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->login_at?->format('H:i:s') }}</td>
+                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->login_at?->keWaktuLokal()->translatedFormat('l, d F Y') }}</td>
+                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->login_at?->keWaktuLokal()->format('H:i:s') }}</td>
                                             <td class="px-3 py-2 text-slate-600 whitespace-nowrap">
                                                 @if ($item->logout_at)
-                                                    {{ $item->logout_at->format('H:i:s') }}
+                                                    {{ $item->logout_at->keWaktuLokal()->format('H:i:s') }}
                                                 @else
                                                     <span class="text-emerald-600 font-medium">Masih berlangsung</span>
                                                 @endif

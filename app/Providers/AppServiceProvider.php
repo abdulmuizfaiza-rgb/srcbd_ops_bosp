@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -21,6 +22,31 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Zona waktu tampilan (BARU, 2026-09-27, permintaan user "settingan
+        // jam waktu upload tidak sesuai settingan yang ada di laptop" pada
+        // menu Backup - lalu dikonfirmasi lewat AskUserQuestion berlaku utk
+        // SEMUA tampilan jam di aplikasi, bukan cuma menu Backup). Akar
+        // masalah: config('app.timezone') aplikasi ini memang 'UTC' (bukan
+        // bug - ini praktik standar, supaya data tersimpan konsisten), tapi
+        // TIDAK ADA konversi ke waktu lokal saat DITAMPILKAN ke user,
+        // sehingga jam yang tampil di layar (mis. "12:47") sebenarnya jam
+        // UTC, terpaut 7 jam dari WIB (jawaban user - Superadmin aplikasi
+        // ini berlokasi WIB). config('app.timezone') SENGAJA TIDAK diubah
+        // (data created_at/login_at/dst yang SUDAH tersimpan tetap UTC apa
+        // adanya - kalau config ini yang diubah, data LAMA justru akan
+        // salah tampil karena disangka sudah WIB) - sebagai gantinya macro
+        // Carbon baru ->keWaktuLokal() ini HANYA dipakai saat MENAMPILKAN
+        // jam ke user (dipanggil di blade view), mengonversi dari UTC
+        // (tersimpan) ke Asia/Jakarta (WIB) tanpa menyentuh data di
+        // database sama sekali. Dipakai di: menu Backup (tanggal dibuat),
+        // Cek Database dan Aplikasi (Log Login Gagal & Log Akses Data),
+        // Panduan Aplikasi (tanggal diunggah), dan Pengguna (riwayat
+        // login/logout).
+        Carbon::macro('keWaktuLokal', function () {
+            /** @var Carbon $this */
+            return $this->copy()->timezone('Asia/Jakarta');
+        });
+
         // Superadmin: kelola Pengguna, memantau Pendataan OPS/BOSP, dan menambah sekolah baru
         // di Profil Sekolah. Admin OPS: hanya Pendataan OPS. Admin BOSP: hanya Pendataan BOSP.
         // Profil Sekolah (tabel semua sekolah) bisa dilihat oleh Superadmin, Admin OPS,

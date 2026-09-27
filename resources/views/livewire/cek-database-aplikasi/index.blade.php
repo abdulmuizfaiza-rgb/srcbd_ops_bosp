@@ -98,8 +98,8 @@
                                     @forelse ($loginGagal as $item)
                                         <tr>
                                             <td class="px-3 py-2 text-slate-700 whitespace-nowrap">{{ $item->username_dicoba ?: '-' }}</td>
-                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->created_at?->translatedFormat('l, d F Y') }}</td>
-                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->created_at?->format('H:i:s') }}</td>
+                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->created_at?->keWaktuLokal()->translatedFormat('l, d F Y') }}</td>
+                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->created_at?->keWaktuLokal()->format('H:i:s') }}</td>
                                             <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->ip_address ?: '-' }}</td>
                                             <td class="px-3 py-2 text-slate-500 max-w-xs truncate" title="{{ $item->user_agent }}">{{ $item->user_agent ?: '-' }}</td>
                                         </tr>
@@ -146,8 +146,8 @@
                                         <tr>
                                             <td class="px-3 py-2 text-slate-700 whitespace-nowrap">{{ $item->username_snapshot ?: '-' }}</td>
                                             <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->level_akses_snapshot ?: '-' }}</td>
-                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->created_at?->translatedFormat('l, d F Y') }}</td>
-                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->created_at?->format('H:i:s') }}</td>
+                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->created_at?->keWaktuLokal()->translatedFormat('l, d F Y') }}</td>
+                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->created_at?->keWaktuLokal()->format('H:i:s') }}</td>
                                             <td class="px-3 py-2 whitespace-nowrap">
                                                 @if ($item->jenis_aksi === 'unduh')
                                                     <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700">Unduh</span>

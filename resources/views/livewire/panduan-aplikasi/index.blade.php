@@ -81,7 +81,7 @@
                                         <td class="px-3 py-2 font-medium text-slate-800 max-w-xs align-top">{{ $item->judul }}</td>
                                         <td class="px-3 py-2 text-slate-600 max-w-sm align-top">{{ \Illuminate\Support\Str::limit($item->deskripsi, 80) ?: '-' }}</td>
                                         <td class="px-3 py-2 text-slate-600 whitespace-nowrap align-top">{{ $item->ukuranTotalManusiawi() ?: '-' }}</td>
-                                        <td class="px-3 py-2 text-slate-600 whitespace-nowrap align-top">{{ $item->created_at->translatedFormat('d M Y') }}</td>
+                                        <td class="px-3 py-2 text-slate-600 whitespace-nowrap align-top">{{ $item->created_at->keWaktuLokal()->translatedFormat('d M Y') }}</td>
                                         <td class="px-3 py-2 text-right align-top">
                                             {{--
                                                 Round 25, poin 1: satu Judul boleh punya banyak file & link -
