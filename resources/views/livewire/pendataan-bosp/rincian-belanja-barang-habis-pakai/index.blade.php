@@ -121,9 +121,17 @@
                             </div>
 
                             <div class="flex items-center gap-1.5">
+                                <x-secondary-button wire:click="unduhPdfSemuaSekolah" wire:loading.attr="disabled" wire:target="unduhPdfSemuaSekolah" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                                    <x-icon name="printer" class="w-3.5 h-3.5 mr-1" />
+                                    Unduh PDF
+                                </x-secondary-button>
                                 <x-secondary-button wire:click="export" wire:loading.attr="disabled" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
                                     <x-icon name="download" class="w-3.5 h-3.5 mr-1" />
                                     Export Excel
+                                </x-secondary-button>
+                                <x-secondary-button wire:click="unduhExcelSemuaTriwulan" wire:loading.attr="disabled" wire:target="unduhExcelSemuaTriwulan" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                                    <x-icon name="download" class="w-3.5 h-3.5 mr-1" />
+                                    Unduh Excel 4 Triwulan
                                 </x-secondary-button>
                                 {{-- Tombol "Tambah" SENGAJA disembunyikan pada tab Stock Opname
                                      sejak permintaan user 2026-09-19 - baris Stock Opname TIDAK

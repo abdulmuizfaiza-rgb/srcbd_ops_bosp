@@ -2,7 +2,9 @@
 
 namespace App\Livewire\PendataanBosp\LaporanRealisasiBosp;
 
+use App\Exports\LaporanRealisasiBospExport;
 use App\Livewire\Concerns\HasZoomTampilan;
+use App\Models\AksesDataLog;
 use App\Models\DanaBospTahap;
 use App\Models\LaporanRealisasiBosp;
 use App\Models\ProfilSekolah;
@@ -11,7 +13,9 @@ use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Livewire\Component;
+use Maatwebsite\Excel\Facades\Excel;
 
 /**
  * Laporan Realisasi BOSP (Form BPK) - Pendataan BOSP (permintaan user
@@ -816,6 +820,94 @@ class Index extends Component
         }
 
         VervalRealisasiBosp::resetTriwulan($profilSekolahId, $this->tahun, $triwulan);
+    }
+
+    /**
+     * Unduh PDF Laporan Realisasi BOSP (Form BPK), SEMUA SEKOLAH
+     * (permintaan user 2026-09-27 poin 10) - menu ini SEBELUMNYA TIDAK
+     * PUNYA fitur unduh/export sama sekali. Mengikuti tab yang sedang
+     * aktif ($tabAktif): tab "tw1"-"tw4" -> PDF 1 triwulan itu saja
+     * (pola sama seperti menu lain), tab "rekap" -> PDF rekapitulasi
+     * (rincian 4 TW + Jumlah per sekolah, SAMA PERSIS dengan tampilan
+     * tab Rekapitulasi). Memanggil ULANG renderTabTriwulan()/
+     * renderTabRekap() yang sudah ada (BUKAN query/rumus baru) supaya
+     * angkanya PASTI sama dengan yang tampil di aplikasi - efek samping
+     * penulisan ke $this->baris TIDAK masalah karena render() berikutnya
+     * SELALU menghitung ulang dari nol berdasarkan $tabAktif/$tahun saat
+     * itu (lihat method render() di bawah).
+     */
+    public function unduhPdfSemuaSekolah()
+    {
+        if ($this->tabAktif === 'rekap') {
+            AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Laporan Realisasi BOSP (Form BPK)', 'PDF (Rekap Tahun Anggaran)');
+            [$hasil, $totalTahunAnggaran] = $this->renderTabRekap();
+
+            $pdf = Pdf::loadView('pdf.laporan-realisasi-bosp-rekap', [
+                'hasil' => $hasil,
+                'totalTahunAnggaran' => $totalTahunAnggaran,
+                'tahun' => $this->tahun,
+                'label' => LaporanRealisasiBosp::LABEL_KOLOM,
+            ])->setPaper('a4', 'landscape');
+
+            $namaFile = 'laporan-realisasi-bosp-rekap-'.$this->tahun.'.pdf';
+            $pathSementara = tempnam(sys_get_temp_dir(), 'laporan-realisasi-bosp-rekap-pdf-').'.pdf';
+            file_put_contents($pathSementara, $pdf->output());
+
+            return response()->download($pathSementara, $namaFile)->deleteFileAfterSend(true);
+        }
+
+        $triwulan = self::TAB_TRIWULAN[$this->tabAktif] ?? 1;
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Laporan Realisasi BOSP (Form BPK)', 'PDF (Semua Sekolah, TW'.$triwulan.')');
+        [$daftarSekolah, $totalBaris] = $this->renderTabTriwulan($triwulan);
+        $totalBarisSnapshot = $this->baris;
+
+        $pdf = Pdf::loadView('pdf.laporan-realisasi-bosp-triwulan', [
+            'daftarSekolah' => $daftarSekolah,
+            'totalBaris' => $totalBarisSnapshot,
+            'triwulan' => $triwulan,
+            'tahun' => $this->tahun,
+            'label' => LaporanRealisasiBosp::LABEL_KOLOM,
+        ])->setPaper('a4', 'landscape');
+
+        $namaFile = 'laporan-realisasi-bosp-triwulan-'.$triwulan.'-'.$this->tahun.'.pdf';
+        $pathSementara = tempnam(sys_get_temp_dir(), 'laporan-realisasi-bosp-pdf-').'.pdf';
+        file_put_contents($pathSementara, $pdf->output());
+
+        return response()->download($pathSementara, $namaFile)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Unduh Excel 5 sheet (Form BPK TW-1 s.d. TW-4 + Rekap Form BPK TA),
+     * SEMUA SEKOLAH, tahun yang sedang aktif (permintaan user 2026-09-27
+     * poin 10) - SELALU seluruh 5 sheet sekaligus dalam 1 file, TIDAK
+     * bergantung pada tab yang sedang aktif (beda dengan
+     * unduhPdfSemuaSekolah() di atas). Sama seperti unduhPdfSemuaSekolah(),
+     * memanggil ULANG renderTabTriwulan()/renderTabRekap() yang sudah
+     * ada supaya angkanya PASTI sama dengan yang tampil di aplikasi.
+     */
+    public function unduhExcelSemuaTriwulan()
+    {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Laporan Realisasi BOSP (Form BPK)', 'Excel (4 Triwulan + Rekap)');
+
+        $dataPerTriwulan = [];
+        foreach ([1, 2, 3, 4] as $triwulan) {
+            [$daftarSekolah, ] = $this->renderTabTriwulan($triwulan);
+            $dataPerTriwulan[$triwulan] = [
+                'daftarSekolah' => $daftarSekolah,
+                'totalBaris' => $this->baris,
+            ];
+        }
+
+        [$hasilRekap, $totalTahunAnggaran] = $this->renderTabRekap();
+
+        return Excel::download(
+            new LaporanRealisasiBospExport(
+                $dataPerTriwulan,
+                ['hasil' => $hasilRekap, 'totalTahunAnggaran' => $totalTahunAnggaran],
+                $this->tahun
+            ),
+            'laporan-realisasi-bosp-form-bpk-'.$this->tahun.'.xlsx'
+        );
     }
 
     public function render()

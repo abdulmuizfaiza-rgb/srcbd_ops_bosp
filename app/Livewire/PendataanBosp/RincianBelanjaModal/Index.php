@@ -6,6 +6,8 @@ use App\Models\AksesDataLog;
 use App\Exports\RincianBelanjaModalBmdExport;
 use App\Exports\RincianBelanjaModalBmdRekapExport;
 use App\Exports\RincianBelanjaModalExport;
+use App\Exports\RincianBelanjaModalBmdSemuaTriwulanExport;
+use App\Exports\RincianBelanjaModalSemuaTriwulanExport;
 use App\Imports\RincianBelanjaModalBmdImport;
 use App\Imports\RincianBelanjaModalImport;
 use App\Livewire\Concerns\HasZoomTampilan;
@@ -19,6 +21,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Livewire\WithFileUploads;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Validators\ValidationException;
@@ -1210,6 +1213,212 @@ class Index extends Component
                 $sekolah
             ),
             'rincian-belanja-modal-'.$namaFileJenis.'-triwulan-'.$this->triwulan.'-'.$this->tahun.'.xlsx'
+        );
+    }
+
+    /**
+     * Daftar SEMUA sekolah untuk tab "jenis" (KIB B/Peralatan & Mesin
+     * atau KIB E/Aset Tetap Lainnya, dgn eager load rincianBelanjaModal
+     * utk jenis/triwulan/tahun aktif) - urutan Status(Negeri dulu)-
+     * Kecamatan-Nama Sekolah, sama seperti pola LanggananDayaJasa
+     * (permintaan user 2026-09-27). Tombol otomatis mengikuti tabUtama
+     * yang aktif, sama seperti tombol Export Excel yang sudah ada. TIDAK
+     * dipakai untuk tab "BMD" - lihat
+     * daftarSekolahSemuaUntukUnduhanBmd().
+     */
+    private function daftarSekolahSemuaUntukUnduhan()
+    {
+        $query = ProfilSekolah::with(['rincianBelanjaModal' => function ($q) {
+            $q->where('jenis', $this->tabUtama)
+                ->where('tahun', $this->tahun)
+                ->where('triwulan', $this->triwulan)
+                ->orderBy('id');
+        }]);
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('id', $this->sekolahSayaId());
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
+            ->orderByRaw('kecamatan IS NULL')
+            ->orderBy('kecamatan')
+            ->orderBy('nama_sekolah')
+            ->get();
+    }
+
+    /**
+     * Sama seperti daftarSekolahSemuaUntukUnduhan() tapi khusus tab
+     * "BMD" (model RincianBelanjaModalBmd, tabel terpisah - TIDAK ADA
+     * kolom "jenis"). Dipakai HANYA pada sub-tab BMD per-triwulan biasa
+     * (BUKAN sub-tab "Rekap BMD Tahun Anggaran" - $tampilRekapBmd - yang
+     * TETAP hanya dilayani tombol Export Excel yang sudah ada, TIDAK
+     * disentuh, karena konsepnya sudah "gabungan 4 triwulan" duluan).
+     */
+    private function daftarSekolahSemuaUntukUnduhanBmd()
+    {
+        $query = ProfilSekolah::with(['rincianBelanjaModalBmd' => function ($q) {
+            $q->where('tahun', $this->tahun)
+                ->where('triwulan', $this->triwulan)
+                ->orderBy('id');
+        }]);
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('id', $this->sekolahSayaId());
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
+            ->orderByRaw('kecamatan IS NULL')
+            ->orderBy('kecamatan')
+            ->orderBy('nama_sekolah')
+            ->get();
+    }
+
+    /**
+     * Unduh PDF (tab utama & triwulan yang sedang aktif), SEMUA SEKOLAH
+     * (permintaan user 2026-09-27) - terpisah dari tombol Export Excel
+     * yang sudah ada (yang tetap mewajibkan pilih 1 sekolah untuk
+     * Superadmin pada tab KIB, TIDAK diubah). Bercabang menurut tabUtama
+     * karena tab "BMD" memakai model & view yang berbeda total. HANYA
+     * ditampilkan (lihat index.blade.php) pada sub-tab BMD per-triwulan
+     * biasa, BUKAN "Rekap BMD Tahun Anggaran".
+     */
+    public function unduhPdfSemuaSekolah()
+    {
+        if ($this->tabUtama === RincianBelanjaModal::TAB_BMD) {
+            AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'BMD', 'PDF (Semua Sekolah)');
+            $daftarSekolah = $this->daftarSekolahSemuaUntukUnduhanBmd();
+
+            $pdf = Pdf::loadView('pdf.rincian-belanja-modal-bmd', [
+                'daftarSekolah' => $daftarSekolah,
+                'triwulan' => $this->triwulan,
+                'tahun' => $this->tahun,
+            ])->setPaper('a4', 'landscape');
+
+            $namaFile = 'rincian-belanja-modal-bmd-triwulan-'.$this->triwulan.'-'.$this->tahun.'.pdf';
+            $pathSementara = tempnam(sys_get_temp_dir(), 'rincian-belanja-modal-bmd-pdf-').'.pdf';
+            file_put_contents($pathSementara, $pdf->output());
+
+            return response()->download($pathSementara, $namaFile)->deleteFileAfterSend(true);
+        }
+
+        $labelJenis = RincianBelanjaModal::JENIS_OPTIONS[$this->tabUtama] ?? '';
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, $labelJenis, 'PDF (Semua Sekolah)');
+        $daftarSekolah = $this->daftarSekolahSemuaUntukUnduhan();
+
+        $totalKeseluruhan = $daftarSekolah->sum(
+            fn (ProfilSekolah $sekolah) => $sekolah->rincianBelanjaModal->sum('total_harga')
+        );
+
+        $pdf = Pdf::loadView('pdf.rincian-belanja-modal', [
+            'daftarSekolah' => $daftarSekolah,
+            'jenis' => $this->tabUtama,
+            'triwulan' => $this->triwulan,
+            'tahun' => $this->tahun,
+            'totalKeseluruhan' => $totalKeseluruhan,
+        ])->setPaper('a4', 'landscape');
+
+        $namaFileJenis = $this->tabUtama === RincianBelanjaModal::JENIS_ASET_TETAP_LAINNYA ? 'aset-tetap-lainnya-kib-e' : 'peralatan-mesin-kib-b';
+        $namaFile = 'rincian-belanja-modal-'.$namaFileJenis.'-triwulan-'.$this->triwulan.'-'.$this->tahun.'.pdf';
+        $pathSementara = tempnam(sys_get_temp_dir(), 'rincian-belanja-modal-pdf-').'.pdf';
+        file_put_contents($pathSementara, $pdf->output());
+
+        return response()->download($pathSementara, $namaFile)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Baris RincianBelanjaModal (flat) untuk JENIS/tab utama & 1 triwulan
+     * tertentu, tahun yang sedang aktif, SEMUA sekolah - dipakai khusus
+     * untuk unduhExcelSemuaTriwulan() (permintaan user 2026-09-27). TIDAK
+     * dipakai untuk tab "BMD".
+     */
+    private function baruSemuaSekolahUntukTriwulan(int $triwulan)
+    {
+        $query = RincianBelanjaModal::query()
+            ->with('profilSekolah')
+            ->join('profil_sekolah', 'profil_sekolah.id', '=', 'rincian_belanja_modal.profil_sekolah_id')
+            ->where('rincian_belanja_modal.jenis', $this->tabUtama)
+            ->where('rincian_belanja_modal.tahun', $this->tahun)
+            ->where('rincian_belanja_modal.triwulan', $triwulan)
+            ->select('rincian_belanja_modal.*');
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('rincian_belanja_modal.profil_sekolah_id', $this->sekolahSayaId());
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN profil_sekolah.status = 'negeri' THEN 0 WHEN profil_sekolah.status = 'swasta' THEN 1 ELSE 2 END")
+            ->orderByRaw('profil_sekolah.kecamatan IS NULL')
+            ->orderBy('profil_sekolah.kecamatan')
+            ->orderBy('profil_sekolah.nama_sekolah')
+            ->orderBy('rincian_belanja_modal.id')
+            ->get();
+    }
+
+    /**
+     * Sama seperti baruSemuaSekolahUntukTriwulan() tapi khusus tab "BMD"
+     * (model RincianBelanjaModalBmd).
+     */
+    private function baruSemuaSekolahUntukTriwulanBmd(int $triwulan)
+    {
+        $query = RincianBelanjaModalBmd::query()
+            ->with('profilSekolah')
+            ->join('profil_sekolah', 'profil_sekolah.id', '=', 'rincian_belanja_modal_bmd.profil_sekolah_id')
+            ->where('rincian_belanja_modal_bmd.tahun', $this->tahun)
+            ->where('rincian_belanja_modal_bmd.triwulan', $triwulan)
+            ->select('rincian_belanja_modal_bmd.*');
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('rincian_belanja_modal_bmd.profil_sekolah_id', $this->sekolahSayaId());
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN profil_sekolah.status = 'negeri' THEN 0 WHEN profil_sekolah.status = 'swasta' THEN 1 ELSE 2 END")
+            ->orderByRaw('profil_sekolah.kecamatan IS NULL')
+            ->orderBy('profil_sekolah.kecamatan')
+            ->orderBy('profil_sekolah.nama_sekolah')
+            ->orderBy('rincian_belanja_modal_bmd.id')
+            ->get();
+    }
+
+    /**
+     * Unduh Excel 4 sheet (1 per triwulan) untuk tab utama yang sedang
+     * aktif, SEMUA SEKOLAH, tahun yang sedang aktif (permintaan user
+     * 2026-09-27) - terpisah dari tombol Export Excel yang sudah ada
+     * (TIDAK diubah) DAN terpisah dari fitur "Rekap BMD Tahun Anggaran"
+     * yang sudah ada (RincianBelanjaModalBmdRekapExport, 1 sheet gabungan
+     * 4 triwulan - TIDAK disentuh, jawaban AskUserQuestion 2026-09-27
+     * "Tetap tambahkan 'Unduh Excel 4 sheet' terpisah + 'Unduh PDF'").
+     * Bercabang menurut tabUtama sama seperti unduhPdfSemuaSekolah().
+     */
+    public function unduhExcelSemuaTriwulan()
+    {
+        if ($this->tabUtama === RincianBelanjaModal::TAB_BMD) {
+            AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'BMD', 'Excel (Semua Triwulan)');
+            $dataPerTriwulan = [];
+            foreach (array_keys(RincianBelanjaModalBmd::TRIWULAN_OPTIONS) as $triwulan) {
+                $dataPerTriwulan[$triwulan] = $this->baruSemuaSekolahUntukTriwulanBmd($triwulan);
+            }
+
+            return Excel::download(
+                new RincianBelanjaModalBmdSemuaTriwulanExport($dataPerTriwulan, $this->tahun),
+                'rincian-belanja-modal-bmd-semua-triwulan-'.$this->tahun.'.xlsx'
+            );
+        }
+
+        $labelJenis = RincianBelanjaModal::JENIS_OPTIONS[$this->tabUtama] ?? '';
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, $labelJenis, 'Excel (Semua Triwulan)');
+        $dataPerTriwulan = [];
+        foreach (array_keys(RincianBelanjaModal::TRIWULAN_OPTIONS) as $triwulan) {
+            $dataPerTriwulan[$triwulan] = $this->baruSemuaSekolahUntukTriwulan($triwulan);
+        }
+
+        $namaFileJenis = $this->tabUtama === RincianBelanjaModal::JENIS_ASET_TETAP_LAINNYA ? 'aset-tetap-lainnya-kib-e' : 'peralatan-mesin-kib-b';
+
+        return Excel::download(
+            new RincianBelanjaModalSemuaTriwulanExport($dataPerTriwulan, $this->tabUtama, $this->tahun),
+            'rincian-belanja-modal-'.$namaFileJenis.'-semua-triwulan-'.$this->tahun.'.xlsx'
         );
     }
 

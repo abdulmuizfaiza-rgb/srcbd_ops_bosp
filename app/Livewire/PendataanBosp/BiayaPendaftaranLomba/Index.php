@@ -4,6 +4,7 @@ namespace App\Livewire\PendataanBosp\BiayaPendaftaranLomba;
 
 use App\Models\AksesDataLog;
 use App\Exports\BiayaPendaftaranLombaExport;
+use App\Exports\BiayaPendaftaranLombaSemuaTriwulanExport;
 use App\Imports\BiayaPendaftaranLombaImport;
 use App\Livewire\Concerns\HasZoomTampilan;
 use App\Livewire\Concerns\MenolakEditJikaTerkunciVerval;
@@ -15,6 +16,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Livewire\WithFileUploads;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Validators\ValidationException;
@@ -460,6 +462,111 @@ class Index extends Component
                 $sekolah
             ),
             'biaya-pendaftaran-lomba-triwulan-'.$this->triwulan.'-'.$this->tahun.'.xlsx'
+        );
+    }
+
+    /**
+     * Daftar SEMUA sekolah (dgn eager load biayaPendaftaranLomba utk
+     * triwulan & tahun aktif) - dipakai unduhPdfSemuaSekolah(), urutan
+     * Status(Negeri dulu)-Kecamatan-Nama Sekolah, sama seperti pola
+     * LanggananDayaJasa (permintaan user 2026-09-27).
+     */
+    private function daftarSekolahSemuaUntukUnduhan()
+    {
+        $query = ProfilSekolah::with(['biayaPendaftaranLomba' => function ($q) {
+            $q->where('tahun', $this->tahun)
+                ->where('triwulan', $this->triwulan)
+                ->orderBy('id');
+        }]);
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('id', $this->sekolahSayaId());
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
+            ->orderByRaw('kecamatan IS NULL')
+            ->orderBy('kecamatan')
+            ->orderBy('nama_sekolah')
+            ->get();
+    }
+
+    /**
+     * Unduh PDF Biaya Pendaftaran Lomba/Bimtek/Workshop untuk TRIWULAN
+     * YANG SEDANG AKTIF, SEMUA SEKOLAH (permintaan user 2026-09-27) -
+     * terpisah dari tombol Export Excel yang sudah ada (yang tetap
+     * mewajibkan pilih 1 sekolah untuk Superadmin, TIDAK diubah). Pola
+     * sama persis seperti LanggananDayaJasa::unduhPdfSemuaSekolah().
+     */
+    public function unduhPdfSemuaSekolah()
+    {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Biaya Pendaftaran Lomba', 'PDF (Semua Sekolah)');
+        $daftarSekolah = $this->daftarSekolahSemuaUntukUnduhan();
+
+        $totalKeseluruhan = $daftarSekolah->sum(
+            fn (ProfilSekolah $sekolah) => $sekolah->biayaPendaftaranLomba->sum('jumlah')
+        );
+
+        $pdf = Pdf::loadView('pdf.biaya-pendaftaran-lomba', [
+            'daftarSekolah' => $daftarSekolah,
+            'triwulan' => $this->triwulan,
+            'tahun' => $this->tahun,
+            'totalKeseluruhan' => $totalKeseluruhan,
+        ])->setPaper('a4', 'landscape');
+
+        $namaFile = 'biaya-pendaftaran-lomba-triwulan-'.$this->triwulan.'-'.$this->tahun.'.pdf';
+        $pathSementara = tempnam(sys_get_temp_dir(), 'biaya-pendaftaran-lomba-pdf-').'.pdf';
+        file_put_contents($pathSementara, $pdf->output());
+
+        return response()->download($pathSementara, $namaFile)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Baris BiayaPendaftaranLomba (flat, BUKAN dikelompokkan per sekolah)
+     * untuk 1 triwulan tertentu & tahun yang sedang aktif, SEMUA sekolah
+     * - dipakai khusus untuk unduhExcelSemuaTriwulan() (permintaan user
+     * 2026-09-27). Admin BOSP tetap otomatis terbatas ke sekolahnya
+     * sendiri saja.
+     */
+    private function baruSemuaSekolahUntukTriwulan(int $triwulan)
+    {
+        $query = BiayaPendaftaranLomba::query()
+            ->with('profilSekolah')
+            ->join('profil_sekolah', 'profil_sekolah.id', '=', 'biaya_pendaftaran_lomba.profil_sekolah_id')
+            ->where('biaya_pendaftaran_lomba.tahun', $this->tahun)
+            ->where('biaya_pendaftaran_lomba.triwulan', $triwulan)
+            ->select('biaya_pendaftaran_lomba.*');
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('biaya_pendaftaran_lomba.profil_sekolah_id', $this->sekolahSayaId());
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN profil_sekolah.status = 'negeri' THEN 0 WHEN profil_sekolah.status = 'swasta' THEN 1 ELSE 2 END")
+            ->orderByRaw('profil_sekolah.kecamatan IS NULL')
+            ->orderBy('profil_sekolah.kecamatan')
+            ->orderBy('profil_sekolah.nama_sekolah')
+            ->orderBy('biaya_pendaftaran_lomba.id')
+            ->get();
+    }
+
+    /**
+     * Unduh Excel 4 sheet (Biaya-Pendaftaran TW-1 s.d. TW-4) SEMUA
+     * SEKOLAH untuk tahun yang sedang aktif (permintaan user 2026-09-27)
+     * - terpisah dari tombol Export Excel yang sudah ada (yang tetap 1
+     * sheet/1 sekolah, TIDAK diubah).
+     */
+    public function unduhExcelSemuaTriwulan()
+    {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Biaya Pendaftaran Lomba', 'Excel (Semua Triwulan)');
+        $dataPerTriwulan = [];
+        foreach (array_keys(BiayaPendaftaranLomba::TRIWULAN_OPTIONS) as $triwulan) {
+            $dataPerTriwulan[$triwulan] = $this->baruSemuaSekolahUntukTriwulan($triwulan);
+        }
+
+        return Excel::download(
+            new BiayaPendaftaranLombaSemuaTriwulanExport($dataPerTriwulan, $this->tahun),
+            'biaya-pendaftaran-lomba-semua-triwulan-'.$this->tahun.'.xlsx'
         );
     }
 

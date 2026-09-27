@@ -4,7 +4,9 @@ namespace App\Livewire\PendataanBosp\RincianBelanjaBarangHabisPakai;
 
 use App\Models\AksesDataLog;
 use App\Exports\RincianBelanjaBarangHabisPakaiExport;
+use App\Exports\RincianBelanjaBarangHabisPakaiSemuaTriwulanExport;
 use App\Exports\StockOpnameBarangPersediaanExport;
+use App\Exports\StockOpnameBarangPersediaanSemuaTriwulanExport;
 use App\Imports\RincianBelanjaBarangHabisPakaiImport;
 use App\Imports\StockOpnameBarangPersediaanImport;
 use App\Livewire\Concerns\HasZoomTampilan;
@@ -18,6 +20,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Livewire\WithFileUploads;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Validators\ValidationException;
@@ -794,6 +797,193 @@ class Index extends Component
                 $sekolah
             ),
             'rincian-belanja-barang-habis-pakai-triwulan-'.$this->triwulan.'-'.$this->tahun.'.xlsx'
+        );
+    }
+
+    /**
+     * Daftar SEMUA sekolah untuk tab "Rincian Belanja Barang Habis
+     * Pakai" (dgn eager load rincianBelanjaBarangHabisPakai utk triwulan
+     * & tahun aktif) - urutan Status(Negeri dulu)-Kecamatan-Nama Sekolah,
+     * sama seperti pola LanggananDayaJasa (permintaan user 2026-09-27).
+     */
+    private function daftarSekolahSemuaUntukUnduhanBarangHabisPakai()
+    {
+        $query = ProfilSekolah::with(['rincianBelanjaBarangHabisPakai' => function ($q) {
+            $q->where('tahun', $this->tahun)
+                ->where('triwulan', $this->triwulan)
+                ->orderBy('id');
+        }]);
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('id', $this->sekolahSayaId());
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
+            ->orderByRaw('kecamatan IS NULL')
+            ->orderBy('kecamatan')
+            ->orderBy('nama_sekolah')
+            ->get();
+    }
+
+    /**
+     * Sama seperti daftarSekolahSemuaUntukUnduhanBarangHabisPakai() tapi
+     * untuk tab "Stock Opname" - eager load bersarang
+     * rincianBelanjaBarangHabisPakai (dipakai StockOpnameBarangPersediaan
+     * ::namaBarangTampil() di view PDF/Export).
+     */
+    private function daftarSekolahSemuaUntukUnduhanStockOpname()
+    {
+        $query = ProfilSekolah::with(['stockOpnameBarangPersediaan' => function ($q) {
+            $q->where('tahun', $this->tahun)
+                ->where('triwulan', $this->triwulan)
+                ->with('rincianBelanjaBarangHabisPakai')
+                ->orderBy('id');
+        }]);
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('id', $this->sekolahSayaId());
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
+            ->orderByRaw('kecamatan IS NULL')
+            ->orderBy('kecamatan')
+            ->orderBy('nama_sekolah')
+            ->get();
+    }
+
+    /**
+     * Unduh PDF (tab utama & triwulan yang sedang aktif), SEMUA SEKOLAH
+     * (permintaan user 2026-09-27) - terpisah dari tombol Export Excel
+     * yang sudah ada (yang tetap mewajibkan pilih 1 sekolah untuk
+     * Superadmin, TIDAK diubah). Bercabang menurut tabUtama karena tab
+     * "Stock Opname" memakai model & view yang berbeda total.
+     */
+    public function unduhPdfSemuaSekolah()
+    {
+        if ($this->tabUtama === RincianBelanjaBarangHabisPakai::TAB_STOCK_OPNAME) {
+            AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Stock Opname', 'PDF (Semua Sekolah)');
+            $daftarSekolah = $this->daftarSekolahSemuaUntukUnduhanStockOpname();
+
+            $pdf = Pdf::loadView('pdf.stock-opname-barang-persediaan', [
+                'daftarSekolah' => $daftarSekolah,
+                'triwulan' => $this->triwulan,
+                'tahun' => $this->tahun,
+            ])->setPaper('a4', 'landscape');
+
+            $namaFile = 'stock-opname-barang-persediaan-triwulan-'.$this->triwulan.'-'.$this->tahun.'.pdf';
+            $pathSementara = tempnam(sys_get_temp_dir(), 'stock-opname-pdf-').'.pdf';
+            file_put_contents($pathSementara, $pdf->output());
+
+            return response()->download($pathSementara, $namaFile)->deleteFileAfterSend(true);
+        }
+
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Rincian Belanja Barang Habis Pakai', 'PDF (Semua Sekolah)');
+        $daftarSekolah = $this->daftarSekolahSemuaUntukUnduhanBarangHabisPakai();
+
+        $totalKeseluruhan = $daftarSekolah->sum(
+            fn (ProfilSekolah $sekolah) => $sekolah->rincianBelanjaBarangHabisPakai->sum('total_harga')
+        );
+
+        $pdf = Pdf::loadView('pdf.rincian-belanja-barang-habis-pakai', [
+            'daftarSekolah' => $daftarSekolah,
+            'triwulan' => $this->triwulan,
+            'tahun' => $this->tahun,
+            'totalKeseluruhan' => $totalKeseluruhan,
+        ])->setPaper('a4', 'landscape');
+
+        $namaFile = 'rincian-belanja-barang-habis-pakai-triwulan-'.$this->triwulan.'-'.$this->tahun.'.pdf';
+        $pathSementara = tempnam(sys_get_temp_dir(), 'rincian-belanja-barang-habis-pakai-pdf-').'.pdf';
+        file_put_contents($pathSementara, $pdf->output());
+
+        return response()->download($pathSementara, $namaFile)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Baris RincianBelanjaBarangHabisPakai (flat) untuk 1 triwulan
+     * tertentu & tahun yang sedang aktif, SEMUA sekolah - dipakai khusus
+     * untuk unduhExcelSemuaTriwulan() (permintaan user 2026-09-27).
+     */
+    private function baruSemuaSekolahUntukTriwulanBarangHabisPakai(int $triwulan)
+    {
+        $query = RincianBelanjaBarangHabisPakai::query()
+            ->with('profilSekolah')
+            ->join('profil_sekolah', 'profil_sekolah.id', '=', 'rincian_belanja_barang_habis_pakai.profil_sekolah_id')
+            ->where('rincian_belanja_barang_habis_pakai.tahun', $this->tahun)
+            ->where('rincian_belanja_barang_habis_pakai.triwulan', $triwulan)
+            ->select('rincian_belanja_barang_habis_pakai.*');
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('rincian_belanja_barang_habis_pakai.profil_sekolah_id', $this->sekolahSayaId());
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN profil_sekolah.status = 'negeri' THEN 0 WHEN profil_sekolah.status = 'swasta' THEN 1 ELSE 2 END")
+            ->orderByRaw('profil_sekolah.kecamatan IS NULL')
+            ->orderBy('profil_sekolah.kecamatan')
+            ->orderBy('profil_sekolah.nama_sekolah')
+            ->orderBy('rincian_belanja_barang_habis_pakai.id')
+            ->get();
+    }
+
+    /**
+     * Sama seperti baruSemuaSekolahUntukTriwulanBarangHabisPakai() tapi
+     * untuk tab "Stock Opname" (model StockOpnameBarangPersediaan).
+     */
+    private function baruSemuaSekolahUntukTriwulanStockOpname(int $triwulan)
+    {
+        $query = StockOpnameBarangPersediaan::query()
+            ->with(['profilSekolah', 'rincianBelanjaBarangHabisPakai'])
+            ->join('profil_sekolah', 'profil_sekolah.id', '=', 'stock_opname_barang_persediaan.profil_sekolah_id')
+            ->where('stock_opname_barang_persediaan.tahun', $this->tahun)
+            ->where('stock_opname_barang_persediaan.triwulan', $triwulan)
+            ->select('stock_opname_barang_persediaan.*');
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('stock_opname_barang_persediaan.profil_sekolah_id', $this->sekolahSayaId());
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN profil_sekolah.status = 'negeri' THEN 0 WHEN profil_sekolah.status = 'swasta' THEN 1 ELSE 2 END")
+            ->orderByRaw('profil_sekolah.kecamatan IS NULL')
+            ->orderBy('profil_sekolah.kecamatan')
+            ->orderBy('profil_sekolah.nama_sekolah')
+            ->orderBy('stock_opname_barang_persediaan.id')
+            ->get();
+    }
+
+    /**
+     * Unduh Excel 4 sheet (1 per triwulan) untuk tab utama yang sedang
+     * aktif, SEMUA SEKOLAH, tahun yang sedang aktif (permintaan user
+     * 2026-09-27) - terpisah dari tombol Export Excel yang sudah ada
+     * (yang tetap 1 sheet/1 sekolah, TIDAK diubah). Bercabang menurut
+     * tabUtama sama seperti unduhPdfSemuaSekolah().
+     */
+    public function unduhExcelSemuaTriwulan()
+    {
+        if ($this->tabUtama === RincianBelanjaBarangHabisPakai::TAB_STOCK_OPNAME) {
+            AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Stock Opname', 'Excel (Semua Triwulan)');
+            $dataPerTriwulan = [];
+            foreach (array_keys(StockOpnameBarangPersediaan::TRIWULAN_OPTIONS) as $triwulan) {
+                $dataPerTriwulan[$triwulan] = $this->baruSemuaSekolahUntukTriwulanStockOpname($triwulan);
+            }
+
+            return Excel::download(
+                new StockOpnameBarangPersediaanSemuaTriwulanExport($dataPerTriwulan, $this->tahun),
+                'stock-opname-barang-persediaan-semua-triwulan-'.$this->tahun.'.xlsx'
+            );
+        }
+
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Rincian Belanja Barang Habis Pakai', 'Excel (Semua Triwulan)');
+        $dataPerTriwulan = [];
+        foreach (array_keys(RincianBelanjaBarangHabisPakai::TRIWULAN_OPTIONS) as $triwulan) {
+            $dataPerTriwulan[$triwulan] = $this->baruSemuaSekolahUntukTriwulanBarangHabisPakai($triwulan);
+        }
+
+        return Excel::download(
+            new RincianBelanjaBarangHabisPakaiSemuaTriwulanExport($dataPerTriwulan, $this->tahun),
+            'rincian-belanja-barang-habis-pakai-semua-triwulan-'.$this->tahun.'.xlsx'
         );
     }
 

@@ -4,6 +4,7 @@ namespace App\Livewire\PendataanBosp\BelanjaHonorKegiatan;
 
 use App\Models\AksesDataLog;
 use App\Exports\BelanjaHonorKegiatanExport;
+use App\Exports\BelanjaHonorKegiatanSemuaTriwulanExport;
 use App\Imports\BelanjaHonorKegiatanImport;
 use App\Livewire\Concerns\HasZoomTampilan;
 use App\Livewire\Concerns\MenolakEditJikaTerkunciVerval;
@@ -15,6 +16,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Livewire\WithFileUploads;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Validators\ValidationException;
@@ -511,6 +513,119 @@ class Index extends Component
                 $sekolah
             ),
             $namaFileJenis.'-triwulan-'.$this->triwulan.'-'.$this->tahun.'.xlsx'
+        );
+    }
+
+    /**
+     * Daftar SEMUA sekolah (dgn eager load belanjaHonorKegiatan utk
+     * JENIS/tab utama, triwulan & tahun aktif) - dipakai
+     * unduhPdfSemuaSekolah(), urutan Status(Negeri dulu)-Kecamatan-Nama
+     * Sekolah, sama seperti pola LanggananDayaJasa (permintaan user
+     * 2026-09-27). Tombol otomatis mengikuti tabUtama yang aktif, sama
+     * seperti tombol Export Excel yang sudah ada.
+     */
+    private function daftarSekolahSemuaUntukUnduhan()
+    {
+        $query = ProfilSekolah::with(['belanjaHonorKegiatan' => function ($q) {
+            $q->where('jenis', $this->tabUtama)
+                ->where('tahun', $this->tahun)
+                ->where('triwulan', $this->triwulan)
+                ->orderBy('id');
+        }]);
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('id', $this->sekolahSayaId());
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
+            ->orderByRaw('kecamatan IS NULL')
+            ->orderBy('kecamatan')
+            ->orderBy('nama_sekolah')
+            ->get();
+    }
+
+    /**
+     * Unduh PDF (jenis/tab utama & triwulan yang sedang aktif), SEMUA
+     * SEKOLAH (permintaan user 2026-09-27) - terpisah dari tombol Export
+     * Excel yang sudah ada (yang tetap mewajibkan pilih 1 sekolah untuk
+     * Superadmin, TIDAK diubah).
+     */
+    public function unduhPdfSemuaSekolah()
+    {
+        $labelJenis = BelanjaHonorKegiatan::JENIS_OPTIONS[$this->tabUtama] ?? '';
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, $labelJenis, 'PDF (Semua Sekolah)');
+        $daftarSekolah = $this->daftarSekolahSemuaUntukUnduhan();
+
+        $totalKeseluruhan = $daftarSekolah->sum(
+            fn (ProfilSekolah $sekolah) => $sekolah->belanjaHonorKegiatan->sum('jumlah')
+        );
+
+        $pdf = Pdf::loadView('pdf.belanja-honor-kegiatan', [
+            'daftarSekolah' => $daftarSekolah,
+            'jenis' => $this->tabUtama,
+            'triwulan' => $this->triwulan,
+            'tahun' => $this->tahun,
+            'totalKeseluruhan' => $totalKeseluruhan,
+        ])->setPaper('a4', 'landscape');
+
+        $namaFile = str($this->tabUtama)->slug().'-triwulan-'.$this->triwulan.'-'.$this->tahun.'.pdf';
+        $pathSementara = tempnam(sys_get_temp_dir(), 'belanja-honor-kegiatan-pdf-').'.pdf';
+        file_put_contents($pathSementara, $pdf->output());
+
+        return response()->download($pathSementara, $namaFile)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Baris BelanjaHonorKegiatan (flat, BUKAN dikelompokkan per sekolah)
+     * untuk JENIS/tab utama & 1 triwulan tertentu, tahun yang sedang
+     * aktif, SEMUA sekolah - dipakai khusus untuk
+     * unduhExcelSemuaTriwulan() (permintaan user 2026-09-27). Admin BOSP
+     * tetap otomatis terbatas ke sekolahnya sendiri saja.
+     */
+    private function baruSemuaSekolahUntukTriwulan(int $triwulan)
+    {
+        $query = BelanjaHonorKegiatan::query()
+            ->with('profilSekolah')
+            ->join('profil_sekolah', 'profil_sekolah.id', '=', 'belanja_honor_kegiatan.profil_sekolah_id')
+            ->where('belanja_honor_kegiatan.jenis', $this->tabUtama)
+            ->where('belanja_honor_kegiatan.tahun', $this->tahun)
+            ->where('belanja_honor_kegiatan.triwulan', $triwulan)
+            ->select('belanja_honor_kegiatan.*');
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('belanja_honor_kegiatan.profil_sekolah_id', $this->sekolahSayaId());
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN profil_sekolah.status = 'negeri' THEN 0 WHEN profil_sekolah.status = 'swasta' THEN 1 ELSE 2 END")
+            ->orderByRaw('profil_sekolah.kecamatan IS NULL')
+            ->orderBy('profil_sekolah.kecamatan')
+            ->orderBy('profil_sekolah.nama_sekolah')
+            ->orderBy('belanja_honor_kegiatan.id')
+            ->get();
+    }
+
+    /**
+     * Unduh Excel 4 sheet (1 per triwulan) untuk JENIS/tab utama yang
+     * sedang aktif, SEMUA SEKOLAH, tahun yang sedang aktif (permintaan
+     * user 2026-09-27) - terpisah dari tombol Export Excel yang sudah
+     * ada (yang tetap 1 sheet/1 sekolah, TIDAK diubah).
+     */
+    public function unduhExcelSemuaTriwulan()
+    {
+        $labelJenis = BelanjaHonorKegiatan::JENIS_OPTIONS[$this->tabUtama] ?? '';
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, $labelJenis, 'Excel (Semua Triwulan)');
+        $dataPerTriwulan = [];
+        foreach (array_keys(BelanjaHonorKegiatan::TRIWULAN_OPTIONS) as $triwulan) {
+            $dataPerTriwulan[$triwulan] = $this->baruSemuaSekolahUntukTriwulan($triwulan);
+        }
+
+        $namaFile = str($this->tabUtama)->slug().'-semua-triwulan-'.$this->tahun.'.xlsx';
+
+        return Excel::download(
+            new BelanjaHonorKegiatanSemuaTriwulanExport($dataPerTriwulan, $this->tabUtama, $this->tahun),
+            $namaFile
         );
     }
 
