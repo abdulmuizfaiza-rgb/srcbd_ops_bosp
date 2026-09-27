@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->web(append: [
+            \App\Http\Middleware\EnsureGoogleAuthenticatorVerified::class,
             \App\Http\Middleware\ForcePasswordChange::class,
             \App\Http\Middleware\EnsureOnboardingComplete::class,
             \App\Http\Middleware\CatatBukaHalamanData::class,

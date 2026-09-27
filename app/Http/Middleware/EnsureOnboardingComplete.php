@@ -47,7 +47,13 @@ class EnsureOnboardingComplete
         // sudah berhasil dimuat sebelumnya.
         if ($request->routeIs(
             'ganti-password-wajib', 'logout', 'profile', 'password.confirm', 'profil-sekolah.*',
-            'default.livewire.update', 'livewire.upload-file', 'livewire.preview-file'
+            'default.livewire.update', 'livewire.upload-file', 'livewire.preview-file',
+            // Permintaan user 2026-09-27: halaman 2FA Google Authenticator
+            // WAJIB dikecualikan juga di sini - alasan sama persis dengan
+            // ForcePasswordChange (lihat komentar di sana): tanpa ini,
+            // Admin OPS/BOSP yang onboarding-nya belum lengkap DAN belum
+            // aktivasi Authenticator akan terjebak redirect loop.
+            'authenticator.aktivasi', 'authenticator.verifikasi'
         )) {
             return $next($request);
         }

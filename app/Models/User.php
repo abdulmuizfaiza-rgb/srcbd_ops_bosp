@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['username', 'email', 'password', 'level_akses', 'nama_sekolah', 'profil_sekolah_id', 'jabatan', 'must_change_password', 'is_approved'])]
+#[Fillable(['username', 'email', 'password', 'level_akses', 'nama_sekolah', 'profil_sekolah_id', 'jabatan', 'must_change_password', 'is_approved', 'google2fa_secret', 'google2fa_aktif_at', 'google2fa_reset_diminta_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -48,6 +48,9 @@ class User extends Authenticatable
             'password' => 'hashed',
             'must_change_password' => 'boolean',
             'is_approved' => 'boolean',
+            'google2fa_secret' => 'encrypted',
+            'google2fa_aktif_at' => 'datetime',
+            'google2fa_reset_diminta_at' => 'datetime',
         ];
     }
 
@@ -64,6 +67,25 @@ class User extends Authenticatable
     public function isAdminBosp(): bool
     {
         return $this->level_akses === self::LEVEL_ADMIN_BOSP;
+    }
+
+    /**
+     * Apakah pengguna ini sudah mengaktifkan Google Authenticator (2FA).
+     * Null pada google2fa_aktif_at berarti belum pernah menyelesaikan aktivasi,
+     * jadi harus diarahkan ke halaman aktivasi (scan barcode) saat login.
+     */
+    public function authenticatorAktif(): bool
+    {
+        return ! is_null($this->google2fa_aktif_at);
+    }
+
+    /**
+     * Apakah pengguna ini sedang menunggu di-reset Authenticator-nya oleh
+     * Superadmin (habis menekan "Lupa Authenticator?" di halaman verifikasi kode).
+     */
+    public function authenticatorSedangDimintaReset(): bool
+    {
+        return ! is_null($this->google2fa_reset_diminta_at);
     }
 
     /**

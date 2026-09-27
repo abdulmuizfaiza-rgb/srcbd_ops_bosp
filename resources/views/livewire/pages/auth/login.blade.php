@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Forms\LoginForm;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -45,8 +46,9 @@ new #[Layout('layouts.guest')] class extends Component
         Session::flash('tampilkan_popup_timeline_login', true);
 
         Session::regenerate();
+        session()->forget('google2fa_terverifikasi');
 
-        $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
+        $this->redirectSetelahLoginKeAlur2fa(Auth::user());
     }
 
     /**
@@ -58,8 +60,30 @@ new #[Layout('layouts.guest')] class extends Component
         $this->form->pemulihan();
 
         Session::regenerate();
+        session()->forget('google2fa_terverifikasi');
 
-        $this->redirect(route('dashboard', absolute: false), navigate: true);
+        $this->redirectSetelahLoginKeAlur2fa(Auth::user());
+    }
+
+    /**
+     * Google Authenticator (2FA) - permintaan user 2026-09-27. Dipanggil
+     * tepat setelah login/pemulihan berhasil (username+password sudah
+     * benar) - TIDAK langsung ke dashboard, tapi ke halaman aktivasi
+     * (kalau pengguna belum pernah mengaktifkan Authenticator) atau
+     * halaman verifikasi kode 6 digit (kalau sudah aktif). URL yang
+     * sebenarnya dituju sebelum diarahkan ke /login (kalau ada) tetap
+     * tersimpan di session 'url.intended' oleh Laravel, nanti dipakai
+     * redirectIntended() di halaman verifikasi/aktivasi setelah 2FA lolos.
+     */
+    private function redirectSetelahLoginKeAlur2fa(\App\Models\User $user): void
+    {
+        if (! $user->authenticatorAktif()) {
+            $this->redirect(route('authenticator.aktivasi'), navigate: true);
+
+            return;
+        }
+
+        $this->redirect(route('authenticator.verifikasi'), navigate: true);
     }
 }; ?>
 

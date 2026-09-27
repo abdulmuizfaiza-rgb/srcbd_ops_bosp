@@ -46,6 +46,17 @@
                         >
                             Riwayat Login
                         </button>
+
+                        {{-- Tab "Authenticator" (permintaan user 2026-09-27) - sama seperti
+                            "Riwayat Login", TIDAK ikut $levelOptions karena menampilkan
+                            SEMUA level sekaligus dalam satu tabel. --}}
+                        <button
+                            wire:click="pindahTab('authenticator')"
+                            class="pb-3 text-sm font-medium border-b-2 transition
+                                @if ($tab === 'authenticator') border-blue-600 text-blue-600 @else border-transparent text-slate-500 hover:text-slate-700 @endif"
+                        >
+                            Authenticator
+                        </button>
                     </nav>
                 </div>
 
@@ -122,6 +133,56 @@
 
                         <div class="mt-4">
                             {{ $riwayatLogin->links() }}
+                        </div>
+                    @elseif ($tab === 'authenticator')
+                        {{-- Tab "Authenticator" (permintaan user 2026-09-27) --}}
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                            <input wire:model.live.debounce.300ms="searchAuthenticator" type="text" placeholder="Cari username / nama sekolah..." class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm sm:w-80">
+
+                            <x-zoom-controls :zoom="$zoomPercent" />
+                        </div>
+
+                        <div class="overflow-auto scrollbar-modern border border-slate-200 rounded-lg" style="max-height: 28rem; zoom: {{ $zoomPercent }}%;">
+                            <table class="min-w-full divide-y divide-slate-200 text-sm">
+                                <thead class="sticky top-0 bg-slate-50">
+                                    <tr class="text-left text-slate-500">
+                                        <th class="px-3 py-2">Username</th>
+                                        <th class="px-3 py-2">Nama Sekolah</th>
+                                        <th class="px-3 py-2">Level Akses</th>
+                                        <th class="px-3 py-2">Status Authenticator</th>
+                                        <th class="px-3 py-2 text-right">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 bg-white">
+                                    @forelse ($penggunaAuthenticator as $item)
+                                        <tr class="@if ($item->google2fa_reset_diminta_at) bg-amber-50 @endif">
+                                            <td class="px-3 py-2 font-medium text-slate-800 whitespace-nowrap">{{ $item->username }}</td>
+                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->nama_sekolah ?: '-' }}</td>
+                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->level_akses_label }}</td>
+                                            <td class="px-3 py-2 whitespace-nowrap">
+                                                @if ($item->google2fa_reset_diminta_at)
+                                                    <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">Menunggu Reset</span>
+                                                @elseif ($item->authenticatorAktif())
+                                                    <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700">Aktif sejak {{ $item->google2fa_aktif_at->keWaktuLokal()->translatedFormat('d M Y') }}</span>
+                                                @else
+                                                    <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-600">Belum Aktif</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-3 py-2 text-right whitespace-nowrap">
+                                                <button wire:click="konfirmasiResetAuthenticator({{ $item->id }})" class="text-amber-600 hover:underline">Reset & Kirim Barcode Baru</button>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="5" class="px-3 py-6 text-center text-slate-400">Belum ada data pengguna.</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-4">
+                            {{ $penggunaAuthenticator->links() }}
                         </div>
                     @else
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
@@ -297,6 +358,23 @@
             <div class="mt-6 flex justify-end gap-3">
                 <x-secondary-button wire:click="batalReset">Batal</x-secondary-button>
                 <x-primary-button wire:click="resetPassword" class="!bg-amber-600 hover:!bg-amber-700">Reset Password</x-primary-button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- Modal Konfirmasi Reset Authenticator (permintaan user 2026-09-27) --}}
+    <x-modal name="pengguna-reset-authenticator" :show="$confirmingResetAuthenticatorId !== null" maxWidth="md">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900">Reset Authenticator akun ini?</h2>
+            <p class="mt-1 text-sm text-slate-600">
+                Barcode & kunci lama akun
+                <span class="font-medium text-slate-800">{{ $penggunaDiresetAuthenticator?->username }}</span>
+                akan dibuang dan diganti dengan yang baru, lalu dikirim ke email terdaftar akun tersebut. Akun ini wajib scan barcode baru & aktivasi ulang sebelum bisa login kembali.
+            </p>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-secondary-button wire:click="batalResetAuthenticator">Batal</x-secondary-button>
+                <x-primary-button wire:click="resetAuthenticator" class="!bg-amber-600 hover:!bg-amber-700">Reset & Kirim Barcode Baru</x-primary-button>
             </div>
         </div>
     </x-modal>

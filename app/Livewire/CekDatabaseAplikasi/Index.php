@@ -27,6 +27,7 @@ use App\Models\RincianPemeliharaan;
 use App\Models\RincianPemeliharaanPc;
 use App\Models\StockOpnameBarangPersediaan;
 use App\Models\SuratTpg;
+use App\Models\User;
 use App\Models\VervalRealisasiBosp;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -77,6 +78,9 @@ class Index extends Component
     public string $searchAksesData = '';
 
     public string $filterJenisAksi = '';
+
+    // --- State tab Cek Kecocokan Data (permintaan user 2026-09-27) ---
+    public string $searchKecocokan = '';
 
     /**
      * Daftar modul yang datanya terikat ke satu sekolah (profil_sekolah_id)
@@ -278,6 +282,58 @@ class Index extends Component
         return $temuan;
     }
 
+    /**
+     * Tab BARU "Cek Kecocokan Data" (permintaan user 2026-09-27) - TIDAK
+     * sama dengan tab Integritas Data di atas (yang mencari baris
+     * bermasalah spesifik). Tab ini murni membandingkan JUMLAH baris per
+     * jenis data:
+     * - "Jumlah Data di Aplikasi": Model::count() - lewat Eloquent,
+     *   mengikuti aturan/scope yang dipakai aplikasi (kalau ada).
+     * - "Jumlah Data di Database": DB::table(...)->count() - COUNT(*)
+     *   mentah langsung ke tabel, TANPA lewat Eloquent sama sekali.
+     *
+     * Cakupan (dikonfirmasi user lewat AskUserQuestion): Profil Sekolah +
+     * semua menu Pendataan OPS/BOSP (memakai daftar yang SAMA dengan
+     * modulTerikatSekolah() di atas, supaya konsisten dengan tab
+     * Integritas Data) + Pengguna.
+     *
+     * Kedua angka SEHARUSNYA selalu sama persis - saat ini tidak ada model
+     * di aplikasi ini yang memakai soft delete atau global scope
+     * tersembunyi. Kalau suatu saat angkanya berbeda, itu tanda ada
+     * scope/filter tersembunyi yang membuat salah satu angka tidak lagi
+     * mencerminkan kondisi database yang sebenarnya - sinyal untuk
+     * diperiksa lebih lanjut, sama seperti filosofi tab Integritas Data.
+     *
+     * @return array<int, array{jenis_data: string, jumlah_aplikasi: int, jumlah_database: int, cocok: bool}>
+     */
+    public function cekKecocokanData(): array
+    {
+        $modul = array_merge(
+            ['Profil Sekolah' => ProfilSekolah::class, 'Pengguna' => User::class],
+            $this->modulTerikatSekolah(),
+        );
+
+        $hasil = [];
+
+        foreach ($modul as $label => $class) {
+            if ($this->searchKecocokan && ! str_contains(strtolower($label), strtolower($this->searchKecocokan))) {
+                continue;
+            }
+
+            $jumlahAplikasi = $class::count();
+            $jumlahDatabase = DB::table((new $class())->getTable())->count();
+
+            $hasil[] = [
+                'jenis_data' => $label,
+                'jumlah_aplikasi' => $jumlahAplikasi,
+                'jumlah_database' => $jumlahDatabase,
+                'cocok' => $jumlahAplikasi === $jumlahDatabase,
+            ];
+        }
+
+        return $hasil;
+    }
+
     public function pindahTab(string $tab): void
     {
         $this->tab = $tab;
@@ -375,6 +431,7 @@ class Index extends Component
             'temuanDuplikat' => $this->tab === 'integritas' ? $this->cekDataDuplikat() : [],
             'loginGagal' => $loginGagal,
             'aksesData' => $aksesData,
+            'kecocokanData' => $this->tab === 'kecocokan' ? $this->cekKecocokanData() : [],
         ]);
     }
 }

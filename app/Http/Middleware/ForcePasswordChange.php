@@ -32,7 +32,16 @@ class ForcePasswordChange
             && $user->must_change_password
             && ! $request->routeIs(
                 'ganti-password-wajib', 'logout',
-                'default.livewire.update', 'livewire.upload-file', 'livewire.preview-file'
+                'default.livewire.update', 'livewire.upload-file', 'livewire.preview-file',
+                // Permintaan user 2026-09-27: halaman 2FA Google Authenticator
+                // WAJIB dikecualikan juga di sini - middleware
+                // EnsureGoogleAuthenticatorVerified berjalan LEBIH DULU
+                // (lihat bootstrap/app.php) dan sudah memutuskan pengguna
+                // harus berada di halaman ini dulu. Kalau tidak dikecualikan
+                // di sini juga, pengguna yang harus ganti password DAN
+                // belum aktivasi Authenticator akan terjebak redirect loop
+                // bolak-balik antara halaman ini dan halaman 2FA.
+                'authenticator.aktivasi', 'authenticator.verifikasi'
             )
         ) {
             return redirect()->route('ganti-password-wajib');

@@ -141,7 +141,20 @@ class LoginForm extends Form
         }
 
         Auth::login($user, $this->remember);
-        $user->forceFill(['must_change_password' => true])->save();
+
+        // Permintaan user 2026-09-27 (jalur darurat Superadmin kehilangan
+        // Authenticator): login lewat kata sandi pemulihan SELALU me-reset
+        // Google Authenticator akun ini (secret lama dibuang, wajib
+        // aktivasi/scan barcode ulang dari awal) - supaya Superadmin yang
+        // kehilangan HP tidak terkunci total menunggu email/Superadmin lain
+        // yang tidak ada. Ini hanya berlaku utk Superadmin (satu-satunya
+        // level yang punya jalur pemulihan mandiri, lihat validasi di atas).
+        $user->forceFill([
+            'must_change_password' => true,
+            'google2fa_secret' => null,
+            'google2fa_aktif_at' => null,
+            'google2fa_reset_diminta_at' => null,
+        ])->save();
 
         RateLimiter::clear($this->throttleKey());
         $this->percobaanGagal = 0;

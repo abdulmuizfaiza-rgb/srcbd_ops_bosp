@@ -3,10 +3,12 @@
 namespace App\Livewire\Pengguna;
 
 use App\Livewire\Concerns\HasZoomTampilan;
+use App\Mail\BarcodeAuthenticatorDiresetSuperadmin;
 use App\Mail\PasswordDiresetSuperadmin;
 use App\Models\LoginHistory;
 use App\Models\ProfilSekolah;
 use App\Models\User;
+use App\Services\GoogleAuthenticatorService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -41,6 +43,15 @@ class Index extends Component
     public string $subTabRiwayat = User::LEVEL_SUPERADMIN;
 
     public string $searchRiwayat = '';
+
+    /**
+     * State untuk tab "Authenticator" (permintaan user 2026-09-27) - daftar
+     * SEMUA pengguna (lintas level) beserta status 2FA-nya, TERPISAH dari
+     * $tab & $search milik tab kelola-akun di atas.
+     */
+    public string $searchAuthenticator = '';
+
+    public ?int $confirmingResetAuthenticatorId = null;
 
     // State form modal
     public bool $showForm = false;
@@ -92,6 +103,11 @@ class Index extends Component
     public function updatedSearchRiwayat(): void
     {
         $this->resetPage('riwayatPage');
+    }
+
+    public function updatedSearchAuthenticator(): void
+    {
+        $this->resetPage('authenticatorPage');
     }
 
     public function updatedFilterSekolahId(): void
@@ -352,6 +368,74 @@ class Index extends Component
     }
 
     /**
+     * Tampilkan modal konfirmasi reset Authenticator (permintaan user
+     * 2026-09-27, tab Authenticator) - bisa dipakai untuk SEMUA level akses
+     * termasuk Superadmin (berbeda dari konfirmasiReset() reset password di
+     * atas yang mengecualikan Superadmin), karena Superadmin JUGA wajib
+     * pakai 2FA dan bisa saja perlu di-reset oleh Superadmin lain.
+     */
+    public function konfirmasiResetAuthenticator(int $id): void
+    {
+        $this->confirmingResetAuthenticatorId = $id;
+        $this->dispatch('open-modal', 'pengguna-reset-authenticator');
+    }
+
+    public function batalResetAuthenticator(): void
+    {
+        $this->confirmingResetAuthenticatorId = null;
+        $this->dispatch('close-modal', 'pengguna-reset-authenticator');
+    }
+
+    /**
+     * Reset Google Authenticator akun ini: buang secret lama, kosongkan
+     * status aktif (wajib scan barcode ulang dari awal) & tandai permintaan
+     * reset sudah selesai ditangani, lalu kirim barcode BARU ke email
+     * pengguna yang terdaftar (permintaan user 2026-09-27).
+     *
+     * Sama seperti resetPassword() di atas: pengiriman email dibungkus
+     * try/catch - reset di database SUDAH TERLANJUR terjadi dan HARUS tetap
+     * begitu (secret lama harus tetap dibuang demi keamanan walau email
+     * gagal terkirim), jadi kegagalan kirim tidak boleh menggagalkan proses
+     * reset itu sendiri, cukup dicatat ke log + pesan status yang jelas.
+     */
+    public function resetAuthenticator(GoogleAuthenticatorService $layanan): void
+    {
+        $user = User::findOrFail($this->confirmingResetAuthenticatorId);
+
+        $secretBaru = $layanan->buatSecretBaru();
+
+        $user->forceFill([
+            'google2fa_secret' => $secretBaru,
+            'google2fa_aktif_at' => null,
+            'google2fa_reset_diminta_at' => null,
+        ])->save();
+
+        $emailTerkirim = true;
+        $alamatEmail = $user->email ?: $user->username;
+
+        try {
+            Mail::to($alamatEmail)->send(new BarcodeAuthenticatorDiresetSuperadmin(
+                $user,
+                $layanan->svgBarcodeDataUri($user, $secretBaru),
+                $secretBaru,
+            ));
+        } catch (Throwable $e) {
+            $emailTerkirim = false;
+
+            Log::error('Gagal mengirim email barcode Authenticator baru ke '.$alamatEmail.': '.$e->getMessage());
+        }
+
+        $this->confirmingResetAuthenticatorId = null;
+        $this->dispatch('close-modal', 'pengguna-reset-authenticator');
+
+        if ($emailTerkirim) {
+            session()->flash('status', "Authenticator {$user->username} berhasil di-reset & barcode baru sudah dikirim ke {$alamatEmail}.");
+        } else {
+            session()->flash('status', "Authenticator {$user->username} berhasil di-reset, TAPI email barcode baru GAGAL terkirim ke {$alamatEmail} (kemungkinan SMTP di server belum/salah dikonfigurasi). Kunci manual: {$secretBaru} - sampaikan secara manual ke yang bersangkutan untuk dimasukkan di aplikasi Authenticator.");
+        }
+    }
+
+    /**
      * Password sementara 6 karakter, kombinasi huruf & angka (dijamin
      * mengandung minimal 1 huruf DAN 1 angka, bukan cuma acak murni yang
      * bisa saja kebetulan semua huruf/semua angka). Karakter yang mirip
@@ -383,8 +467,22 @@ class Index extends Component
     {
         $pengguna = null;
         $riwayatLogin = null;
+        $penggunaAuthenticator = null;
 
-        if ($this->tab === 'riwayat_login') {
+        if ($this->tab === 'authenticator') {
+            // Tab "Authenticator" (permintaan user 2026-09-27) - daftar
+            // SEMUA pengguna lintas level (bukan difilter per level seperti
+            // tab kelola-akun), supaya Superadmin bisa lihat status 2FA
+            // semua orang & permintaan reset yang masuk dalam satu tempat.
+            $penggunaAuthenticator = User::query()
+                ->when($this->searchAuthenticator, fn ($q) => $q->where(function ($q) {
+                    $q->where('username', 'like', "%{$this->searchAuthenticator}%")
+                        ->orWhere('nama_sekolah', 'like', "%{$this->searchAuthenticator}%");
+                }))
+                ->orderByRaw('google2fa_reset_diminta_at IS NULL, google2fa_reset_diminta_at DESC')
+                ->orderBy('username')
+                ->paginate(10, ['*'], 'authenticatorPage');
+        } elseif ($this->tab === 'riwayat_login') {
             // Tab "Riwayat Login" (permintaan user 2026-09-26) - query
             // TERPISAH dari tab kelola-akun di bawah, memakai kolom
             // snapshot nama_sekolah/email yang tersimpan langsung di baris
@@ -414,6 +512,7 @@ class Index extends Component
         return view('livewire.pengguna.index', [
             'pengguna' => $pengguna,
             'riwayatLogin' => $riwayatLogin,
+            'penggunaAuthenticator' => $penggunaAuthenticator,
             'levelOptions' => User::levelAksesOptions(),
             'sekolahOptions' => ProfilSekolah::orderBy('nama_sekolah')->get(),
             'jumlahMenunggu' => [
@@ -421,6 +520,7 @@ class Index extends Component
                 User::LEVEL_ADMIN_BOSP => User::where('level_akses', User::LEVEL_ADMIN_BOSP)->where('is_approved', false)->count(),
             ],
             'penggunaDireset' => $this->confirmingResetId ? User::find($this->confirmingResetId) : null,
+            'penggunaDiresetAuthenticator' => $this->confirmingResetAuthenticatorId ? User::find($this->confirmingResetAuthenticatorId) : null,
         ]);
     }
 }
