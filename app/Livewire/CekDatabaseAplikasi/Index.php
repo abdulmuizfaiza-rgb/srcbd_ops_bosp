@@ -283,51 +283,88 @@ class Index extends Component
     }
 
     /**
-     * Tab BARU "Cek Kecocokan Data" (permintaan user 2026-09-27) - TIDAK
-     * sama dengan tab Integritas Data di atas (yang mencari baris
-     * bermasalah spesifik). Tab ini murni membandingkan JUMLAH baris per
-     * jenis data:
-     * - "Jumlah Data di Aplikasi": Model::count() - lewat Eloquent,
-     *   mengikuti aturan/scope yang dipakai aplikasi (kalau ada).
-     * - "Jumlah Data di Database": DB::table(...)->count() - COUNT(*)
-     *   mentah langsung ke tabel, TANPA lewat Eloquent sama sekali.
+     * Tab BARU "Cek Kecocokan Data" (permintaan user 2026-09-27, DIROMBAK
+     * 2026-09-27 sore jadi per-sekolah atas permintaan user) - TIDAK sama
+     * dengan tab Integritas Data di atas (yang mencari baris bermasalah
+     * spesifik). Tab ini membandingkan JUMLAH baris per jenis data, DAN
+     * dikelompokkan per sekolah (Superadmin klik simbol + untuk membuka
+     * rincian jenis data sekolah tersebut):
+     * - "Jumlah Data di Aplikasi": Model::where('profil_sekolah_id', ...)
+     *   ->count() - lewat Eloquent, mengikuti aturan/scope yang dipakai
+     *   aplikasi (kalau ada).
+     * - "Jumlah Data di Database": DB::table(...)->where('profil_sekolah_id', ...)
+     *   ->count() - COUNT(*) mentah langsung ke tabel, TANPA lewat
+     *   Eloquent sama sekali.
      *
-     * Cakupan (dikonfirmasi user lewat AskUserQuestion): Profil Sekolah +
-     * semua menu Pendataan OPS/BOSP (memakai daftar yang SAMA dengan
-     * modulTerikatSekolah() di atas, supaya konsisten dengan tab
-     * Integritas Data) + Pengguna.
+     * Cakupan tetap sama seperti sebelumnya (Profil Sekolah + Pengguna +
+     * semua menu Pendataan OPS/BOSP dari modulTerikatSekolah()) - hanya
+     * cara menampilkannya yang berubah dari 1 tabel datar jadi
+     * dikelompokkan per sekolah.
      *
-     * Kedua angka SEHARUSNYA selalu sama persis - saat ini tidak ada model
-     * di aplikasi ini yang memakai soft delete atau global scope
-     * tersembunyi. Kalau suatu saat angkanya berbeda, itu tanda ada
+     * "Profil Sekolah" per baris sekolah SELALU jumlahnya 1/1 (baris
+     * sekolah itu sendiri) - tetap ditampilkan supaya daftar jenis data
+     * konsisten dengan tab Integritas Data. "Pengguna" dihitung dari akun
+     * yang profil_sekolah_id-nya menunjuk ke sekolah tsb (Admin OPS/Admin
+     * BOSP) - akun Superadmin (profil_sekolah_id null) tidak masuk ke
+     * sekolah manapun, itu wajar bukan bug.
+     *
+     * Pencarian (searchKecocokan) menyaring berdasarkan NAMA SEKOLAH.
+     *
+     * Kedua angka per jenis data SEHARUSNYA selalu sama persis - saat ini
+     * tidak ada model di aplikasi ini yang memakai soft delete atau global
+     * scope tersembunyi. Kalau suatu saat angkanya berbeda, itu tanda ada
      * scope/filter tersembunyi yang membuat salah satu angka tidak lagi
      * mencerminkan kondisi database yang sebenarnya - sinyal untuk
      * diperiksa lebih lanjut, sama seperti filosofi tab Integritas Data.
      *
-     * @return array<int, array{jenis_data: string, jumlah_aplikasi: int, jumlah_database: int, cocok: bool}>
+     * @return array<int, array{sekolah_id: int, nama_sekolah: string, semua_cocok: bool, total_jumlah_aplikasi: int, rincian: array<int, array{jenis_data: string, jumlah_aplikasi: int, jumlah_database: int, cocok: bool}>}>
      */
     public function cekKecocokanData(): array
     {
-        $modul = array_merge(
-            ['Profil Sekolah' => ProfilSekolah::class, 'Pengguna' => User::class],
-            $this->modulTerikatSekolah(),
-        );
+        $sekolahList = ProfilSekolah::orderBy('nama_sekolah')->get(['id', 'nama_sekolah']);
+
+        if ($this->searchKecocokan) {
+            $sekolahList = $sekolahList
+                ->filter(fn ($s) => str_contains(strtolower($s->nama_sekolah), strtolower($this->searchKecocokan)))
+                ->values();
+        }
+
+        $modul = $this->modulTerikatSekolah();
 
         $hasil = [];
 
-        foreach ($modul as $label => $class) {
-            if ($this->searchKecocokan && ! str_contains(strtolower($label), strtolower($this->searchKecocokan))) {
-                continue;
+        foreach ($sekolahList as $sekolah) {
+            $rincian = [
+                [
+                    'jenis_data' => 'Profil Sekolah',
+                    'jumlah_aplikasi' => ProfilSekolah::where('id', $sekolah->id)->count(),
+                    'jumlah_database' => DB::table('profil_sekolah')->where('id', $sekolah->id)->count(),
+                ],
+                [
+                    'jenis_data' => 'Pengguna',
+                    'jumlah_aplikasi' => User::where('profil_sekolah_id', $sekolah->id)->count(),
+                    'jumlah_database' => DB::table('users')->where('profil_sekolah_id', $sekolah->id)->count(),
+                ],
+            ];
+
+            foreach ($modul as $label => $class) {
+                $rincian[] = [
+                    'jenis_data' => $label,
+                    'jumlah_aplikasi' => $class::where('profil_sekolah_id', $sekolah->id)->count(),
+                    'jumlah_database' => DB::table((new $class())->getTable())->where('profil_sekolah_id', $sekolah->id)->count(),
+                ];
             }
 
-            $jumlahAplikasi = $class::count();
-            $jumlahDatabase = DB::table((new $class())->getTable())->count();
+            foreach ($rincian as $i => $satu) {
+                $rincian[$i]['cocok'] = $satu['jumlah_aplikasi'] === $satu['jumlah_database'];
+            }
 
             $hasil[] = [
-                'jenis_data' => $label,
-                'jumlah_aplikasi' => $jumlahAplikasi,
-                'jumlah_database' => $jumlahDatabase,
-                'cocok' => $jumlahAplikasi === $jumlahDatabase,
+                'sekolah_id' => $sekolah->id,
+                'nama_sekolah' => $sekolah->nama_sekolah,
+                'semua_cocok' => collect($rincian)->every(fn ($r) => $r['cocok']),
+                'total_jumlah_aplikasi' => (int) collect($rincian)->sum('jumlah_aplikasi'),
+                'rincian' => $rincian,
             ];
         }
 

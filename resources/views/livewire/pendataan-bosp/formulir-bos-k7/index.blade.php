@@ -379,8 +379,9 @@
                                     </div>
                                     <div>
                                         <label class="block mb-1">Tanggal SK Kepala Sekolah</label>
-                                        <div wire:ignore wire:key="tanggal-sk-kepsek-{{ $revisiKunci }}">
+                                        <div wire:ignore wire:key="tanggal-sk-kepsek-{{ $revisiKunci }}" class="flex items-center gap-2">
                                             <input type="date" value="{{ $baris['tanggal_sk_kepala_sekolah'] ?? '' }}" x-on:blur="$wire.set('baris.data.tanggal_sk_kepala_sekolah', $event.target.value)" class="w-full text-xs rounded px-2 py-1.5 border {{ $errors->has('tanggal_sk_kepala_sekolah') ? 'border-red-400' : 'border-blue-300' }} focus:ring-1 focus:outline-none focus:border-blue-500">
+                                            <button type="button" x-on:click="$el.previousElementSibling.value = ''; $wire.set('baris.data.tanggal_sk_kepala_sekolah', '')" class="shrink-0 text-[11px] text-slate-500 hover:text-red-600 underline whitespace-nowrap">Kosongkan</button>
                                         </div>
                                         <x-input-error :messages="$errors->get('tanggal_sk_kepala_sekolah')" class="mt-1" />
                                     </div>
@@ -408,8 +409,9 @@
                                     </div>
                                     <div>
                                         <label class="block mb-1">Tanggal SK Bendahara</label>
-                                        <div wire:ignore wire:key="tanggal-sk-bendahara-{{ $revisiKunci }}">
+                                        <div wire:ignore wire:key="tanggal-sk-bendahara-{{ $revisiKunci }}" class="flex items-center gap-2">
                                             <input type="date" value="{{ $baris['tanggal_sk_bendahara'] ?? '' }}" x-on:blur="$wire.set('baris.data.tanggal_sk_bendahara', $event.target.value)" class="w-full text-xs rounded px-2 py-1.5 border {{ $errors->has('tanggal_sk_bendahara') ? 'border-red-400' : 'border-blue-300' }} focus:ring-1 focus:outline-none focus:border-blue-500">
+                                            <button type="button" x-on:click="$el.previousElementSibling.value = ''; $wire.set('baris.data.tanggal_sk_bendahara', '')" class="shrink-0 text-[11px] text-slate-500 hover:text-red-600 underline whitespace-nowrap">Kosongkan</button>
                                         </div>
                                         <x-input-error :messages="$errors->get('tanggal_sk_bendahara')" class="mt-1" />
                                     </div>

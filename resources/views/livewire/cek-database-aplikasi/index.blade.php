@@ -174,43 +174,76 @@
                             {{ $aksesData->links() }}
                         </div>
                     @elseif ($tab === 'kecocokan')
-                        <p class="text-sm text-slate-500 mb-4">Membandingkan jumlah data yang dihitung lewat aplikasi dengan jumlah baris asli di database untuk setiap jenis data utama. Idealnya semua baris berstatus "Cocok".</p>
+                        <p class="text-sm text-slate-500 mb-4">Membandingkan jumlah data yang dihitung lewat aplikasi dengan jumlah baris asli di database untuk setiap jenis data, dikelompokkan per sekolah. Klik simbol <strong>+</strong> pada nama sekolah untuk melihat rincian jenis data sekolah tersebut. Idealnya semua baris berstatus "Cocok".</p>
 
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                            <input wire:model.live.debounce.300ms="searchKecocokan" type="text" placeholder="Cari jenis data..." class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm sm:w-80">
+                            <input wire:model.live.debounce.300ms="searchKecocokan" type="text" placeholder="Cari nama sekolah..." class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm sm:w-80">
                             <x-zoom-controls :zoom="$zoomPercent" />
                         </div>
 
-                        <div class="overflow-auto scrollbar-modern border border-slate-200 rounded-lg" style="max-height: 28rem; zoom: {{ $zoomPercent }}%;">
+                        <div class="overflow-auto scrollbar-modern border border-slate-200 rounded-lg" style="max-height: 32rem; zoom: {{ $zoomPercent }}%;">
                             <table class="min-w-full divide-y divide-slate-200 text-sm">
                                 <thead class="sticky top-0 bg-slate-50">
                                     <tr class="text-left text-slate-500">
-                                        <th class="px-3 py-2">Jenis Data</th>
-                                        <th class="px-3 py-2 text-right">Jumlah Data di Aplikasi</th>
-                                        <th class="px-3 py-2 text-right">Jumlah Data di Database</th>
+                                        <th class="px-3 py-2">Nama Sekolah</th>
+                                        <th class="px-3 py-2 text-right">Jumlah Jenis Data</th>
                                         <th class="px-3 py-2">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-slate-100 bg-white">
-                                    @forelse ($kecocokanData as $item)
-                                        <tr>
-                                            <td class="px-3 py-2 font-medium text-slate-700 whitespace-nowrap">{{ $item['jenis_data'] }}</td>
-                                            <td class="px-3 py-2 text-right text-slate-600 whitespace-nowrap">{{ $item['jumlah_aplikasi'] }}</td>
-                                            <td class="px-3 py-2 text-right text-slate-600 whitespace-nowrap">{{ $item['jumlah_database'] }}</td>
+                                @forelse ($kecocokanData as $sekolah)
+                                    <tbody x-data="{ terbuka: false }" class="divide-y divide-slate-100 bg-white">
+                                        <tr class="cursor-pointer hover:bg-slate-50" x-on:click="terbuka = ! terbuka">
+                                            <td class="px-3 py-2 font-medium text-slate-700 whitespace-nowrap">
+                                                <span class="inline-flex items-center justify-center w-5 h-5 mr-2 rounded border border-slate-300 text-slate-500 text-xs font-bold align-middle" x-text="terbuka ? '−' : '+'"></span>
+                                                {{ $sekolah['nama_sekolah'] }}
+                                            </td>
+                                            <td class="px-3 py-2 text-right text-slate-600 whitespace-nowrap">{{ count($sekolah['rincian']) }} jenis data</td>
                                             <td class="px-3 py-2 whitespace-nowrap">
-                                                @if ($item['cocok'])
+                                                @if ($sekolah['semua_cocok'])
                                                     <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700">Cocok</span>
                                                 @else
                                                     <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">Tidak Cocok</span>
                                                 @endif
                                             </td>
                                         </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="4" class="px-3 py-6 text-center text-slate-400">Tidak ada jenis data yang cocok dengan pencarian ini.</td>
+                                        <tr x-show="terbuka" x-cloak>
+                                            <td colspan="3" class="px-3 pb-3 pt-0 bg-slate-50">
+                                                <table class="min-w-full divide-y divide-slate-200 text-xs border border-slate-200 rounded-md overflow-hidden">
+                                                    <thead class="bg-slate-100">
+                                                        <tr class="text-left text-slate-500">
+                                                            <th class="px-3 py-1.5">Jenis Data</th>
+                                                            <th class="px-3 py-1.5 text-right">Jumlah Data di Aplikasi</th>
+                                                            <th class="px-3 py-1.5 text-right">Jumlah Data di Database</th>
+                                                            <th class="px-3 py-1.5">Status</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody class="divide-y divide-slate-100 bg-white">
+                                                        @foreach ($sekolah['rincian'] as $item)
+                                                            <tr>
+                                                                <td class="px-3 py-1.5 font-medium text-slate-700 whitespace-nowrap">{{ $item['jenis_data'] }}</td>
+                                                                <td class="px-3 py-1.5 text-right text-slate-600 whitespace-nowrap">{{ $item['jumlah_aplikasi'] }}</td>
+                                                                <td class="px-3 py-1.5 text-right text-slate-600 whitespace-nowrap">{{ $item['jumlah_database'] }}</td>
+                                                                <td class="px-3 py-1.5 whitespace-nowrap">
+                                                                    @if ($item['cocok'])
+                                                                        <span class="inline-flex px-2 py-0.5 text-[11px] font-medium rounded-full bg-emerald-100 text-emerald-700">Cocok</span>
+                                                                    @else
+                                                                        <span class="inline-flex px-2 py-0.5 text-[11px] font-medium rounded-full bg-red-100 text-red-700">Tidak Cocok</span>
+                                                                    @endif
+                                                                </td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </td>
                                         </tr>
-                                    @endforelse
-                                </tbody>
+                                    </tbody>
+                                @empty
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="3" class="px-3 py-6 text-center text-slate-400">Tidak ada sekolah yang cocok dengan pencarian ini.</td>
+                                        </tr>
+                                    </tbody>
+                                @endforelse
                             </table>
                         </div>
                     @endif

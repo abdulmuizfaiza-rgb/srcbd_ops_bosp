@@ -163,6 +163,7 @@
                 Sukabumi,
                 @if ($editable)
                     <input type="date" wire:model.live="tanggalSurat" class="border-0 border-b border-slate-400 bg-transparent text-sm focus:ring-0 focus:border-blue-500 px-1 py-0" style="display:inline-block;width:140px;">
+                    <button type="button" wire:click="$set('tanggalSurat', null)" class="text-[11px] text-slate-500 hover:text-red-600 underline align-middle" style="display:inline-block;">Kosongkan</button>
                 @else
                     {{ $tanggalSurat ? $tanggalSurat->translatedFormat('d F Y') : '..........................' }}.
                 @endif

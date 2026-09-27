@@ -73,6 +73,30 @@ use Livewire\WithPagination;
  *   dihitung ulang langsung dari database setiap kali halaman
  *   dibuka/pindah halaman pagination, sama seperti render() Livewire
  *   standar pada dashboard admin.
+ *   >>> DIBALIK 2026-09-27 (permintaan user, lihat bawah) - sekarang
+ *   PAKAI wire:poll, lihat catatan "ROUND KEDELAPAN BELAS" di bawah. <<<
+ *
+ * ROUND KEDELAPAN BELAS (2026-09-27) - permintaan user (verbatim):
+ * "untuk data yang landingpage (beranda) harus terupdate otomatis
+ * apabila di aplikasi ada perubahan data baik secara lokal maupun
+ * secara online." Dikonfirmasi lewat AskUserQuestion ("Update Beranda")
+ * -> user memilih "Auto-refresh berkala selagi halaman terbuka" (BUKAN
+ * opsi yang direkomendasikan "cukup data terkini saat dibuka") - ini
+ * SECARA EKSPLISIT membalik keputusan "Realtime" round sebelumnya di
+ * atas.
+ *
+ * Implementasi: `wire:poll.30s.visible` pada elemen pembungkus utama di
+ * index.blade.php - Livewire otomatis memanggil ulang render() (jadi
+ * query database di atas otomatis terhitung ulang) setiap 30 detik
+ * SELAMA tab/halaman ini sedang aktif dilihat pengunjung (modifier
+ * `.visible` - bawaan Livewire - otomatis MENGHENTIKAN polling saat tab
+ * browser diminimalkan/pindah tab, supaya tidak membebani server tanpa
+ * guna, lalu otomatis lanjut lagi begitu pengunjung kembali melihat tab
+ * ini). Interval 30 detik adalah KEPUTUSAN TEKNIS (bukan aturan bisnis)
+ * - dipilih sebagai keseimbangan antara data yang selalu terkini vs
+ * beban query database dari halaman PUBLIK ini (tidak perlu login,
+ * berpotensi dibuka banyak pengunjung sekaligus) - bisa diubah kalau
+ * user ingin interval lain.
  *
  * ROUND KETUJUH BELAS (2026-09-24) - permintaan user (verbatim): "pada
  * halaman landing page triwulannya default ke triwulan 1 bukan

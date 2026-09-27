@@ -3,7 +3,7 @@
     Lihat docblock App\Livewire\Beranda\Index utk detail keputusan
     bisnis (jawaban AskUserQuestion 2026-09-24) & alasan teknis.
 --}}
-<div class="space-y-8">
+<div class="space-y-8" wire:poll.30s.visible>
     {{-- ============ HERO / SAPAAN ============ --}}
     <div class="text-center pt-6 sm:pt-10 pb-2 animate-fade-in-up">
         <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md ring-1 ring-white/20 text-blue-100 text-xs font-medium">
