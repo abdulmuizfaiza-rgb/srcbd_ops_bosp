@@ -366,7 +366,7 @@ class Index extends Component
             'daftar' => $daftar,
             'triwulanOptions' => Lampiran2a::TRIWULAN_OPTIONS,
             'statusKepegawaianOptions' => Lampiran2a::STATUS_KEPEGAWAIAN_OPTIONS,
-            'sekolahOptions' => ProfilSekolah::orderBy('nama_sekolah')->get(['id', 'nama_sekolah']),
+            'sekolahOptions' => ProfilSekolah::urutStandar()->get(['id', 'nama_sekolah']),
             'bolehKelolaSemua' => $this->bolehKelolaSemua(),
             'tahunSekarang' => now()->year,
             'semuaTerpilih' => $semuaTerpilih,

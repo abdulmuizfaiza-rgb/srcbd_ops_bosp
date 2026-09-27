@@ -514,7 +514,7 @@ class Index extends Component
             'riwayatLogin' => $riwayatLogin,
             'penggunaAuthenticator' => $penggunaAuthenticator,
             'levelOptions' => User::levelAksesOptions(),
-            'sekolahOptions' => ProfilSekolah::orderBy('nama_sekolah')->get(),
+            'sekolahOptions' => ProfilSekolah::urutStandar()->get(),
             'jumlahMenunggu' => [
                 User::LEVEL_ADMIN_OPS => User::where('level_akses', User::LEVEL_ADMIN_OPS)->where('is_approved', false)->count(),
                 User::LEVEL_ADMIN_BOSP => User::where('level_akses', User::LEVEL_ADMIN_BOSP)->where('is_approved', false)->count(),

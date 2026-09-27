@@ -617,7 +617,11 @@ class Index extends Component
             });
         }
 
-        return $query->orderBy('profil_sekolah.nama_sekolah')->orderBy('penerimaan_honor_ptk.nama_penerima');
+        return $query
+            ->orderByRaw("CASE WHEN profil_sekolah.status = ? THEN 0 ELSE 1 END", [ProfilSekolah::STATUS_NEGERI])
+            ->orderBy('profil_sekolah.kecamatan')
+            ->orderBy('profil_sekolah.nama_sekolah')
+            ->orderBy('penerimaan_honor_ptk.nama_penerima');
     }
 
     public function export()
@@ -674,10 +678,7 @@ class Index extends Component
         }
 
         return $query
-            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
-            ->orderByRaw('kecamatan IS NULL')
-            ->orderBy('kecamatan')
-            ->orderBy('nama_sekolah')
+            ->urutStandar()
             ->get();
     }
 
@@ -862,10 +863,7 @@ class Index extends Component
         // permintaan user "seperti Rekap RKAS") - disamakan di sini supaya
         // konsisten dengan menu-menu lain.
         $daftarSekolah = $query
-            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
-            ->orderByRaw('kecamatan IS NULL')
-            ->orderBy('kecamatan')
-            ->orderBy('nama_sekolah')
+            ->urutStandar()
             ->get();
 
         // Diisi ULANG dari kosong tiap render (sama seperti sebelumnya) -
@@ -921,7 +919,7 @@ class Index extends Component
         return view('livewire.pendataan-bosp.penerimaan-honor-ptk.index', [
             'daftarSekolah' => $daftarSekolah,
             'triwulanOptions' => PenerimaanHonorPtk::TRIWULAN_OPTIONS,
-            'sekolahOptions' => ProfilSekolah::orderBy('nama_sekolah')->get(['id', 'nama_sekolah']),
+            'sekolahOptions' => ProfilSekolah::urutStandar()->get(['id', 'nama_sekolah']),
             'bolehKelolaSemua' => $this->bolehKelolaSemua(),
             'tahunOptions' => array_reverse($tahunOptions),
             'totalHonorKeseluruhan' => $totalHonorKeseluruhan,

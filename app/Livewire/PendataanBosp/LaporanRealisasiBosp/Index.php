@@ -398,10 +398,7 @@ class Index extends Component
         }
 
         $daftarSekolah = $query
-            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
-            ->orderByRaw('kecamatan IS NULL')
-            ->orderBy('kecamatan')
-            ->orderBy('nama_sekolah')
+            ->urutStandar()
             ->get()
             ->map(function ($sekolah) {
                 $sekolah->laporanTriwulanIni = $sekolah->laporanRealisasiBosp->first();
@@ -542,10 +539,7 @@ class Index extends Component
         }
 
         $daftarSekolah = $query
-            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
-            ->orderByRaw('kecamatan IS NULL')
-            ->orderBy('kecamatan')
-            ->orderBy('nama_sekolah')
+            ->urutStandar()
             ->get();
 
         // Kolom 11-27 untuk SELURUH triwulan sekaligus - lihat catatan
@@ -734,10 +728,7 @@ class Index extends Component
     protected function statusVervalSemuaSekolah(): \Illuminate\Support\Collection
     {
         return ProfilSekolah::query()
-            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
-            ->orderByRaw('kecamatan IS NULL')
-            ->orderBy('kecamatan')
-            ->orderBy('nama_sekolah')
+            ->urutStandar()
             ->get()
             ->map(fn ($sekolah) => [
                 'sekolah' => $sekolah,

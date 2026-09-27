@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Database\Factories\ProfilSekolahFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -364,5 +365,20 @@ class ProfilSekolah extends Model
     public function vervalRealisasiBosp(): HasMany
     {
         return $this->hasMany(VervalRealisasiBosp::class);
+    }
+
+    /**
+     * Urutan baku daftar sekolah di SELURUH aplikasi (permintaan user
+     * 2026-09-27): Status dulu (Negeri sebelum Swasta), lalu Kecamatan
+     * (A-Z), lalu Nama Sekolah (A-Z) - dipusatkan di sini (bukan diulang
+     * manual di tiap query) supaya urutannya konsisten kalau nanti perlu
+     * diubah lagi cukup di 1 tempat.
+     */
+    public function scopeUrutStandar(Builder $query): Builder
+    {
+        return $query
+            ->orderByRaw("CASE WHEN status = ? THEN 0 ELSE 1 END", [self::STATUS_NEGERI])
+            ->orderBy('kecamatan')
+            ->orderBy('nama_sekolah');
     }
 }

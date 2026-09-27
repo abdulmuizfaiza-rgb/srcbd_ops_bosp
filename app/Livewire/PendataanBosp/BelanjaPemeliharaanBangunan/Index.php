@@ -549,7 +549,11 @@ class Index extends Component
             });
         }
 
-        return $query->orderBy('profil_sekolah.nama_sekolah')->orderBy('rincian_pemeliharaan.nama_barang');
+        return $query
+            ->orderByRaw("CASE WHEN profil_sekolah.status = ? THEN 0 ELSE 1 END", [ProfilSekolah::STATUS_NEGERI])
+            ->orderBy('profil_sekolah.kecamatan')
+            ->orderBy('profil_sekolah.nama_sekolah')
+            ->orderBy('rincian_pemeliharaan.nama_barang');
     }
 
     public function export()
@@ -602,10 +606,7 @@ class Index extends Component
         }
 
         return $query
-            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
-            ->orderByRaw('kecamatan IS NULL')
-            ->orderBy('kecamatan')
-            ->orderBy('nama_sekolah')
+            ->urutStandar()
             ->get();
     }
 
@@ -770,10 +771,7 @@ class Index extends Component
         // Urutan Negeri dulu baru Swasta (lalu kecamatan & nama sekolah) -
         // pola sama seperti menu Pendataan BOSP lainnya.
         $daftarSekolah = $query
-            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
-            ->orderByRaw('kecamatan IS NULL')
-            ->orderBy('kecamatan')
-            ->orderBy('nama_sekolah')
+            ->urutStandar()
             ->get();
 
         $this->baris = [];
@@ -826,7 +824,7 @@ class Index extends Component
             'daftarSekolah' => $daftarSekolah,
             'jenisOptions' => RincianPemeliharaan::JENIS_OPTIONS,
             'triwulanOptions' => RincianPemeliharaan::TRIWULAN_OPTIONS,
-            'sekolahOptions' => ProfilSekolah::orderBy('nama_sekolah')->get(['id', 'nama_sekolah']),
+            'sekolahOptions' => ProfilSekolah::urutStandar()->get(['id', 'nama_sekolah']),
             'bolehKelolaSemua' => $this->bolehKelolaSemua(),
             // Kuncian UI - permintaan user 2026-09-23 (round kesepuluh,
             // poin 1) - lihat docblock lengkap App\Livewire\Concerns\

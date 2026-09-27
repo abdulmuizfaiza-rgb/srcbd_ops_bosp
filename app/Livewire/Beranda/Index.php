@@ -168,7 +168,7 @@ class Index extends Component
 
         $idSekolahSelesaiOps = $this->idSekolahSelesaiOps($tahun, $triwulan);
 
-        $halamanOps = ProfilSekolah::orderBy('nama_sekolah')
+        $halamanOps = ProfilSekolah::urutStandar()
             ->paginate($perHalaman, ['*'], 'halamanOps')
             ->through(fn (ProfilSekolah $s) => [
                 'sekolah' => $s,
@@ -177,7 +177,7 @@ class Index extends Component
 
         $idSekolahSelesaiBosp = VervalRealisasiBosp::idSekolahAdaDataUntukTriwulan($tahun, $triwulan);
 
-        $halamanBosp = ProfilSekolah::orderBy('nama_sekolah')
+        $halamanBosp = ProfilSekolah::urutStandar()
             ->paginate($perHalaman, ['*'], 'halamanBosp')
             ->through(fn (ProfilSekolah $s) => [
                 'sekolah' => $s,

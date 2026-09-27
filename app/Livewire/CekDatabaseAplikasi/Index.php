@@ -317,11 +317,11 @@ class Index extends Component
      * mencerminkan kondisi database yang sebenarnya - sinyal untuk
      * diperiksa lebih lanjut, sama seperti filosofi tab Integritas Data.
      *
-     * @return array<int, array{sekolah_id: int, nama_sekolah: string, semua_cocok: bool, total_jumlah_aplikasi: int, rincian: array<int, array{jenis_data: string, jumlah_aplikasi: int, jumlah_database: int, cocok: bool}>}>
+     * @return array<int, array{sekolah_id: int, nama_sekolah: string, semua_cocok: bool, total_jumlah_aplikasi: int, total_jumlah_database: int, rincian: array<int, array{jenis_data: string, jumlah_aplikasi: int, jumlah_database: int, cocok: bool}>}>
      */
     public function cekKecocokanData(): array
     {
-        $sekolahList = ProfilSekolah::orderBy('nama_sekolah')->get(['id', 'nama_sekolah']);
+        $sekolahList = ProfilSekolah::urutStandar()->get(['id', 'nama_sekolah']);
 
         if ($this->searchKecocokan) {
             $sekolahList = $sekolahList
@@ -364,6 +364,7 @@ class Index extends Component
                 'nama_sekolah' => $sekolah->nama_sekolah,
                 'semua_cocok' => collect($rincian)->every(fn ($r) => $r['cocok']),
                 'total_jumlah_aplikasi' => (int) collect($rincian)->sum('jumlah_aplikasi'),
+                'total_jumlah_database' => (int) collect($rincian)->sum('jumlah_database'),
                 'rincian' => $rincian,
             ];
         }

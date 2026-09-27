@@ -307,10 +307,7 @@ class Index extends Component
         }
 
         $daftarSekolah = $query
-            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
-            ->orderByRaw('kecamatan IS NULL')
-            ->orderBy('kecamatan')
-            ->orderBy('nama_sekolah')
+            ->urutStandar()
             ->get();
 
         return view('livewire.pendataan-ops.index', [
@@ -320,7 +317,7 @@ class Index extends Component
             'pendidikanOptions' => PendataanOps::PENDIDIKAN_OPTIONS,
             'bolehKelolaSemua' => $kelolaSemua,
             'filterNamaSekolahOptions' => $kelolaSemua
-                ? ProfilSekolah::orderBy('nama_sekolah')->pluck('nama_sekolah', 'id')
+                ? ProfilSekolah::urutStandar()->pluck('nama_sekolah', 'id')
                 : collect(),
             'filterNamaOpsOptions' => $kelolaSemua
                 ? PendataanOps::whereNotNull('nama')->where('nama', '!=', '')->distinct()->orderBy('nama')->pluck('nama', 'nama')

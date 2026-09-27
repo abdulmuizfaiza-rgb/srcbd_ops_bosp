@@ -488,7 +488,7 @@ class Index extends Component
             'bolehKelolaSemua' => $this->bolehKelolaSemua(),
             'bulanOptions' => FormulirBosK7::BULAN_OPTIONS,
             'tahunOptions' => array_reverse(range(now()->year - 2, now()->year + 1)),
-            'sekolahOptions' => ProfilSekolah::orderBy('nama_sekolah')->get(['id', 'nama_sekolah']),
+            'sekolahOptions' => ProfilSekolah::urutStandar()->get(['id', 'nama_sekolah']),
             'kertasOptions' => $this->daftarKertasOptions(),
             'urlCetak' => $this->urlCetak(),
             // Kuncian UI - permintaan user 2026-09-23 (round kesepuluh,

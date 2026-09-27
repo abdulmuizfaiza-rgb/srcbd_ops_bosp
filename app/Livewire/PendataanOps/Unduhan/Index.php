@@ -412,7 +412,7 @@ class Index extends Component
             'jumlah2a' => $baris2a->count(),
             'jumlah2b' => $baris2b->count(),
             'jumlah2c' => $baris2c->count(),
-            'sekolahOptionsSuratTpg' => $this->bolehKelolaSemua() ? ProfilSekolah::orderBy('nama_sekolah')->get(['id', 'nama_sekolah']) : null,
+            'sekolahOptionsSuratTpg' => $this->bolehKelolaSemua() ? ProfilSekolah::urutStandar()->get(['id', 'nama_sekolah']) : null,
             'suratTpgProfilSekolahId' => $this->suratTpgProfilSekolahId,
             'urlCetakSuratTpgGabungan' => $this->urlCetakSuratTpgGabungan(),
             'kertasOptionsSuratTpg' => $this->daftarKertasOptionsSuratTpg(),

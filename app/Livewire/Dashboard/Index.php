@@ -211,7 +211,7 @@ class Index extends Component
         $registrasiOpsSudah = $idSekolahRegistrasiOps->count();
         $registrasiBospSudah = $idSekolahRegistrasiBosp->count();
 
-        $halamanRegistrasi = ProfilSekolah::orderBy('nama_sekolah')
+        $halamanRegistrasi = ProfilSekolah::urutStandar()
             ->paginate($perHalamanDaftarSekolah, ['*'], 'halamanRegistrasi')
             ->through(fn (ProfilSekolah $s) => [
                 'sekolah' => $s,
@@ -229,7 +229,7 @@ class Index extends Component
             ->distinct()
             ->pluck('profil_sekolah_id');
 
-        $halamanValidasiBosp = ProfilSekolah::orderBy('nama_sekolah')
+        $halamanValidasiBosp = ProfilSekolah::urutStandar()
             ->paginate($perHalamanDaftarSekolah, ['*'], 'halamanValidasiBosp')
             ->through(fn (ProfilSekolah $s) => [
                 'sekolah' => $s,
@@ -242,7 +242,7 @@ class Index extends Component
         // Validasi OPS" di docblock kelas.
         $idSekolahSelesaiOpsAktif = $this->idSekolahSelesaiOps($tahun, $triwulanAktif);
 
-        $halamanValidasiOps = ProfilSekolah::orderBy('nama_sekolah')
+        $halamanValidasiOps = ProfilSekolah::urutStandar()
             ->paginate($perHalamanDaftarSekolah, ['*'], 'halamanValidasiOps')
             ->through(fn (ProfilSekolah $s) => [
                 'sekolah' => $s,
@@ -365,7 +365,7 @@ class Index extends Component
         $tahun = $this->tahun;
         $triwulanAktif = $this->triwulan;
 
-        $daftarSekolah = ProfilSekolah::orderBy('nama_sekolah')->get();
+        $daftarSekolah = ProfilSekolah::urutStandar()->get();
         $totalSekolah = $daftarSekolah->count();
         $totalNegeri = $daftarSekolah->where('status', ProfilSekolah::STATUS_NEGERI)->count();
         $totalSwasta = $daftarSekolah->where('status', ProfilSekolah::STATUS_SWASTA)->count();
@@ -410,7 +410,7 @@ class Index extends Component
         $tahun = $this->tahun;
         $triwulanAktif = $this->triwulan;
 
-        $daftarSekolah = ProfilSekolah::orderBy('nama_sekolah')->get();
+        $daftarSekolah = ProfilSekolah::urutStandar()->get();
         $totalSekolah = $daftarSekolah->count();
 
         // "sekolah sudah/belum mengerjakan pendataan BOSP berdasarkan

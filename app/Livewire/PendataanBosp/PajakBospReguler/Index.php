@@ -394,10 +394,7 @@ class Index extends Component
         $daftarSekolah = ProfilSekolah::with(['pajakBospReguler' => function ($q) {
             $q->where('tahun', $this->tahun);
         }])
-            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
-            ->orderByRaw('kecamatan IS NULL')
-            ->orderBy('kecamatan')
-            ->orderBy('nama_sekolah')
+            ->urutStandar()
             ->get();
 
         $rekapSekolah = $daftarSekolah->map(function (ProfilSekolah $sekolah) {
@@ -603,7 +600,7 @@ class Index extends Component
             'bulanOptions' => PajakBospReguler::BULAN_OPTIONS,
             'triwulanOptions' => PajakBospReguler::TRIWULAN_OPTIONS,
             'tahunOptions' => array_reverse(range(now()->year - 2, now()->year + 1)),
-            'sekolahOptions' => ProfilSekolah::orderBy('nama_sekolah')->get(['id', 'nama_sekolah']),
+            'sekolahOptions' => ProfilSekolah::urutStandar()->get(['id', 'nama_sekolah']),
         ]));
     }
 }

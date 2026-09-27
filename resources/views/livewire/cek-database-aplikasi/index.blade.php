@@ -187,6 +187,8 @@
                                     <tr class="text-left text-slate-500">
                                         <th class="px-3 py-2">Nama Sekolah</th>
                                         <th class="px-3 py-2 text-right">Jumlah Jenis Data</th>
+                                        <th class="px-3 py-2 text-right">Jumlah Data di Aplikasi</th>
+                                        <th class="px-3 py-2 text-right">Jumlah Data di Database</th>
                                         <th class="px-3 py-2">Status</th>
                                     </tr>
                                 </thead>
@@ -198,6 +200,8 @@
                                                 {{ $sekolah['nama_sekolah'] }}
                                             </td>
                                             <td class="px-3 py-2 text-right text-slate-600 whitespace-nowrap">{{ count($sekolah['rincian']) }} jenis data</td>
+                                            <td class="px-3 py-2 text-right text-slate-600 whitespace-nowrap">{{ $sekolah['total_jumlah_aplikasi'] }}</td>
+                                            <td class="px-3 py-2 text-right text-slate-600 whitespace-nowrap">{{ $sekolah['total_jumlah_database'] }}</td>
                                             <td class="px-3 py-2 whitespace-nowrap">
                                                 @if ($sekolah['semua_cocok'])
                                                     <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700">Cocok</span>
@@ -207,7 +211,7 @@
                                             </td>
                                         </tr>
                                         <tr x-show="terbuka" x-cloak>
-                                            <td colspan="3" class="px-3 pb-3 pt-0 bg-slate-50">
+                                            <td colspan="5" class="px-3 pb-3 pt-0 bg-slate-50">
                                                 <table class="min-w-full divide-y divide-slate-200 text-xs border border-slate-200 rounded-md overflow-hidden">
                                                     <thead class="bg-slate-100">
                                                         <tr class="text-left text-slate-500">
@@ -240,7 +244,7 @@
                                 @empty
                                     <tbody>
                                         <tr>
-                                            <td colspan="3" class="px-3 py-6 text-center text-slate-400">Tidak ada sekolah yang cocok dengan pencarian ini.</td>
+                                            <td colspan="5" class="px-3 py-6 text-center text-slate-400">Tidak ada sekolah yang cocok dengan pencarian ini.</td>
                                         </tr>
                                     </tbody>
                                 @endforelse

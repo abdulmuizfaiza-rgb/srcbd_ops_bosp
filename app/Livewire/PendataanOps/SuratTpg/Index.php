@@ -577,7 +577,7 @@ class Index extends Component
             'bolehKelolaSemua' => $this->bolehKelolaSemua(),
             'tahunOptions' => $this->tahunOptions(),
             'triwulanOptions' => [1 => 'Triwulan I', 2 => 'Triwulan II', 3 => 'Triwulan III', 4 => 'Triwulan IV'],
-            'sekolahOptions' => ProfilSekolah::orderBy('nama_sekolah')->get(['id', 'nama_sekolah']),
+            'sekolahOptions' => ProfilSekolah::urutStandar()->get(['id', 'nama_sekolah']),
             'kertasOptions' => $this->daftarKertasOptions(),
             'urlCetak' => $this->urlCetak(),
             'labelTriwulan' => SuratTpg::labelTriwulan($this->triwulan),

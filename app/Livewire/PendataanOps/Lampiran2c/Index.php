@@ -384,7 +384,7 @@ class Index extends Component
         return view('livewire.pendataan-ops.lampiran2c.index', [
             'daftar' => $daftar,
             'triwulanOptions' => Lampiran2c::TRIWULAN_OPTIONS,
-            'sekolahOptions' => ProfilSekolah::orderBy('nama_sekolah')->get(['id', 'nama_sekolah']),
+            'sekolahOptions' => ProfilSekolah::urutStandar()->get(['id', 'nama_sekolah']),
             'kecamatanOptions' => Lampiran2c::KECAMATAN_OPTIONS,
             'jenisKepangkatanOptions' => Lampiran2c::JENIS_KEPANGKATAN_OPTIONS,
             'golonganOptions' => Lampiran2c::GOLONGAN_OPTIONS,

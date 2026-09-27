@@ -227,10 +227,7 @@ class Index extends Component
         }
 
         $daftarSekolah = $query
-            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
-            ->orderByRaw('kecamatan IS NULL')
-            ->orderBy('kecamatan')
-            ->orderBy('nama_sekolah')
+            ->urutStandar()
             ->get();
 
         return view('livewire.pendataan-bosp.index', [

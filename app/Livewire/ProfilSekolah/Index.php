@@ -357,7 +357,7 @@ class Index extends Component
         AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Profil Sekolah', 'Excel');
         $this->errorExport = null;
 
-        $daftarSekolah = ProfilSekolah::orderBy('nama_sekolah')->get();
+        $daftarSekolah = ProfilSekolah::urutStandar()->get();
 
         return Excel::download(new ProfilSekolahExport($daftarSekolah), 'profil-sekolah.xlsx');
     }
@@ -415,10 +415,7 @@ class Index extends Component
         }
 
         $daftarSekolah = $query
-            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
-            ->orderByRaw('kecamatan IS NULL')
-            ->orderBy('kecamatan')
-            ->orderBy('nama_sekolah')
+            ->urutStandar()
             ->get();
 
         return view('livewire.profil-sekolah.index', [
@@ -428,7 +425,7 @@ class Index extends Component
             'sekolahSayaId' => auth()->user()->profil_sekolah_id,
             'bolehKelolaSemua' => $kelolaSemua,
             'filterNamaSekolahOptions' => $kelolaSemua
-                ? ProfilSekolah::orderBy('nama_sekolah')->pluck('nama_sekolah', 'id')
+                ? ProfilSekolah::urutStandar()->pluck('nama_sekolah', 'id')
                 : collect(),
             'filterKecamatanOptions' => $kelolaSemua
                 ? ProfilSekolah::whereNotNull('kecamatan')->where('kecamatan', '!=', '')->distinct()->orderBy('kecamatan')->pluck('kecamatan', 'kecamatan')

@@ -267,7 +267,7 @@ class Lampiran2cExport implements FromCollection, ShouldAutoSize, WithCustomStar
             $sheet->setCellValue('O'.($indeks + 1), $nilai);
         }
 
-        $sekolah = ProfilSekolah::query()->orderBy('nama_sekolah')->pluck('nama_sekolah')->values();
+        $sekolah = ProfilSekolah::query()->urutStandar()->pluck('nama_sekolah')->values();
         foreach ($sekolah as $indeks => $nilai) {
             $sheet->setCellValue('P'.($indeks + 1), $nilai);
         }

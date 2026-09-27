@@ -575,10 +575,7 @@ class Index extends Component
         }
 
         return $query
-            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
-            ->orderByRaw('kecamatan IS NULL')
-            ->orderBy('kecamatan')
-            ->orderBy('nama_sekolah')
+            ->urutStandar()
             ->get()
             ->map(function ($sekolah) {
                 $sekolah->rekapRkasTahunIni = $sekolah->rekapRkas->first();
