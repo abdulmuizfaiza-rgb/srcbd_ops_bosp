@@ -4,6 +4,7 @@ namespace App\Livewire\PendataanBosp\BelanjaPemeliharaanPc;
 
 use App\Models\AksesDataLog;
 use App\Exports\RincianPemeliharaanPcExport;
+use App\Exports\RincianPemeliharaanPcSemuaTriwulanExport;
 use App\Imports\RincianPemeliharaanPcImport;
 use App\Livewire\Concerns\HasZoomTampilan;
 use App\Livewire\Concerns\MenolakEditJikaTerkunciVerval;
@@ -15,6 +16,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Livewire\WithFileUploads;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Validators\ValidationException;
@@ -578,6 +580,129 @@ class Index extends Component
                 $sekolah
             ),
             'rincian-'.$namaFileJenis.'-triwulan-'.$this->triwulan.'-'.$this->tahun.'.xlsx'
+        );
+    }
+
+    /**
+     * Daftar SEMUA sekolah (dgn eager load rincianPemeliharaanPc utk
+     * jenis ($tabUtama)/triwulan/tahun aktif) - dipakai
+     * unduhPdfSemuaSekolah(), urutan Status(Negeri dulu)-Kecamatan-Nama
+     * Sekolah, sama seperti pola Penerimaan Honor PTK (permintaan user
+     * 2026-09-27, jawaban AskUserQuestion "Status dulu, lalu Kecamatan,
+     * baru Nama Sekolah"). Admin BOSP tetap otomatis terbatas ke
+     * sekolahnya sendiri saja.
+     */
+    private function daftarSekolahSemuaUntukUnduhan()
+    {
+        $query = ProfilSekolah::with(['rincianPemeliharaanPc' => function ($q) {
+            $q->where('jenis', $this->tabUtama)
+                ->where('tahun', $this->tahun)
+                ->where('triwulan', $this->triwulan)
+                ->orderBy('nama_barang');
+        }]);
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('id', $this->sekolahSayaId());
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
+            ->orderByRaw('kecamatan IS NULL')
+            ->orderBy('kecamatan')
+            ->orderBy('nama_sekolah')
+            ->get();
+    }
+
+    /**
+     * Unduh PDF Rincian Pemeliharaan PC untuk TRIWULAN & TAB UTAMA
+     * (barang/jasa) YANG SEDANG AKTIF, SEMUA SEKOLAH (permintaan user
+     * 2026-09-27, jawaban AskUserQuestion "Triwulan yang sedang aktif
+     * saja") - terpisah dari tombol Export Excel yang sudah ada (yang
+     * tetap mewajibkan pilih 1 sekolah untuk Superadmin, TIDAK diubah).
+     * Pola sama persis seperti PenerimaanHonorPtk::unduhPdfSemuaSekolah().
+     */
+    public function unduhPdfSemuaSekolah()
+    {
+        $labelJenis = RincianPemeliharaanPc::JENIS_OPTIONS[$this->tabUtama] ?? '';
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Belanja Pemeliharaan PC', 'PDF (Semua Sekolah) - '.$labelJenis);
+        $daftarSekolah = $this->daftarSekolahSemuaUntukUnduhan();
+
+        $totalKeseluruhan = $daftarSekolah->sum(
+            fn (ProfilSekolah $sekolah) => $sekolah->rincianPemeliharaanPc->sum('total_harga')
+        );
+
+        $pdf = Pdf::loadView('pdf.rincian-pemeliharaan-pc', [
+            'daftarSekolah' => $daftarSekolah,
+            'jenis' => $this->tabUtama,
+            'triwulan' => $this->triwulan,
+            'tahun' => $this->tahun,
+            'totalKeseluruhan' => $totalKeseluruhan,
+        ])->setPaper('a4', 'landscape');
+
+        // PENTING: lihat catatan di PenerimaanHonorPtk::unduhPdfSemuaSekolah()
+        // - Pdf::download() bawaan mengembalikan Response biasa, bukan
+        // BinaryFileResponse/StreamedResponse yang dikenali Livewire
+        // sebagai unduhan file, makanya disimpan dulu ke file sementara.
+        $namaFileJenis = $this->tabUtama === RincianPemeliharaanPc::JENIS_JASA ? 'jasa-pemeliharaan-pc' : 'pemeliharaan-pc';
+        $namaFile = 'rincian-'.$namaFileJenis.'-triwulan-'.$this->triwulan.'-'.$this->tahun.'.pdf';
+        $pathSementara = tempnam(sys_get_temp_dir(), 'rincian-pemeliharaan-pc-pdf-').'.pdf';
+        file_put_contents($pathSementara, $pdf->output());
+
+        return response()->download($pathSementara, $namaFile)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Baris RincianPemeliharaanPc (flat, BUKAN dikelompokkan per
+     * sekolah) untuk 1 triwulan tertentu, jenis ($tabUtama) & tahun yang
+     * sedang aktif, SEMUA sekolah - dipakai khusus untuk
+     * unduhExcelSemuaTriwulan() (permintaan user 2026-09-27, pola sama
+     * persis seperti PenerimaanHonorPtk::baruSemuaSekolahUntukTriwulan()).
+     * Admin BOSP tetap otomatis terbatas ke sekolahnya sendiri saja.
+     */
+    private function baruSemuaSekolahUntukTriwulan(int $triwulan)
+    {
+        $query = RincianPemeliharaanPc::query()
+            ->with('profilSekolah')
+            ->join('profil_sekolah', 'profil_sekolah.id', '=', 'rincian_pemeliharaan_pc.profil_sekolah_id')
+            ->where('rincian_pemeliharaan_pc.jenis', $this->tabUtama)
+            ->where('rincian_pemeliharaan_pc.tahun', $this->tahun)
+            ->where('rincian_pemeliharaan_pc.triwulan', $triwulan)
+            ->select('rincian_pemeliharaan_pc.*');
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('rincian_pemeliharaan_pc.profil_sekolah_id', $this->sekolahSayaId());
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN profil_sekolah.status = 'negeri' THEN 0 WHEN profil_sekolah.status = 'swasta' THEN 1 ELSE 2 END")
+            ->orderByRaw('profil_sekolah.kecamatan IS NULL')
+            ->orderBy('profil_sekolah.kecamatan')
+            ->orderBy('profil_sekolah.nama_sekolah')
+            ->orderBy('rincian_pemeliharaan_pc.nama_barang')
+            ->get();
+    }
+
+    /**
+     * Unduh Excel 4 sheet (TW-1 s.d. TW-4, 1 jenis sesuai $tabUtama yang
+     * sedang aktif) SEMUA SEKOLAH untuk tahun yang sedang aktif
+     * (permintaan user 2026-09-27) - terpisah dari tombol Export Excel
+     * yang sudah ada (yang tetap 1 sheet/1 sekolah, TIDAK diubah). Pola
+     * sama persis seperti PenerimaanHonorPtk::unduhExcelSemuaTriwulan().
+     */
+    public function unduhExcelSemuaTriwulan()
+    {
+        $labelJenis = RincianPemeliharaanPc::JENIS_OPTIONS[$this->tabUtama] ?? '';
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Belanja Pemeliharaan PC', 'Excel (Semua Triwulan) - '.$labelJenis);
+        $dataPerTriwulan = [];
+        foreach (array_keys(RincianPemeliharaanPc::TRIWULAN_OPTIONS) as $triwulan) {
+            $dataPerTriwulan[$triwulan] = $this->baruSemuaSekolahUntukTriwulan($triwulan);
+        }
+
+        $namaFileJenis = $this->tabUtama === RincianPemeliharaanPc::JENIS_JASA ? 'jasa-pemeliharaan-pc' : 'pemeliharaan-pc';
+
+        return Excel::download(
+            new RincianPemeliharaanPcSemuaTriwulanExport($dataPerTriwulan, $this->tabUtama, $this->tahun),
+            'rincian-'.$namaFileJenis.'-semua-triwulan-'.$this->tahun.'.xlsx'
         );
     }
 

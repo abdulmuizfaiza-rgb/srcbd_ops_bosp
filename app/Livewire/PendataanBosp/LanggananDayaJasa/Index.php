@@ -4,6 +4,7 @@ namespace App\Livewire\PendataanBosp\LanggananDayaJasa;
 
 use App\Models\AksesDataLog;
 use App\Exports\LanggananDayaJasaExport;
+use App\Exports\LanggananDayaJasaSemuaTriwulanExport;
 use App\Imports\LanggananDayaJasaImport;
 use App\Livewire\Concerns\HasZoomTampilan;
 use App\Livewire\Concerns\MenolakEditJikaTerkunciVerval;
@@ -15,6 +16,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Livewire\WithFileUploads;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Validators\ValidationException;
@@ -532,6 +534,120 @@ class Index extends Component
                 $sekolah
             ),
             'langganan-daya-jasa-triwulan-'.$this->triwulan.'-'.$this->tahun.'.xlsx'
+        );
+    }
+
+    /**
+     * Daftar SEMUA sekolah (dgn eager load langgananDayaJasa utk
+     * triwulan & tahun aktif) - dipakai unduhPdfSemuaSekolah(), urutan
+     * Status(Negeri dulu)-Kecamatan-Nama Sekolah, sama seperti pola
+     * Penerimaan Honor PTK (permintaan user 2026-09-27, jawaban
+     * AskUserQuestion "Status dulu, lalu Kecamatan, baru Nama Sekolah").
+     * Admin BOSP tetap otomatis terbatas ke sekolahnya sendiri saja.
+     */
+    private function daftarSekolahSemuaUntukUnduhan()
+    {
+        $query = ProfilSekolah::with(['langgananDayaJasa' => function ($q) {
+            $q->where('tahun', $this->tahun)
+                ->where('triwulan', $this->triwulan)
+                ->orderBy('id');
+        }]);
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('id', $this->sekolahSayaId());
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN status = 'negeri' THEN 0 WHEN status = 'swasta' THEN 1 ELSE 2 END")
+            ->orderByRaw('kecamatan IS NULL')
+            ->orderBy('kecamatan')
+            ->orderBy('nama_sekolah')
+            ->get();
+    }
+
+    /**
+     * Unduh PDF Langganan Daya dan Jasa untuk TRIWULAN YANG SEDANG AKTIF,
+     * SEMUA SEKOLAH (permintaan user 2026-09-27, jawaban AskUserQuestion
+     * "Triwulan yang sedang aktif saja") - terpisah dari tombol Export
+     * Excel yang sudah ada (yang tetap mewajibkan pilih 1 sekolah untuk
+     * Superadmin, TIDAK diubah). Pola sama persis seperti
+     * PenerimaanHonorPtk::unduhPdfSemuaSekolah() (2026-09-26).
+     */
+    public function unduhPdfSemuaSekolah()
+    {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Langganan Daya dan Jasa', 'PDF (Semua Sekolah)');
+        $daftarSekolah = $this->daftarSekolahSemuaUntukUnduhan();
+
+        $totalKeseluruhan = $daftarSekolah->sum(
+            fn (ProfilSekolah $sekolah) => $sekolah->langgananDayaJasa->sum('jumlah')
+        );
+
+        $pdf = Pdf::loadView('pdf.langganan-daya-jasa', [
+            'daftarSekolah' => $daftarSekolah,
+            'triwulan' => $this->triwulan,
+            'tahun' => $this->tahun,
+            'totalKeseluruhan' => $totalKeseluruhan,
+        ])->setPaper('a4', 'landscape');
+
+        // PENTING: lihat catatan di PenerimaanHonorPtk::unduhPdfSemuaSekolah()
+        // - Pdf::download() bawaan mengembalikan Response biasa, bukan
+        // BinaryFileResponse/StreamedResponse yang dikenali Livewire
+        // sebagai unduhan file, makanya disimpan dulu ke file sementara.
+        $namaFile = 'langganan-daya-jasa-triwulan-'.$this->triwulan.'-'.$this->tahun.'.pdf';
+        $pathSementara = tempnam(sys_get_temp_dir(), 'langganan-daya-jasa-pdf-').'.pdf';
+        file_put_contents($pathSementara, $pdf->output());
+
+        return response()->download($pathSementara, $namaFile)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Baris LanggananDayaJasa (flat, BUKAN dikelompokkan per sekolah)
+     * untuk 1 triwulan tertentu & tahun yang sedang aktif, SEMUA sekolah
+     * - dipakai khusus untuk unduhExcelSemuaTriwulan() (permintaan user
+     * 2026-09-27, pola sama persis seperti PenerimaanHonorPtk::
+     * baruSemuaSekolahUntukTriwulan()). Admin BOSP tetap otomatis
+     * terbatas ke sekolahnya sendiri saja.
+     */
+    private function baruSemuaSekolahUntukTriwulan(int $triwulan)
+    {
+        $query = LanggananDayaJasa::query()
+            ->with('profilSekolah')
+            ->join('profil_sekolah', 'profil_sekolah.id', '=', 'langganan_daya_jasa.profil_sekolah_id')
+            ->where('langganan_daya_jasa.tahun', $this->tahun)
+            ->where('langganan_daya_jasa.triwulan', $triwulan)
+            ->select('langganan_daya_jasa.*');
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('langganan_daya_jasa.profil_sekolah_id', $this->sekolahSayaId());
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN profil_sekolah.status = 'negeri' THEN 0 WHEN profil_sekolah.status = 'swasta' THEN 1 ELSE 2 END")
+            ->orderByRaw('profil_sekolah.kecamatan IS NULL')
+            ->orderBy('profil_sekolah.kecamatan')
+            ->orderBy('profil_sekolah.nama_sekolah')
+            ->orderBy('langganan_daya_jasa.id')
+            ->get();
+    }
+
+    /**
+     * Unduh Excel 4 sheet (Daya-Jasa TW-1 s.d. TW-4) SEMUA SEKOLAH untuk
+     * tahun yang sedang aktif (permintaan user 2026-09-27) - terpisah
+     * dari tombol Export Excel yang sudah ada (yang tetap 1 sheet/1
+     * sekolah, TIDAK diubah). Pola sama persis seperti PenerimaanHonorPtk
+     * ::unduhExcelSemuaTriwulan() (2026-09-26).
+     */
+    public function unduhExcelSemuaTriwulan()
+    {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Langganan Daya dan Jasa', 'Excel (Semua Triwulan)');
+        $dataPerTriwulan = [];
+        foreach (array_keys(LanggananDayaJasa::TRIWULAN_OPTIONS) as $triwulan) {
+            $dataPerTriwulan[$triwulan] = $this->baruSemuaSekolahUntukTriwulan($triwulan);
+        }
+
+        return Excel::download(
+            new LanggananDayaJasaSemuaTriwulanExport($dataPerTriwulan, $this->tahun),
+            'langganan-daya-jasa-semua-triwulan-'.$this->tahun.'.xlsx'
         );
     }
 
