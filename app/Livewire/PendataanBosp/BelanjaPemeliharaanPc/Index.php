@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PendataanBosp\BelanjaPemeliharaanPc;
 
+use App\Models\AksesDataLog;
 use App\Exports\RincianPemeliharaanPcExport;
 use App\Imports\RincianPemeliharaanPcImport;
 use App\Livewire\Concerns\HasZoomTampilan;
@@ -554,6 +555,7 @@ class Index extends Component
 
     public function export()
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Belanja Pemeliharaan PC', 'Excel');
         $this->errorExport = null;
 
         $sekolahId = $this->bolehKelolaSemua() ? $this->filterSekolahId : $this->sekolahSayaId();

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PendataanBosp\RincianBelanjaModal;
 
+use App\Models\AksesDataLog;
 use App\Exports\RincianBelanjaModalBmdExport;
 use App\Exports\RincianBelanjaModalBmdRekapExport;
 use App\Exports\RincianBelanjaModalExport;
@@ -1144,6 +1145,7 @@ class Index extends Component
 
     public function export()
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Rincian Belanja Modal', 'Excel');
         $this->errorExport = null;
 
         $sekolahId = $this->bolehKelolaSemua() ? $this->filterSekolahId : $this->sekolahSayaId();

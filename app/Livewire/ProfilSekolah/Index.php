@@ -2,6 +2,7 @@
 
 namespace App\Livewire\ProfilSekolah;
 
+use App\Models\AksesDataLog;
 use App\Exports\ProfilSekolahExport;
 use App\Imports\ProfilSekolahImport;
 use App\Livewire\Concerns\HasZoomTampilan;
@@ -353,6 +354,7 @@ class Index extends Component
     {
         abort_unless($this->bolehKelolaSemua(), 403);
 
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Profil Sekolah', 'Excel');
         $this->errorExport = null;
 
         $daftarSekolah = ProfilSekolah::orderBy('nama_sekolah')->get();

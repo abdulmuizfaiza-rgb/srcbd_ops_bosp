@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AksesDataLog;
 use App\Models\ProfilSekolah;
 use App\Support\SuratTpgGabunganData;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -47,6 +48,8 @@ class SuratTpgCetakSemuaController extends Controller
         );
 
         $sekolah = ProfilSekolah::findOrFail($profilSekolahId);
+
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Surat TPG Gabungan (Cetak)', $sekolah->nama_sekolah);
 
         $kertas = $request->query('kertas') === 'f4' ? 'f4' : 'a4';
         $margin = [

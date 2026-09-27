@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PendataanOps\Lampiran2b;
 
+use App\Models\AksesDataLog;
 use App\Exports\Lampiran2bExport;
 use App\Imports\Lampiran2bImport;
 use App\Models\Lampiran2a;
@@ -349,6 +350,7 @@ class Index extends Component
 
     public function export()
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Lampiran 2b', 'Excel');
         $this->errorExport = null;
 
         // Lembar tanda tangan Kepala Sekolah pada hasil export hanya berlaku

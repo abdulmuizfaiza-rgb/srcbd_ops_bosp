@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PendataanBosp\PenerimaanHonorPtk;
 
+use App\Models\AksesDataLog;
 use App\Exports\PenerimaanHonorPtkExport;
 use App\Exports\PenerimaanHonorPtkSemuaTriwulanExport;
 use App\Imports\PenerimaanHonorPtkImport;
@@ -622,6 +623,7 @@ class Index extends Component
     public function export()
     {
         $this->errorExport = null;
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Penerimaan Honor PTK', 'Excel');
 
         // Lembar tanda tangan Kepala Sekolah & Bendahara BOSP pada hasil
         // export hanya berlaku untuk 1 sekolah, jadi Superadmin wajib
@@ -688,6 +690,7 @@ class Index extends Component
      */
     public function unduhPdfSemuaSekolah()
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Penerimaan Honor PTK', 'PDF (Semua Sekolah)');
         $daftarSekolah = $this->daftarSekolahSemuaUntukUnduhan();
 
         $totalKeseluruhan = $daftarSekolah->sum(
@@ -767,6 +770,7 @@ class Index extends Component
      */
     public function unduhExcelSemuaTriwulan()
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Penerimaan Honor PTK', 'Excel (Semua Triwulan)');
         $dataPerTriwulan = [];
         foreach (array_keys(PenerimaanHonorPtk::TRIWULAN_OPTIONS) as $triwulan) {
             $dataPerTriwulan[$triwulan] = $this->baruSemuaSekolahUntukTriwulan($triwulan);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AksesDataLog;
 use App\Models\PanduanAplikasi;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -36,6 +37,7 @@ class PanduanAplikasiUnduhSemuaController extends Controller
 {
     public function unduh(PanduanAplikasi $panduanAplikasi): BinaryFileResponse
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Panduan Aplikasi', 'Zip (Unduh Semua): '.$panduanAplikasi->judul);
         $files = $panduanAplikasi->files;
 
         abort_if($files->isEmpty(), 404);

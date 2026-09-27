@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PendataanBosp\FormulirBosK7;
 
+use App\Models\AksesDataLog;
 use App\Exports\FormulirBosK7Export;
 use App\Livewire\Concerns\HasZoomTampilan;
 use App\Livewire\Concerns\MenolakEditJikaTerkunciVerval;
@@ -423,6 +424,7 @@ class Index extends Component
     public function exportExcel()
     {
         $this->errorExport = null;
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Formulir BOS K7', 'Excel');
 
         $sekolahId = $this->sekolahAktifId();
 
@@ -444,6 +446,7 @@ class Index extends Component
     public function exportPdf()
     {
         $this->errorExport = null;
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Formulir BOS K7', 'PDF');
 
         $sekolahId = $this->sekolahAktifId();
 

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PendataanOps\Lampiran2c;
 
+use App\Models\AksesDataLog;
 use App\Exports\Lampiran2cExport;
 use App\Imports\Lampiran2cImport;
 use App\Models\Lampiran2c;
@@ -316,6 +317,7 @@ class Index extends Component
 
     public function export()
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Lampiran 2c', 'Excel');
         $this->errorExport = null;
 
         // Header KECAMATAN & lembar tanda tangan Kepala Sekolah pada hasil

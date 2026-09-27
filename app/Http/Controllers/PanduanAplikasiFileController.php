@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AksesDataLog;
 use App\Models\PanduanAplikasiFile;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -28,6 +29,7 @@ class PanduanAplikasiFileController extends Controller
 {
     public function unduh(PanduanAplikasiFile $panduanAplikasiFile): StreamedResponse
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Panduan Aplikasi', $panduanAplikasiFile->file_nama_asli ?: basename($panduanAplikasiFile->file_path));
         abort_unless(
             Storage::disk('public')->exists($panduanAplikasiFile->file_path),
             404

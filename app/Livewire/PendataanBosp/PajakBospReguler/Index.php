@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PendataanBosp\PajakBospReguler;
 
+use App\Models\AksesDataLog;
 use App\Exports\PajakBospRegulerExport;
 use App\Exports\PajakBospRegulerRekapExport;
 use App\Livewire\Concerns\HasZoomTampilan;
@@ -465,6 +466,7 @@ class Index extends Component
     public function exportExcel()
     {
         $this->errorExport = null;
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Pajak BOSP Reguler', 'Excel');
 
         $sekolahId = $this->sekolahAktifId();
 
@@ -502,6 +504,7 @@ class Index extends Component
         if (! $this->bolehKelolaSemua()) {
             return null;
         }
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Pajak BOSP Reguler', 'Excel (Rekap)');
 
         $data = $this->dataRekap();
 
@@ -519,6 +522,7 @@ class Index extends Component
     public function exportPdf()
     {
         $this->errorExport = null;
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Pajak BOSP Reguler', 'PDF');
 
         $sekolahId = $this->sekolahAktifId();
 
@@ -564,6 +568,7 @@ class Index extends Component
         if (! $this->bolehKelolaSemua()) {
             return null;
         }
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Pajak BOSP Reguler', 'PDF (Rekap)');
 
         $data = $this->dataRekap();
 

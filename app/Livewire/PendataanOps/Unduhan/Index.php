@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PendataanOps\Unduhan;
 
+use App\Models\AksesDataLog;
 use App\Exports\UnduhanLampiranExport;
 use App\Models\Lampiran2a;
 use App\Models\Lampiran2b;
@@ -177,6 +178,7 @@ class Index extends Component
 
     public function unduhExcel()
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Lampiran 2a/2b/2c (Unduhan)', 'Excel');
         [$baris2a, $baris2b, $baris2c] = $this->ambilData();
 
         return Excel::download(
@@ -187,6 +189,7 @@ class Index extends Component
 
     public function unduhPdf()
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Lampiran 2a/2b/2c (Unduhan)', 'PDF');
         [$baris2a, $baris2b, $baris2c] = $this->ambilData();
 
         $pdf = Pdf::loadView('pdf.unduhan-lampiran', [
@@ -347,6 +350,7 @@ class Index extends Component
     /** "Unduh PDF" - 1 file PDF berisi ketiga surat TPG berurutan (page-break diantaranya), lihat App\Support\SuratTpgGabunganData. */
     public function unduhSuratTpgGabunganPdf()
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Surat TPG Gabungan', 'PDF');
         $sekolahId = $this->sekolahIdUntukSuratTpg();
 
         if (! $sekolahId) {
@@ -373,6 +377,7 @@ class Index extends Component
     /** "Unduh Word" - 1 file .doc berisi ketiga surat TPG berurutan, lihat App\Support\SuratTpgGabunganData. */
     public function unduhSuratTpgGabunganWord()
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Surat TPG Gabungan', 'Word');
         $sekolahId = $this->sekolahIdUntukSuratTpg();
 
         if (! $sekolahId) {

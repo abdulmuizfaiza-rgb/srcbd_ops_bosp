@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PendataanBosp\LanggananDayaJasa;
 
+use App\Models\AksesDataLog;
 use App\Exports\LanggananDayaJasaExport;
 use App\Imports\LanggananDayaJasaImport;
 use App\Livewire\Concerns\HasZoomTampilan;
@@ -510,6 +511,7 @@ class Index extends Component
 
     public function export()
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Langganan Daya dan Jasa', 'Excel');
         $this->errorExport = null;
 
         $sekolahId = $this->bolehKelolaSemua() ? $this->filterSekolahId : $this->sekolahSayaId();

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PendataanBosp\BiayaPendaftaranLomba;
 
+use App\Models\AksesDataLog;
 use App\Exports\BiayaPendaftaranLombaExport;
 use App\Imports\BiayaPendaftaranLombaImport;
 use App\Livewire\Concerns\HasZoomTampilan;
@@ -438,6 +439,7 @@ class Index extends Component
 
     public function export()
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Biaya Pendaftaran Lomba', 'Excel');
         $this->errorExport = null;
 
         $sekolahId = $this->bolehKelolaSemua() ? $this->filterSekolahId : $this->sekolahSayaId();

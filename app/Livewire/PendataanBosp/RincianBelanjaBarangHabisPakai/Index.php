@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PendataanBosp\RincianBelanjaBarangHabisPakai;
 
+use App\Models\AksesDataLog;
 use App\Exports\RincianBelanjaBarangHabisPakaiExport;
 use App\Exports\StockOpnameBarangPersediaanExport;
 use App\Imports\RincianBelanjaBarangHabisPakaiImport;
@@ -760,6 +761,7 @@ class Index extends Component
 
     public function export()
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Rincian Belanja Barang Habis Pakai', 'Excel');
         $this->errorExport = null;
 
         $sekolahId = $this->bolehKelolaSemua() ? $this->filterSekolahId : $this->sekolahSayaId();

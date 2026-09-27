@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AksesDataLog;
 use App\Models\FormulirBosK7;
 use App\Models\ProfilSekolah;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -45,6 +46,8 @@ class FormulirBosK7CetakController extends Controller
         );
 
         $sekolah = ProfilSekolah::findOrFail($profilSekolahId);
+
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Formulir BOS K7 (Cetak)', strtoupper($tab).' - '.$sekolah->nama_sekolah);
 
         $kertas = $request->query('kertas') === 'f4' ? 'f4' : 'a4';
         $margin = [

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AksesDataLog;
 use App\Models\Backup;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -22,6 +23,7 @@ class BackupFileController extends Controller
 {
     public function unduh(Backup $backup): StreamedResponse
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Backup', $backup->nama_file);
         abort_unless(Storage::disk('local')->exists($backup->path), 404);
 
         return Storage::disk('local')->download($backup->path, $backup->nama_file);

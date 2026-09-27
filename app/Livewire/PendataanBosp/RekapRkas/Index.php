@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PendataanBosp\RekapRkas;
 
+use App\Models\AksesDataLog;
 use App\Exports\RekapRkasExport;
 use App\Livewire\Concerns\HasZoomTampilan;
 use App\Models\DanaBospTahap;
@@ -645,6 +646,7 @@ class Index extends Component
      */
     public function unduhExcel()
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Rekap RKAS', 'Excel');
         $daftarSekolah = $this->daftarSekolahDenganRekap();
         $totalBaris = $this->hitungTotalBaris($daftarSekolah);
 
@@ -661,6 +663,7 @@ class Index extends Component
      */
     public function unduhPdf()
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Rekap RKAS', 'PDF');
         $daftarSekolah = $this->daftarSekolahDenganRekap();
         $totalBaris = $this->hitungTotalBaris($daftarSekolah);
 

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PendataanOps\SuratTpg;
 
+use App\Models\AksesDataLog;
 use App\Livewire\Concerns\HasZoomTampilan;
 use App\Models\ProfilSekolah;
 use App\Models\SuratTpg;
@@ -502,6 +503,7 @@ class Index extends Component
 
     public function exportPdf()
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Surat TPG', 'PDF');
         $sekolahId = $this->sekolahAktifId();
 
         if (! $sekolahId) {
@@ -539,6 +541,7 @@ class Index extends Component
      */
     public function exportWord()
     {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Surat TPG', 'Word');
         $sekolahId = $this->sekolahAktifId();
 
         if (! $sekolahId) {
