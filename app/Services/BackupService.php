@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use PDO;
 use RuntimeException;
 use Symfony\Component\Finder\Finder;
@@ -58,8 +59,13 @@ class BackupService
     /** Nama folder yang DIKECUALIKAN sama sekali dari zip kode aplikasi (dicocokkan di level mana pun). */
     protected const FOLDER_DIKECUALIKAN = ['vendor', 'node_modules', '.git', 'bootstrap/cache'];
 
-    /** Pola path (relatif dari root aplikasi) yang DIKECUALIKAN dari zip kode aplikasi. */
-    protected const PATH_DIKECUALIKAN = ['#^storage/logs#', '#^storage/framework#', '#^storage/app/backup#'];
+    /**
+     * Pola path (relatif dari root aplikasi) yang DIKECUALIKAN dari zip kode
+     * aplikasi. TIDAK termasuk folder backup itu sendiri - lihat
+     * pathBackupRelatifTerhadapBasePath() (round 2026-09-27, perbaikan bug
+     * "backup lama ikut ter-zip berulang", dijelaskan lengkap di method itu).
+     */
+    protected const PATH_DIKECUALIKAN = ['#^storage/logs#', '#^storage/framework#'];
 
     public function buat(?int $dibuatOlehId = null): Backup
     {
@@ -112,7 +118,41 @@ class BackupService
             $finder->notPath($pola);
         }
 
+        $finder->notPath('#^'.preg_quote($this->pathBackupRelatifTerhadapBasePath(), '#').'#');
+
         return $finder;
+    }
+
+    /**
+     * Path folder tempat SEMUA file backup (.zip) disimpan, RELATIF terhadap
+     * base_path() - dihitung OTOMATIS dari root disk 'local' yang sedang
+     * aktif (bukan di-hardcode "storage/app/backup").
+     *
+     * BUG YANG DIPERBAIKI (2026-09-27, laporan user "backup online 504 +
+     * ukurannya bengkak sampai disk VPS penuh - 'No space left on device'"):
+     * sebelumnya folder backup dikecualikan lewat pola HARDCODE
+     * '#^storage/app/backup#' - itu BENAR untuk Laravel versi lama (root
+     * disk 'local' = storage/app), TAPI aplikasi ini pakai Laravel 13 yang
+     * root disk 'local'-nya DEFAULT ke storage/app/PRIVATE (lihat
+     * config/filesystems.php - perubahan resmi Laravel sejak versi 11).
+     * Akibatnya file backup SEBENARNYA tersimpan di storage/app/private/
+     * backup/..., pola exclude yang lama TIDAK PERNAH cocok, sehingga
+     * SETIAP backup baru justru ikut menge-zip SEMUA file backup LAMA ke
+     * dalam dirinya sendiri - ukuran zip membengkak (hampir 2x lipat)
+     * setiap kali tombol "Buat Backup Sekarang" diklik, sampai akhirnya
+     * ruang disk VPS habis total.
+     *
+     * Diperbaiki dengan MENGHITUNG jalur relatifnya secara otomatis dari
+     * Storage::disk('local')->path('backup') - bukan menebak/hardcode lagi
+     * - supaya tetap benar walau konfigurasi root disk 'local' berubah lagi
+     * di masa depan.
+     */
+    protected function pathBackupRelatifTerhadapBasePath(): string
+    {
+        $absolut = rtrim(Storage::disk('local')->path('backup'), '/\\');
+        $relatif = ltrim(Str::after($absolut, rtrim(base_path(), '/\\')), '/\\');
+
+        return str_replace('\\', '/', $relatif);
     }
 
     protected function dumpDatabase(): string
