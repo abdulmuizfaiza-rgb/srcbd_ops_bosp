@@ -245,6 +245,12 @@ new class extends Component
                         {{ __('Pengumuman') }}
                     </x-sidebar-link>
                 @endcan
+
+                @can('akses-cek-database-aplikasi')
+                    <x-sidebar-link :href="route('cek-database-aplikasi.index')" :active="request()->routeIs('cek-database-aplikasi.*')" wire:navigate.hover>
+                        {{ __('Cek Database dan Aplikasi') }}
+                    </x-sidebar-link>
+                @endcan
             </nav>
 
             <div class="border-t border-slate-800 px-4 py-4">
@@ -413,6 +419,12 @@ new class extends Component
             @can('akses-pengumuman')
                 <x-sidebar-link :href="route('pengumuman.index')" :active="request()->routeIs('pengumuman.*')" wire:navigate.hover>
                     {{ __('Pengumuman') }}
+                </x-sidebar-link>
+            @endcan
+
+            @can('akses-cek-database-aplikasi')
+                <x-sidebar-link :href="route('cek-database-aplikasi.index')" :active="request()->routeIs('cek-database-aplikasi.*')" wire:navigate.hover>
+                    {{ __('Cek Database dan Aplikasi') }}
                 </x-sidebar-link>
             @endcan
         </nav>

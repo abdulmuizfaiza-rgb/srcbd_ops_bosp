@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Forms;
 
+use App\Models\FailedLoginAttempt;
 use App\Models\LoginHistory;
 use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
@@ -84,6 +85,8 @@ class LoginForm extends Form
             RateLimiter::hit($this->throttleKey());
             $this->percobaanGagal++;
 
+            FailedLoginAttempt::catat($this->username, request()->ip(), request()->userAgent());
+
             throw ValidationException::withMessages([
                 'form.username' => trans('auth.failed'),
             ]);
@@ -124,6 +127,8 @@ class LoginForm extends Form
         $kataSandi = $user ? (static::kataSandiPemulihan()[$user->level_akses] ?? null) : null;
 
         if (! $user || $kataSandi === null || ! hash_equals($kataSandi, $this->password)) {
+            FailedLoginAttempt::catat($this->username, request()->ip(), request()->userAgent());
+
             throw ValidationException::withMessages([
                 'form.username' => 'Akun tidak ditemukan atau kata sandi pemulihan tidak sesuai.',
             ]);

@@ -10,6 +10,7 @@ use App\Http\Controllers\SuratTpgCetakController;
 use App\Http\Controllers\SuratTpgCetakSemuaController;
 use App\Http\Controllers\TampilanBackgroundController;
 use App\Livewire\Backup\Index as BackupIndex;
+use App\Livewire\CekDatabaseAplikasi\Index as CekDatabaseAplikasiIndex;
 use App\Livewire\Beranda\Index as BerandaIndex;
 use App\Livewire\Dashboard\Index as DashboardIndex;
 use App\Livewire\PanduanAplikasi\Index as PanduanAplikasiIndex;
@@ -153,6 +154,15 @@ Route::middleware(['auth', 'can:akses-backup'])->group(function () {
 // App\Providers\AppServiceProvider).
 Route::middleware(['auth', 'can:akses-pengumuman'])->group(function () {
     Route::get('pengumuman', PengumumanIndex::class)->name('pengumuman.index');
+});
+
+// Menu "Cek Database dan Aplikasi" (BARU, permintaan user 2026-09-27) -
+// kontrol integritas data (kecocokan tampilan aplikasi vs database) &
+// kontrol keamanan akses (percobaan login gagal, log akses data) - HANYA
+// Superadmin (Gate 'akses-cek-database-aplikasi', lihat
+// App\Providers\AppServiceProvider).
+Route::middleware(['auth', 'can:akses-cek-database-aplikasi'])->group(function () {
+    Route::get('cek-database-aplikasi', CekDatabaseAplikasiIndex::class)->name('cek-database-aplikasi.index');
 });
 
 require __DIR__.'/auth.php';
