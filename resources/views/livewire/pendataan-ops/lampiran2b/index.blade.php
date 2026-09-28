@@ -120,8 +120,11 @@
                         </table>
                     </div>
 
-                    <div class="mt-4">
-                        {{ $daftar->links() }}
+                    <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div class="flex-1">
+                            {{ $daftar->links() }}
+                        </div>
+                        <x-pagination-per-page wire:model.live="perPage" />
                     </div>
                 </div>
             </div>

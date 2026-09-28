@@ -115,8 +115,11 @@
                             </table>
                         </div>
 
-                        <div class="mt-4">
-                            {{ $loginGagal->links() }}
+                        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div class="flex-1">
+                                {{ $loginGagal->links() }}
+                            </div>
+                            <x-pagination-per-page wire:model.live="perPageLoginGagal" />
                         </div>
                     @elseif ($tab === 'akses_data')
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
@@ -170,8 +173,11 @@
                             </table>
                         </div>
 
-                        <div class="mt-4">
-                            {{ $aksesData->links() }}
+                        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div class="flex-1">
+                                {{ $aksesData->links() }}
+                            </div>
+                            <x-pagination-per-page wire:model.live="perPageAksesData" />
                         </div>
                     @elseif ($tab === 'kecocokan')
                         <p class="text-sm text-slate-500 mb-4">Membandingkan jumlah data yang dihitung lewat aplikasi dengan jumlah baris asli di database untuk setiap jenis data, dikelompokkan per sekolah. Klik simbol <strong>+</strong> pada nama sekolah untuk melihat rincian jenis data sekolah tersebut. Idealnya semua baris berstatus "Cocok".</p>

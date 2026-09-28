@@ -61,6 +61,8 @@ class Index extends Component
     /** Filter "Tanggal Upload" (dibandingkan dgn tanggal created_at). */
     public string $filterTanggal = '';
 
+    public int $perPage = 10;
+
     // State form modal
     public bool $showForm = false;
 
@@ -90,6 +92,11 @@ class Index extends Component
     }
 
     public function updatedFilterTanggal(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPerPage(): void
     {
         $this->resetPage();
     }
@@ -282,7 +289,7 @@ class Index extends Component
             ->when($this->searchDeskripsi, fn ($q) => $q->where('deskripsi', 'like', '%'.$this->searchDeskripsi.'%'))
             ->when($this->filterTanggal, fn ($q) => $q->whereDate('created_at', $this->filterTanggal))
             ->orderByDesc('created_at')
-            ->paginate(10);
+            ->paginate($this->perPage);
 
         return view('livewire.panduan-aplikasi.index', [
             'panduan' => $panduan,

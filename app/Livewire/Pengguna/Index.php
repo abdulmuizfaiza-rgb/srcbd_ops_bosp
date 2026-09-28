@@ -34,6 +34,8 @@ class Index extends Component
 
     public ?int $filterSekolahId = null;
 
+    public int $perPage = 10;
+
     /**
      * State untuk tab "Riwayat Login" (permintaan user 2026-09-26) - sub-tab
      * (Superadmin/Admin OPS/Admin BOSP) dan pencarian berdasarkan nama
@@ -44,12 +46,16 @@ class Index extends Component
 
     public string $searchRiwayat = '';
 
+    public int $perPageRiwayat = 10;
+
     /**
      * State untuk tab "Authenticator" (permintaan user 2026-09-27) - daftar
      * SEMUA pengguna (lintas level) beserta status 2FA-nya, TERPISAH dari
      * $tab & $search milik tab kelola-akun di atas.
      */
     public string $searchAuthenticator = '';
+
+    public int $perPageAuthenticator = 10;
 
     public ?int $confirmingResetAuthenticatorId = null;
 
@@ -105,12 +111,27 @@ class Index extends Component
         $this->resetPage('riwayatPage');
     }
 
+    public function updatedPerPageRiwayat(): void
+    {
+        $this->resetPage('riwayatPage');
+    }
+
     public function updatedSearchAuthenticator(): void
     {
         $this->resetPage('authenticatorPage');
     }
 
+    public function updatedPerPageAuthenticator(): void
+    {
+        $this->resetPage('authenticatorPage');
+    }
+
     public function updatedFilterSekolahId(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPerPage(): void
     {
         $this->resetPage();
     }
@@ -481,7 +502,7 @@ class Index extends Component
                 }))
                 ->orderByRaw('google2fa_reset_diminta_at IS NULL, google2fa_reset_diminta_at DESC')
                 ->orderBy('username')
-                ->paginate(10, ['*'], 'authenticatorPage');
+                ->paginate($this->perPageAuthenticator, ['*'], 'authenticatorPage');
         } elseif ($this->tab === 'riwayat_login') {
             // Tab "Riwayat Login" (permintaan user 2026-09-26) - query
             // TERPISAH dari tab kelola-akun di bawah, memakai kolom
@@ -496,7 +517,7 @@ class Index extends Component
                         ->orWhere('email', 'like', "%{$this->searchRiwayat}%");
                 }))
                 ->orderByDesc('login_at')
-                ->paginate(10, ['*'], 'riwayatPage');
+                ->paginate($this->perPageRiwayat, ['*'], 'riwayatPage');
         } else {
             $pengguna = User::query()
                 ->where('level_akses', $this->tab)
@@ -506,7 +527,7 @@ class Index extends Component
                 }))
                 ->when($this->filterSekolahId, fn ($q) => $q->where('profil_sekolah_id', $this->filterSekolahId))
                 ->orderBy('username')
-                ->paginate(10);
+                ->paginate($this->perPage);
         }
 
         return view('livewire.pengguna.index', [

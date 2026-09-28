@@ -74,10 +74,14 @@ class Index extends Component
     // --- State tab Percobaan Login Gagal ---
     public string $searchLoginGagal = '';
 
+    public int $perPageLoginGagal = 15;
+
     // --- State tab Log Akses Data ---
     public string $searchAksesData = '';
 
     public string $filterJenisAksi = '';
+
+    public int $perPageAksesData = 15;
 
     // --- State tab Cek Kecocokan Data (permintaan user 2026-09-27) ---
     public string $searchKecocokan = '';
@@ -384,12 +388,22 @@ class Index extends Component
         $this->resetPage('loginGagalPage');
     }
 
+    public function updatedPerPageLoginGagal(): void
+    {
+        $this->resetPage('loginGagalPage');
+    }
+
     public function updatedSearchAksesData(): void
     {
         $this->resetPage('aksesDataPage');
     }
 
     public function updatedFilterJenisAksi(): void
+    {
+        $this->resetPage('aksesDataPage');
+    }
+
+    public function updatedPerPageAksesData(): void
     {
         $this->resetPage('aksesDataPage');
     }
@@ -451,7 +465,7 @@ class Index extends Component
                         ->orWhere('ip_address', 'like', "%{$this->searchLoginGagal}%");
                 }))
                 ->orderByDesc('created_at')
-                ->paginate(15, ['*'], 'loginGagalPage');
+                ->paginate($this->perPageLoginGagal, ['*'], 'loginGagalPage');
         } elseif ($this->tab === 'akses_data') {
             $aksesData = AksesDataLog::query()
                 ->when($this->filterJenisAksi, fn ($q) => $q->where('jenis_aksi', $this->filterJenisAksi))
@@ -460,7 +474,7 @@ class Index extends Component
                         ->orWhere('nama_menu', 'like', "%{$this->searchAksesData}%");
                 }))
                 ->orderByDesc('created_at')
-                ->paginate(15, ['*'], 'aksesDataPage');
+                ->paginate($this->perPageAksesData, ['*'], 'aksesDataPage');
         }
 
         return view('livewire.cek-database-aplikasi.index', [

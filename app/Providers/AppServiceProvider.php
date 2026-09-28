@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\User;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -22,6 +23,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Tampilan pagination baku SELURUH aplikasi (permintaan user
+        // 2026-09-28, disertai contoh gambar: kartu putih bulat berisi
+        // Previous/nomor halaman/Next, nomor aktif bergaris biru) -
+        // berlaku OTOMATIS untuk SEMUA {{ $paginator->links() }} di
+        // seluruh menu tanpa perlu diubah 1-per-1. Lihat
+        // resources/views/vendor/pagination/custom.blade.php (disalin
+        // dari tampilan "tailwind" bawaan Livewire, hanya class Tailwind
+        // & struktur HTML yang diubah - logika wire:click/gotoPage/dst
+        // TETAP SAMA).
+        Paginator::defaultView('vendor.pagination.custom');
+        Paginator::defaultSimpleView('vendor.pagination.custom');
+
         // Zona waktu tampilan (BARU, 2026-09-27, permintaan user "settingan
         // jam waktu upload tidak sesuai settingan yang ada di laptop" pada
         // menu Backup - lalu dikonfirmasi lewat AskUserQuestion berlaku utk

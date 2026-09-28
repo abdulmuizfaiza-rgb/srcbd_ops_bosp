@@ -40,6 +40,13 @@ class Index extends Component
 
     public ?int $confirmingDeleteId = null;
 
+    public int $perPage = 10;
+
+    public function updatedPerPage(): void
+    {
+        $this->resetPage();
+    }
+
     public function tambah(): void
     {
         $this->resetForm();
@@ -121,7 +128,7 @@ class Index extends Component
     {
         $pengumuman = Pengumuman::query()
             ->orderByDesc('tanggal_aktif')
-            ->paginate(10);
+            ->paginate($this->perPage);
 
         return view('livewire.pengumuman.index', [
             'pengumuman' => $pengumuman,

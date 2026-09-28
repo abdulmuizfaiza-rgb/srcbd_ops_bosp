@@ -131,8 +131,11 @@
                             </table>
                         </div>
 
-                        <div class="mt-4">
-                            {{ $riwayatLogin->links() }}
+                        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div class="flex-1">
+                                {{ $riwayatLogin->links() }}
+                            </div>
+                            <x-pagination-per-page wire:model.live="perPageRiwayat" />
                         </div>
                     @elseif ($tab === 'authenticator')
                         {{-- Tab "Authenticator" (permintaan user 2026-09-27) --}}
@@ -181,8 +184,11 @@
                             </table>
                         </div>
 
-                        <div class="mt-4">
-                            {{ $penggunaAuthenticator->links() }}
+                        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div class="flex-1">
+                                {{ $penggunaAuthenticator->links() }}
+                            </div>
+                            <x-pagination-per-page wire:model.live="perPageAuthenticator" />
                         </div>
                     @else
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
@@ -256,8 +262,11 @@
                         </table>
                     </div>
 
-                    <div class="mt-4">
-                        {{ $pengguna->links() }}
+                    <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div class="flex-1">
+                            {{ $pengguna->links() }}
+                        </div>
+                        <x-pagination-per-page wire:model.live="perPage" />
                     </div>
                     @endif
                 </div>

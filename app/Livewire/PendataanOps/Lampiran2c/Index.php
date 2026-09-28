@@ -89,6 +89,8 @@ class Index extends Component
 
     public ?string $errorExport = null;
 
+    public int $perPage = 10;
+
     protected function bolehKelolaSemua(): bool
     {
         return auth()->user()->isSuperadmin();
@@ -116,6 +118,11 @@ class Index extends Component
     }
 
     public function updatedFilterSekolahId(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPerPage(): void
     {
         $this->resetPage();
     }
@@ -251,7 +258,7 @@ class Index extends Component
      */
     public function toggleSemua(): void
     {
-        $idHalamanIni = $this->queryDasar()->latest()->paginate(10)->pluck('id')->all();
+        $idHalamanIni = $this->queryDasar()->latest()->paginate($this->perPage)->pluck('id')->all();
 
         if (count($idHalamanIni) > 0 && count(array_diff($idHalamanIni, $this->dipilih)) === 0) {
             $this->dipilih = array_values(array_diff($this->dipilih, $idHalamanIni));
@@ -375,7 +382,7 @@ class Index extends Component
 
     public function render()
     {
-        $daftar = $this->queryDasar()->latest()->paginate(10);
+        $daftar = $this->queryDasar()->latest()->paginate($this->perPage);
 
         $idHalamanIni = $daftar->pluck('id')->all();
         $this->dipilih = array_values(array_intersect($this->dipilih, $idHalamanIni));

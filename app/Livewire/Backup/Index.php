@@ -48,6 +48,13 @@ class Index extends Component
         $this->resetPage();
     }
 
+    public int $perPage = 10;
+
+    public function updatedPerPage(): void
+    {
+        $this->resetPage();
+    }
+
     public function buatBackup(BackupService $backupService): void
     {
         try {
@@ -113,7 +120,7 @@ class Index extends Component
             ->with('dibuatOleh')
             ->when($this->filterTahun !== '', fn ($q) => $q->where('tahun', $this->filterTahun))
             ->orderByDesc('created_at')
-            ->paginate(10);
+            ->paginate($this->perPage);
 
         return view('livewire.backup.index', [
             'backup' => $backup,
