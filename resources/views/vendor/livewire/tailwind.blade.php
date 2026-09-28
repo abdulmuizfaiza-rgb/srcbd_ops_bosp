@@ -1,18 +1,45 @@
 @php
 /**
- * Tampilan pagination baku SELURUH aplikasi (permintaan user 2026-09-28,
- * disertai contoh gambar) - Previous/nomor halaman/Next dalam 1 kartu
- * putih bulat ("pil"), nomor halaman aktif ditandai kotak bergaris biru
- * (bukan kotak abu-abu penuh seperti bawaan Livewire). Didaftarkan lewat
- * Paginator::defaultView() di App\Providers\AppServiceProvider::boot()
- * supaya berlaku OTOMATIS untuk SEMUA `{{ $paginator->links() }}` di
- * seluruh aplikasi tanpa perlu diubah 1-per-1 di tiap menu.
+ * INI FILE YANG SEBENARNYA DIPAKAI (ditemukan 2026-09-28, setelah
+ * tampilan pil pagination tidak juga muncul walau CSS sudah di-build
+ * ulang & cache sudah dibersihkan).
  *
- * SENGAJA menyalin logika wire:click/previousPage/nextPage/gotoPage
- * & $scrollIntoViewJsSnippet APA ADANYA dari
- * vendor/livewire/livewire/src/Features/SupportPagination/views/tailwind.blade.php
- * (bawaan Livewire) - HANYA class Tailwind & struktur HTML yang diubah,
- * supaya perilaku pindah halaman/scroll tetap identik dengan sebelumnya.
+ * AKAR MASALAH: percobaan pertama (App\Providers\AppServiceProvider
+ * memanggil Paginator::defaultView('vendor.pagination.custom')) TIDAK
+ * PERNAH BEKERJA, karena Livewire sendiri (lewat
+ * Livewire\Features\SupportPagination\SupportPagination::boot(), yang
+ * berjalan setiap kali komponen Livewire ber-pagination di-render)
+ * SELALU menimpa balik Paginator::defaultView() ke tampilan bawaan
+ * Livewire sendiri ('livewire::tailwind') SETIAP KALI komponen
+ * ber-paginasi di-boot - urutannya: AppServiceProvider::boot() jalan
+ * duluan (benar), TAPI Livewire menimpanya lagi belakangan tiap
+ * request, PERSIS sebelum {{ $paginator->links() }} dipanggil. Jadi
+ * pengaturan di AppServiceProvider itu sama sekali tidak pernah
+ * "sempat" dipakai.
+ *
+ * SOLUSI YANG BENAR: Laravel punya mekanisme baku untuk override view
+ * bawaan sebuah paket - taruh file di
+ * resources/views/vendor/{namespace}/{nama-view}.blade.php, dan
+ * Laravel OTOMATIS memakai file INI dan bukan file bawaan paketnya,
+ * TANPA perlu registrasi apapun (ini persis yang dimaksud kalau
+ * menjalankan "php artisan vendor:publish --tag=livewire:pagination" -
+ * bedanya di sini filenya langsung ditulis manual, isinya sudah versi
+ * yang sudah dimodifikasi, jadi tidak perlu publish lalu edit lagi).
+ * Livewire meminta view bernama 'livewire::tailwind' (nama themenya
+ * "tailwind", bisa dicek di app/Livewire/**, tidak ada satupun
+ * komponen yang mengubah $paginationTheme, jadi semua tetap pakai nama
+ * default ini) - maka file INI HARUS ada persis di
+ * resources/views/vendor/livewire/tailwind.blade.php (BUKAN di
+ * resources/views/vendor/pagination/custom.blade.php seperti versi
+ * sebelumnya, yang sudah dihapus/tidak dipakai lagi).
+ *
+ * Sesuai permintaan user 2026-09-28 (disertai contoh gambar) - kartu
+ * putih bulat ("pil") berisi Previous/nomor halaman/Next, nomor
+ * halaman aktif ditandai kotak bergaris biru. Isi & logika
+ * wire:click/previousPage/nextPage/gotoPage/scroll TETAP SAMA PERSIS
+ * dengan bawaan Livewire (vendor/livewire/livewire/src/Features/
+ * SupportPagination/views/tailwind.blade.php) - HANYA class Tailwind &
+ * struktur HTML yang diubah.
  */
 if (! isset($scrollTo)) {
     $scrollTo = 'body';

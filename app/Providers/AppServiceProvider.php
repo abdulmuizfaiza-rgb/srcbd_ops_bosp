@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use App\Models\User;
-use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -26,14 +25,19 @@ class AppServiceProvider extends ServiceProvider
         // Tampilan pagination baku SELURUH aplikasi (permintaan user
         // 2026-09-28, disertai contoh gambar: kartu putih bulat berisi
         // Previous/nomor halaman/Next, nomor aktif bergaris biru) -
-        // berlaku OTOMATIS untuk SEMUA {{ $paginator->links() }} di
-        // seluruh menu tanpa perlu diubah 1-per-1. Lihat
-        // resources/views/vendor/pagination/custom.blade.php (disalin
-        // dari tampilan "tailwind" bawaan Livewire, hanya class Tailwind
-        // & struktur HTML yang diubah - logika wire:click/gotoPage/dst
-        // TETAP SAMA).
-        Paginator::defaultView('vendor.pagination.custom');
-        Paginator::defaultSimpleView('vendor.pagination.custom');
+        // TIDAK didaftarkan lewat Paginator::defaultView() di sini,
+        // karena percobaan pertama (begitu) TERBUKTI TIDAK BEKERJA:
+        // Livewire sendiri (SupportPagination::boot(), jalan tiap kali
+        // komponen ber-paginasi di-render) SELALU menimpa balik
+        // pengaturan ini ke tampilan bawaannya sendiri
+        // ('livewire::tailwind') persis sebelum {{ $paginator->links() }}
+        // dipanggil. Solusi yang benar: file
+        // resources/views/vendor/livewire/tailwind.blade.php (Laravel
+        // otomatis memakai file di path ini utk override view bawaan
+        // paket 'livewire::tailwind', tanpa perlu registrasi apapun).
+        // Baris Paginator::defaultView() DIHAPUS dari sini karena
+        // percuma/menyesatkan - lihat file blade tsb utk versi yang
+        // benar-benar dipakai.
 
         // Zona waktu tampilan (BARU, 2026-09-27, permintaan user "settingan
         // jam waktu upload tidak sesuai settingan yang ada di laptop" pada
