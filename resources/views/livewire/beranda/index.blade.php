@@ -31,8 +31,54 @@
         teruji di dashboard Admin OPS/BOSP (lihat docblock
         App\Livewire\Beranda\Index).
     --}}
-    <div class="animate-fade-in-up">
-        @include('livewire.dashboard.partials.selector-triwulan', ['warna' => 'blue'])
+    <div class="animate-fade-in-up flex flex-col lg:flex-row items-stretch gap-4">
+        <div class="flex-1 min-w-0">
+            @include('livewire.dashboard.partials.selector-triwulan', ['warna' => 'blue'])
+        </div>
+
+        {{--
+            ============ JAM DIGITAL ANIMASI ============
+            Permintaan user 2026-10-01: tambahkan jam bergaya animasi di
+            sebelah kanan baris filter Tahun/Triwulan pada landingpage
+            (jawaban AskUserQuestion "Jam digital animasi"). Murni
+            Alpine.js sisi client (memakai jam PERANGKAT PENGUNJUNG, bukan
+            jam server - wajar untuk widget dekoratif seperti ini), TIDAK
+            memakai data apapun dari Livewire\Beranda\Index. Animasinya:
+            titik dua berkedip (Tailwind animate-pulse) & angka detik
+            "berdenyut" tiap kali berganti (scale 100%->125%->100%),
+            dibungkus kartu dengan efek blob bergerak (dipakai ulang dari
+            animate-blob-a/animate-blob-c yang sudah ada di app.css).
+        --}}
+        <div class="lg:w-72 relative overflow-hidden rounded-xl shadow-sm border border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-black px-5 py-3 flex flex-col items-center justify-center text-center"
+             x-data="{
+                jamMenit: '00:00',
+                detik: '00',
+                tanggal: '',
+                centang: false,
+                perbarui() {
+                    const sekarang = new Date();
+                    const pad = (n) => String(n).padStart(2, '0');
+                    this.jamMenit = pad(sekarang.getHours()) + ':' + pad(sekarang.getMinutes());
+                    this.detik = pad(sekarang.getSeconds());
+                    const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jum\'at', 'Sabtu'][sekarang.getDay()];
+                    const bulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][sekarang.getMonth()];
+                    this.tanggal = hari + ', ' + sekarang.getDate() + ' ' + bulan + ' ' + sekarang.getFullYear();
+                    this.centang = true;
+                    setTimeout(() => { this.centang = false; }, 350);
+                },
+             }"
+             x-init="perbarui(); setInterval(() => perbarui(), 1000)">
+            <div class="pointer-events-none absolute -top-8 -right-8 w-32 h-32 rounded-full bg-blue-500/20 blur-2xl animate-blob-a"></div>
+            <div class="pointer-events-none absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-sky-400/10 blur-2xl animate-blob-c"></div>
+
+            <p class="relative text-[11px] uppercase tracking-widest text-blue-200/70 font-semibold">Waktu Sekarang</p>
+            <div class="relative mt-1 flex items-center justify-center gap-1 font-mono font-bold text-white text-3xl tabular-nums">
+                <span x-text="jamMenit"></span>
+                <span class="text-sky-400 animate-pulse">:</span>
+                <span class="inline-block text-xl text-sky-300 transition-transform duration-300" :class="centang ? 'scale-125' : 'scale-100'" x-text="detik"></span>
+            </div>
+            <p class="relative mt-1 text-xs text-blue-100/70" x-text="tanggal"></p>
+        </div>
     </div>
 
     {{-- ============ 2 KARTU RINGKASAN (HERO GRADIENT) ============ --}}

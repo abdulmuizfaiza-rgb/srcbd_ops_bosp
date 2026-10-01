@@ -162,6 +162,139 @@
                     {{ $slot }}
                 </main>
             </div>
+
+            {{--
+                ============ POP-UP PENGINGAT "KESEHATAN" & "WAKTU SALAT" ============
+                Permintaan user 2026-10-01. Muncul di SEMUA halaman berlayout
+                "app" (semua akun yang sudah login - Superadmin, Admin OPS,
+                Admin BOSP), jawaban AskUserQuestion "Semua halaman, semua
+                akun yang sudah login". Ditaruh di layout bersama ini (pola
+                sama seperti popup info timeline login di atas) supaya
+                otomatis ikut muncul di halaman manapun yang pertama dibuka.
+
+                Jadwal (jam WIB, format 24 jam, jawaban AskUserQuestion
+                2026-10-01 - jam TETAP setiap hari, BUKAN jadwal salat
+                akurat sesuai lokasi/tanggal):
+                - 06:00 & 09:00 -> pop-up "Kesehatan" saja.
+                - 12:00 -> pop-up "Kesehatan" dulu, SETELAH ditutup baru
+                  muncul pop-up "Waktu Salat Dzuhur" (permintaan user:
+                  "setelah itu muncul kalimat ini...").
+                - 15:00 -> pop-up "Kesehatan" dulu, SETELAH ditutup baru
+                  muncul pop-up "Waktu Salat Ashar".
+                - 18:00 -> pop-up "Waktu Salat Maghrib" saja (tidak ada di
+                  daftar jam pop-up Kesehatan yang diminta user).
+
+                Dicek setiap 20 detik, TAPI hanya diproses dalam 5 menit
+                pertama tiap jam patokan (supaya tidak "telat tampil"
+                berjam-jam kalau pengguna baru membuka aplikasi beberapa
+                menit setelah jam patokan, tapi juga tidak tiba-tiba muncul
+                di luar jam yang dimaksud). Ditandai per slot+tanggal di
+                localStorage browser supaya TIDAK muncul berkali-kali di
+                hari yang sama (kalau localStorage dibersihkan atau dibuka
+                dari perangkat/browser lain, pop-up bisa muncul lagi -
+                wajar, bukan bug, karena pengingat ini murni sisi
+                client/browser, tidak disimpan di database).
+            --}}
+            <div
+                x-data="{
+                    tampil: false,
+                    jenis: null,
+                    judul: '',
+                    pesan: '',
+                    emoji: '',
+                    antrian: null,
+                    kunciSudahTampil(kunci) {
+                        try { return localStorage.getItem(kunci) === this.hariIni(); } catch (e) { return false; }
+                    },
+                    tandaiSudahTampil(kunci) {
+                        try { localStorage.setItem(kunci, this.hariIni()); } catch (e) {}
+                    },
+                    hariIni() {
+                        const d = new Date();
+                        return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+                    },
+                    cekWaktu() {
+                        if (this.tampil || this.antrian) { return; }
+                        const sekarang = new Date();
+                        const jam = sekarang.getHours();
+                        if (sekarang.getMinutes() >= 5) { return; }
+
+                        const salatPerJam = { 12: 'Dzuhur', 15: 'Ashar', 18: 'Maghrib' };
+
+                        if ([6, 9, 12, 15].includes(jam)) {
+                            const kunci = 'srcbd_pop_kesehatan_' + jam;
+                            if (! this.kunciSudahTampil(kunci)) {
+                                this.tandaiSudahTampil(kunci);
+                                if (salatPerJam[jam]) {
+                                    this.antrian = { label: salatPerJam[jam], kunci: 'srcbd_pop_salat_' + jam };
+                                }
+                                this.tampilkan('kesehatan');
+                                return;
+                            }
+                        }
+
+                        if (jam === 18) {
+                            const kunci = 'srcbd_pop_salat_18';
+                            if (! this.kunciSudahTampil(kunci)) {
+                                this.tandaiSudahTampil(kunci);
+                                this.tampilkan('salat', salatPerJam[18]);
+                            }
+                        }
+                    },
+                    tampilkan(jenis, labelSalat) {
+                        this.jenis = jenis;
+                        if (jenis === 'kesehatan') {
+                            this.emoji = '🔋';
+                            this.judul = 'Waktunya Istirahat Sejenak';
+                            this.pesan = 'Ingat, bahagiamu butuh di-recharge juga! 🔋 Pekerjaan ini tidak akan lari dikejar, tapi kesehatanmu bisa berkurang. Istirahat dulu, yuk!';
+                        } else {
+                            this.emoji = '🕌';
+                            this.judul = 'Waktunya Salat ' + labelSalat;
+                            this.pesan = 'Kerjaannya dipending dulu yuk, panggilan Allah diutamakan. ✨ Waktunya Salat ' + labelSalat + '. Tenangkan hati sejenak di sajadah.';
+                        }
+                        this.tampil = true;
+                    },
+                    tutup() {
+                        this.tampil = false;
+                        if (this.antrian) {
+                            const antrianBerikutnya = this.antrian;
+                            this.antrian = null;
+                            setTimeout(() => {
+                                if (! this.kunciSudahTampil(antrianBerikutnya.kunci)) {
+                                    this.tandaiSudahTampil(antrianBerikutnya.kunci);
+                                    this.tampilkan('salat', antrianBerikutnya.label);
+                                }
+                            }, 700);
+                        }
+                    },
+                }"
+                x-init="cekWaktu(); setInterval(() => cekWaktu(), 20000)"
+            >
+                <div x-show="tampil" style="display: none;" x-cloak
+                     x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                     x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                     class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4">
+                    <div x-show="tampil"
+                         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-75 -translate-y-4" x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-90"
+                         class="relative w-full sm:max-w-md overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10"
+                         :class="jenis === 'salat' ? 'bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600' : 'bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500'">
+                        <div class="pointer-events-none absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/10 blur-2xl animate-blob-a"></div>
+                        <div class="pointer-events-none absolute -bottom-10 -left-10 w-40 h-40 rounded-full bg-white/10 blur-2xl animate-blob-b"></div>
+
+                        <div class="relative px-6 py-8 text-center">
+                            <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/20 text-4xl animate-bounce" x-text="emoji"></div>
+                            <h3 class="mt-4 text-lg font-bold text-white" x-text="judul"></h3>
+                            <p class="mt-2 text-sm text-white/90 leading-relaxed" x-text="pesan"></p>
+                            <button type="button" x-on:click="tutup()"
+                                    class="mt-6 inline-flex items-center justify-center rounded-full bg-white px-5 py-2 text-sm font-semibold shadow-sm hover:bg-white/90 transition"
+                                    :class="jenis === 'salat' ? 'text-emerald-700' : 'text-orange-700'">
+                                <span x-text="jenis === 'salat' ? 'Baik, Saya Salat Dulu 🙏' : 'Baik, Istirahat Sebentar'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </body>
 </html>
