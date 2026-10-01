@@ -7,6 +7,7 @@ use App\Models\AksesDataLog;
 use App\Models\BelanjaHonorKegiatan;
 use App\Models\BiayaPendaftaranLomba;
 use App\Models\DanaBospTahap;
+use App\Models\DataPtk;
 use App\Models\FailedLoginAttempt;
 use App\Models\FormulirBosK7;
 use App\Models\Lampiran2a;
@@ -119,6 +120,7 @@ class Index extends Component
             'Verval Realisasi BOSP' => VervalRealisasiBosp::class,
             'Pendataan OPS (Identitas)' => PendataanOps::class,
             'Pendataan BOSP (Identitas)' => PendataanBosp::class,
+            'Data PTK' => DataPtk::class,
         ];
     }
 
@@ -144,6 +146,12 @@ class Index extends Component
             'Surat TPG' => [SuratTpg::class, ['profil_sekolah_id', 'tahun', 'triwulan', 'jenis']],
             'Pendataan OPS (Identitas)' => [PendataanOps::class, ['profil_sekolah_id']],
             'Pendataan BOSP (Identitas)' => [PendataanBosp::class, ['profil_sekolah_id']],
+            // Kunci uniknya HANYA 'nik' (bukan dikombinasikan dengan
+            // profil_sekolah_id seperti modul lain di atas) karena NIK
+            // wajib unik secara GLOBAL lintas sekolah (lihat unique
+            // constraint di migration create_data_ptk_table - 1 NIK = 1
+            // orang PTK, tidak boleh dipakai sekolah lain).
+            'Data PTK' => [DataPtk::class, ['nik']],
         ];
     }
 
