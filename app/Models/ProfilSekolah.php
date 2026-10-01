@@ -381,4 +381,16 @@ class ProfilSekolah extends Model
             ->orderBy('kecamatan')
             ->orderBy('nama_sekolah');
     }
+
+    /**
+     * Data PTK (biodata lengkap PTK) sekolah ini - Tab 2 pada menu "Data
+     * Sekolah" (permintaan user 2026-10-01). Satu sekolah bisa punya
+     * BANYAK baris PTK - lihat App\Models\DataPtk.
+     *
+     * @return HasMany<DataPtk>
+     */
+    public function dataPtk(): HasMany
+    {
+        return $this->hasMany(DataPtk::class);
+    }
 }

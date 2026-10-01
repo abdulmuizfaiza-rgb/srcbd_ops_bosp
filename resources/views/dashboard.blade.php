@@ -23,7 +23,7 @@
                 @can('akses-profil-sekolah')
                     <a href="{{ route('profil-sekolah.index') }}" wire:navigate class="block bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition">
                         <p class="text-sm text-slate-500">Kelola</p>
-                        <p class="text-lg font-semibold text-slate-800">Profil Sekolah</p>
+                        <p class="text-lg font-semibold text-slate-800">Data Sekolah</p>
                     </a>
                 @endcan
 

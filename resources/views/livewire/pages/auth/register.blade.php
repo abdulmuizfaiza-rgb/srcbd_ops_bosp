@@ -153,7 +153,7 @@ new #[Layout('layouts.guest')] class extends Component
                         <option value="{{ $sekolah->id }}">{{ $sekolah->nama_sekolah }}</option>
                     @endforeach
                 </select>
-                <p class="text-xs text-[color:var(--warna-huruf-registrasi)] mt-1">Sekolah belum ada di daftar? Hubungi Superadmin untuk didaftarkan dulu di menu Profil Sekolah.</p>
+                <p class="text-xs text-[color:var(--warna-huruf-registrasi)] mt-1">Sekolah belum ada di daftar? Hubungi Superadmin untuk didaftarkan dulu di menu Data Sekolah.</p>
                 <x-input-error :messages="$errors->get('profil_sekolah_id')" class="mt-2" />
             </div>
 

@@ -112,7 +112,7 @@ new class extends Component
 
                 @can('akses-profil-sekolah')
                     <x-sidebar-link :href="route('profil-sekolah.index')" :active="request()->routeIs('profil-sekolah.*')" wire:navigate.hover>
-                        {{ __('Profil Sekolah') }}
+                        {{ __('Data Sekolah') }}
                     </x-sidebar-link>
                 @endcan
 
@@ -288,7 +288,7 @@ new class extends Component
 
             @can('akses-profil-sekolah')
                 <x-sidebar-link :href="route('profil-sekolah.index')" :active="request()->routeIs('profil-sekolah.*')" wire:navigate.hover>
-                    {{ __('Profil Sekolah') }}
+                    {{ __('Data Sekolah') }}
                 </x-sidebar-link>
             @endcan
 
