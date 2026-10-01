@@ -5,6 +5,7 @@ namespace App\Livewire\PendataanOps\Lampiran2a;
 use App\Models\AksesDataLog;
 use App\Exports\Lampiran2aExport;
 use App\Imports\Lampiran2aImport;
+use App\Models\DataPtk;
 use App\Models\Lampiran2a;
 use App\Models\ProfilSekolah;
 use Illuminate\Validation\Rule;
@@ -23,6 +24,31 @@ use Maatwebsite\Excel\Facades\Excel;
  *   sekolah manapun saat menambah data, dan memfilter tabel per sekolah.
  * - Admin OPS: hanya melihat & mengelola data sekolahnya sendiri (field
  *   Nama Sekolah otomatis terkunci ke sekolahnya).
+ *
+ * Sejak permintaan user 2026-10-01: field Nama PTK pada form Tambah/Edit
+ * sekarang dipilih dari dropdown $dataPtkId (bukan diketik bebas lagi),
+ * bersumber dari App\Models\DataPtk (tab "Data PTK" pada menu "Data
+ * Sekolah") - HANYA menampilkan PTK pada sekolah yang sama dengan baris
+ * ini (dikonfirmasi AskUserQuestion: "Hanya PTK dari sekolah yang sama"),
+ * berstatus Sertifikasi "Sudah" & Keaktifan "Aktif", diurutkan Jenis PTK
+ * -> Jabatan -> Status Kepegawaian -> Pangkat/Golongan (lihat
+ * DataPtk::jenisPtkUrutan()/jabatanUrutan()/statusKepegawaianUrutan()/
+ * pangkatGolonganUrutan(), dikonfirmasi AskUserQuestion "Kepsek dulu,
+ * jabatan fungsional tertinggi dulu"). Memilih PTK otomatis mengisi NRG
+ * (dari Nomor Registrasi Guru Data PTK) & NUPTK (dari NUPTK Data PTK) -
+ * lihat updatedDataPtkId().
+ *
+ * KOMPATIBILITAS DATA LAMA (keputusan desain, belum dikonfirmasi user -
+ * mohon dikoreksi kalau kurang sesuai): tabel `data_ptk` MASIH KOSONG
+ * sampai masing-masing sekolah selesai mengisi Data PTK-nya, jadi field
+ * Nama PTK/NRG/NUPTK TIDAK dibuat wajib terhubung ke Data PTK - kalau
+ * $dataPtkId tidak dipilih (tidak ada PTK yang cocok/qualifying di Data
+ * PTK), ketiga field itu TETAP bisa diisi bebas seperti sebelumnya
+ * (fallback), supaya data lama & sekolah yang belum sempat mengisi Data
+ * PTK tidak langsung tidak bisa dipakai. Saat edit data lama, dicoba
+ * dicocokkan otomatis ke Data PTK lewat Nama PTK + sekolah yang sama
+ * (lihat edit()) - kalau ketemu, dropdown otomatis terisi; kalau tidak,
+ * form kembali ke mode ketik bebas.
  */
 #[Layout('layouts.app')]
 #[Title('Lampiran 2a')]
@@ -49,6 +75,13 @@ class Index extends Component
     public int $formInstance = 0;
 
     public ?int $profil_sekolah_id = null;
+
+    /**
+     * PTK yang dipilih dari Data PTK (lihat docblock class di atas) -
+     * null berarti form dalam mode ketik bebas (data lama / belum ada
+     * PTK yang cocok di Data PTK untuk sekolah ini).
+     */
+    public ?int $dataPtkId = null;
 
     public string $nrg = '';
 
@@ -138,6 +171,18 @@ class Index extends Component
         $this->status_kepegawaian = $baris->status_kepegawaian;
         $this->gaji_pokok_januari = (string) $baris->gaji_pokok_januari;
         $this->npwp = $baris->npwp;
+
+        // Coba cocokkan otomatis ke Data PTK (sekolah sama + Nama PTK
+        // sama persis) supaya dropdown PTK terisi saat edit data lama -
+        // lihat catatan "KOMPATIBILITAS DATA LAMA" di docblock class.
+        // Sengaja TIDAK dibatasi status_sertifikasi/status_keaktifan di
+        // sini (beda dengan daftarPtkUntukPilihan()) supaya data lama
+        // tetap bisa tercocok walau status PTK-nya sekarang sudah
+        // berubah (mis. sudah Tidak Aktif).
+        $this->dataPtkId = DataPtk::where('profil_sekolah_id', $baris->profil_sekolah_id)
+            ->where('nama_ptk', $baris->nama_ptk)
+            ->value('id');
+
         $this->showForm = true;
         $this->dispatch('open-modal', 'lampiran-2a-form');
     }
@@ -145,10 +190,100 @@ class Index extends Component
     public function resetForm(): void
     {
         $this->reset([
-            'editingId', 'profil_sekolah_id', 'nrg', 'nuptk', 'nama_ptk',
+            'editingId', 'profil_sekolah_id', 'dataPtkId', 'nrg', 'nuptk', 'nama_ptk',
             'status_kepegawaian', 'gaji_pokok_januari', 'npwp',
         ]);
         $this->resetErrorBag();
+    }
+
+    /**
+     * Saat Superadmin mengganti sekolah di form (wire:model.live), PTK
+     * terpilih sebelumnya pasti sudah tidak relevan (daftar PTK berbeda
+     * per sekolah) - dikosongkan supaya tidak ada NRG/NUPTK dari sekolah
+     * lain yang kebawa.
+     */
+    public function updatedProfilSekolahId(): void
+    {
+        // PTK & NRG/NUPTK/Nama PTK yang sebelumnya terisi pasti milik
+        // sekolah LAMA (daftar PTK berbeda per sekolah) - dikosongkan
+        // semua supaya tidak ada data PTK sekolah lain yang kebawa ke
+        // sekolah baru.
+        $this->dataPtkId = null;
+        $this->nrg = '';
+        $this->nuptk = '';
+        $this->nama_ptk = '';
+    }
+
+    /**
+     * Memilih PTK dari dropdown Data PTK otomatis mengisi NRG (Nomor
+     * Registrasi Guru) & NUPTK dari data PTK tsb (permintaan user
+     * 2026-10-01) - Nama PTK ikut terisi lewat label pilihan yang sama,
+     * ditulis ulang di sini juga supaya nilai yang TERSIMPAN (bukan
+     * cuma yang tertampil) selalu konsisten dengan Data PTK.
+     */
+    public function updatedDataPtkId(): void
+    {
+        if (! $this->dataPtkId) {
+            return;
+        }
+
+        $ptk = DataPtk::find($this->dataPtkId);
+
+        if (! $ptk) {
+            $this->dataPtkId = null;
+
+            return;
+        }
+
+        $this->nama_ptk = $ptk->nama_ptk;
+        $this->nrg = (string) ($ptk->nomor_registrasi_guru ?: '');
+        $this->nuptk = (string) ($ptk->nuptk ?: '');
+    }
+
+    /**
+     * Daftar PTK yang bisa dipilih pada dropdown Nama PTK - hanya dari
+     * sekolah yang sama dengan form ini, berstatus Sertifikasi "Sudah" &
+     * Keaktifan "Aktif", diurutkan Jenis PTK -> Jabatan -> Status
+     * Kepegawaian -> Pangkat/Golongan (tertinggi ke terendah). Lihat
+     * docblock class untuk rincian keputusan ini.
+     *
+     * @return \Illuminate\Support\Collection<int, DataPtk>
+     */
+    protected function daftarPtkUntukPilihan(): \Illuminate\Support\Collection
+    {
+        if (! $this->profil_sekolah_id) {
+            return collect();
+        }
+
+        $jenisUrutan = DataPtk::jenisPtkUrutan();
+        $jabatanUrutan = DataPtk::jabatanUrutan();
+        $statusUrutan = DataPtk::statusKepegawaianUrutan();
+        $pangkatUrutan = DataPtk::pangkatGolonganUrutan();
+
+        return DataPtk::query()
+            ->where('profil_sekolah_id', $this->profil_sekolah_id)
+            ->where('status_sertifikasi', DataPtk::STATUS_SERTIFIKASI_SUDAH)
+            ->where('status_keaktifan', 'Aktif')
+            ->get()
+            ->sort(function (DataPtk $a, DataPtk $b) use ($jenisUrutan, $jabatanUrutan, $statusUrutan, $pangkatUrutan) {
+                $cmp = ($jenisUrutan[$a->jenis_ptk] ?? 99) <=> ($jenisUrutan[$b->jenis_ptk] ?? 99);
+                if ($cmp !== 0) {
+                    return $cmp;
+                }
+
+                $cmp = ($jabatanUrutan[$a->jabatan] ?? 99) <=> ($jabatanUrutan[$b->jabatan] ?? 99);
+                if ($cmp !== 0) {
+                    return $cmp;
+                }
+
+                $cmp = ($statusUrutan[$a->status_kepegawaian] ?? 99) <=> ($statusUrutan[$b->status_kepegawaian] ?? 99);
+                if ($cmp !== 0) {
+                    return $cmp;
+                }
+
+                return ($pangkatUrutan[$a->pangkat_golongan] ?? 99) <=> ($pangkatUrutan[$b->pangkat_golongan] ?? 99);
+            })
+            ->values();
     }
 
     public function batal(): void
@@ -377,6 +512,7 @@ class Index extends Component
             'bolehKelolaSemua' => $this->bolehKelolaSemua(),
             'tahunSekarang' => now()->year,
             'semuaTerpilih' => $semuaTerpilih,
+            'daftarPtkOptions' => $this->daftarPtkUntukPilihan(),
         ]);
     }
 }

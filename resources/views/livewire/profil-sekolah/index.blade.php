@@ -292,8 +292,13 @@
                                         <th class="px-3 py-2 text-right">Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-slate-100">
-                                    @forelse ($daftarPtk as $baris)
+                                @forelse ($daftarPtk as $baris)
+                                    {{-- Simbol "+" pada kolom No (permintaan user 2026-10-01) - membuka
+                                         panel info tambahan (pembuat & kapan data dibuat/diperbarui) yang
+                                         belum ada kolomnya sendiri di tabel, TANPA menyembunyikan kolom
+                                         manapun yang sudah ada (pola toggle Alpine.js sama seperti tab
+                                         Cek Kecocokan Data). --}}
+                                    <tbody x-data="{ terbuka: false }" class="divide-y divide-slate-100">
                                         <tr wire:key="data-ptk-baris-{{ $baris->id }}">
                                             @if ($bolehTambahDataPtk)
                                                 <td class="px-3 py-2">
@@ -302,7 +307,12 @@
                                                     @endif
                                                 </td>
                                             @endif
-                                            <td class="px-3 py-2 whitespace-nowrap text-slate-500">{{ $loop->iteration + $daftarPtk->firstItem() - 1 }}</td>
+                                            <td class="px-3 py-2 whitespace-nowrap text-slate-500">
+                                                <button type="button" x-on:click="terbuka = ! terbuka" class="inline-flex items-center justify-center w-5 h-5 mr-1.5 rounded border border-slate-300 text-slate-500 text-xs font-bold align-middle hover:bg-slate-100" title="Lihat info tambahan">
+                                                    <span x-text="terbuka ? '−' : '+'"></span>
+                                                </button>
+                                                {{ $loop->iteration + $daftarPtk->firstItem() - 1 }}
+                                            </td>
                                             <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->nik }}</td>
                                             <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->nuptk ?: '-' }}</td>
                                             <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->nip ?: '-' }}</td>
@@ -351,12 +361,32 @@
                                                 @endif
                                             </td>
                                         </tr>
-                                    @empty
+                                        <tr x-show="terbuka" x-cloak>
+                                            <td colspan="26" class="px-3 pb-3 pt-0 bg-slate-50">
+                                                <div class="rounded-md border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                                    <div>
+                                                        <p class="text-slate-400">Dibuat Oleh</p>
+                                                        <p class="font-medium text-slate-700">{{ $baris->creator->name ?? '-' }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-slate-400">Dibuat Pada</p>
+                                                        <p class="font-medium text-slate-700">{{ $baris->created_at?->format('d-m-Y H:i') ?? '-' }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-slate-400">Terakhir Diperbarui</p>
+                                                        <p class="font-medium text-slate-700">{{ $baris->updated_at?->format('d-m-Y H:i') ?? '-' }}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                @empty
+                                    <tbody class="divide-y divide-slate-100">
                                         <tr>
                                             <td colspan="26" class="px-3 py-6 text-center text-slate-400">Belum ada data PTK.</td>
                                         </tr>
-                                    @endforelse
-                                </tbody>
+                                    </tbody>
+                                @endforelse
                             </table>
                         </div>
 

@@ -182,4 +182,80 @@ class DataPtk extends Model
     {
         return $this->belongsTo(ProfilSekolah::class);
     }
+
+    /**
+     * Pembuat baris (untuk panel detail "+" pada tabel Data PTK -
+     * permintaan user 2026-10-01).
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Urutan Jenis PTK untuk daftar pilihan PTK pada Lampiran 2a
+     * (permintaan user 2026-10-01, dikonfirmasi via AskUserQuestion:
+     * "Kepsek dulu, jabatan fungsional tertinggi dulu"). Angka lebih
+     * kecil = tampil lebih dulu.
+     *
+     * @return array<string, int>
+     */
+    public static function jenisPtkUrutan(): array
+    {
+        return [
+            'Kepala Sekolah' => 0,
+            'Guru' => 1,
+        ];
+    }
+
+    /**
+     * Urutan Jabatan (fungsional guru) tertinggi ke terendah, dikonfirmasi
+     * user 2026-10-01 - mengikuti jenjang jabatan fungsional guru baku
+     * (Ahli Utama > Ahli Madya > Ahli Muda > Ahli Pertama), Guru Honorer
+     * (bukan jabatan fungsional ASN) ditempatkan paling akhir.
+     *
+     * @return array<string, int>
+     */
+    public static function jabatanUrutan(): array
+    {
+        return [
+            'Guru Ahli Utama' => 0,
+            'Guru Ahli Madya' => 1,
+            'Guru Ahli Muda' => 2,
+            'Guru Ahli Pertama' => 3,
+            'Guru Honorer' => 4,
+        ];
+    }
+
+    /**
+     * Urutan Status Kepegawaian tertinggi ke terendah, dikonfirmasi user
+     * 2026-10-01 - mengikuti jenjang kepegawaian ASN baku (PNS > PPPK >
+     * PPPK Paruh Waktu), Honorer Sekolah Negeri ditempatkan di atas
+     * Honorer Sekolah Swasta.
+     *
+     * @return array<string, int>
+     */
+    public static function statusKepegawaianUrutan(): array
+    {
+        return [
+            'PNS' => 0,
+            'PPPK' => 1,
+            'PPPK Paruh Waktu' => 2,
+            'Honorer Sekolah Negeri' => 3,
+            'Honorer Sekolah Swasta' => 4,
+        ];
+    }
+
+    /**
+     * Urutan Pangkat/Golongan TERTINGGI ke TERENDAH (kebalikan dari
+     * pangkatGolonganOptions() yang disusun terendah ke tertinggi untuk
+     * tampilan dropdown) - dipakai untuk pengurutan daftar pilihan PTK
+     * pada Lampiran 2a (permintaan user 2026-10-01).
+     *
+     * @return array<string, int>
+     */
+    public static function pangkatGolonganUrutan(): array
+    {
+        return array_flip(array_reverse(array_values(self::pangkatGolonganOptions())));
+    }
 }

@@ -577,7 +577,13 @@ class Index extends Component
     /**
      * Umpan balik langsung di form (sebelum simpan) - saat Status
      * Sertifikasi diubah jadi "Belum", field rincian sertifikasi
-     * langsung terlihat terisi tanda "-" di layar. Aturan yang
+     * langsung terlihat terisi tanda "-" DAN dinonaktifkan (lihat
+     * @disabled($rincianSertifikasiTerkunci) di blade). Saat diubah
+     * balik jadi "Sudah", field itu diaktifkan kembali & tanda "-"
+     * yang tersisa dari sebelumnya dikosongkan lagi (permintaan user
+     * 2026-10-01) supaya PTK bisa langsung mengetik data baru, bukan
+     * malah harus menghapus "-" manual dulu - nilai yang SUDAH diisi
+     * manual sebelumnya (bukan "-") TIDAK ikut dikosongkan. Aturan yang
      * SEBENARNYA mengikat tetap diterapkan ulang di simpanPtk() lewat
      * DataPtk::terapkanAturanSertifikasi() (sumber kebenaran tunggal).
      */
@@ -586,6 +592,12 @@ class Index extends Component
         if ($this->status_sertifikasi === DataPtk::STATUS_SERTIFIKASI_BELUM) {
             foreach (DataPtk::FIELD_RINCIAN_SERTIFIKASI as $field) {
                 $this->{$field} = DataPtk::TANDA_KOSONG;
+            }
+        } elseif ($this->status_sertifikasi === DataPtk::STATUS_SERTIFIKASI_SUDAH) {
+            foreach (DataPtk::FIELD_RINCIAN_SERTIFIKASI as $field) {
+                if ($this->{$field} === DataPtk::TANDA_KOSONG) {
+                    $this->{$field} = '';
+                }
             }
         }
     }
@@ -802,7 +814,7 @@ class Index extends Component
 
     protected function queryDasarPtk()
     {
-        $query = DataPtk::query()->with('profilSekolah');
+        $query = DataPtk::query()->with(['profilSekolah', 'creator']);
 
         if (! $this->bolehKelolaDataPtkSemua()) {
             $query->where('profil_sekolah_id', $this->sekolahSayaId());
