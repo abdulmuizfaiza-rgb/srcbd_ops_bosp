@@ -94,7 +94,8 @@
                                         <th class="px-3 py-2">Hari & Tanggal</th>
                                         <th class="px-3 py-2">Waktu</th>
                                         <th class="px-3 py-2">IP Address</th>
-                                        <th class="px-3 py-2">Perangkat / Browser</th>
+                                        <th class="px-3 py-2">Info Perangkat</th>
+                                        <th class="px-3 py-2">Lokasi</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100 bg-white">
@@ -104,11 +105,18 @@
                                             <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->created_at?->keWaktuLokal()->translatedFormat('l, d F Y') }}</td>
                                             <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->created_at?->keWaktuLokal()->format('H:i:s') }}</td>
                                             <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->ip_address ?: '-' }}</td>
-                                            <td class="px-3 py-2 text-slate-500 max-w-xs truncate" title="{{ $item->user_agent }}">{{ $item->user_agent ?: '-' }}</td>
+                                            <td class="px-3 py-2 text-slate-500 whitespace-nowrap" title="{{ $item->user_agent }}">{{ \App\Support\InfoPerangkat::label($item->user_agent) }}</td>
+                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">
+                                                @if ($item->latitude && $item->longitude)
+                                                    <a href="https://www.google.com/maps?q={{ $item->latitude }},{{ $item->longitude }}" target="_blank" rel="noopener" class="text-blue-600 hover:underline">Lihat di Peta</a>
+                                                @else
+                                                    <span class="text-slate-400">-</span>
+                                                @endif
+                                            </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="5" class="px-3 py-6 text-center text-slate-400">Belum ada percobaan login gagal yang tercatat.</td>
+                                            <td colspan="6" class="px-3 py-6 text-center text-slate-400">Belum ada percobaan login gagal yang tercatat.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -145,6 +153,8 @@
                                         <th class="px-3 py-2">Aksi</th>
                                         <th class="px-3 py-2">Menu / Data</th>
                                         <th class="px-3 py-2">IP Address</th>
+                                        <th class="px-3 py-2">Info Perangkat</th>
+                                        <th class="px-3 py-2">Lokasi</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100 bg-white">
@@ -163,10 +173,18 @@
                                             </td>
                                             <td class="px-3 py-2 text-slate-700 whitespace-nowrap">{{ $item->nama_menu }}{{ $item->detail ? ' - '.$item->detail : '' }}</td>
                                             <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->ip_address ?: '-' }}</td>
+                                            <td class="px-3 py-2 text-slate-500 whitespace-nowrap" title="{{ $item->user_agent }}">{{ \App\Support\InfoPerangkat::label($item->user_agent) }}</td>
+                                            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">
+                                                @if ($item->latitude && $item->longitude)
+                                                    <a href="https://www.google.com/maps?q={{ $item->latitude }},{{ $item->longitude }}" target="_blank" rel="noopener" class="text-blue-600 hover:underline">Lihat di Peta</a>
+                                                @else
+                                                    <span class="text-slate-400">-</span>
+                                                @endif
+                                            </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="7" class="px-3 py-6 text-center text-slate-400">Belum ada log akses data untuk filter ini.</td>
+                                            <td colspan="9" class="px-3 py-6 text-center text-slate-400">Belum ada log akses data untuk filter ini.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

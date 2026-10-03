@@ -27,10 +27,16 @@ class LoginForm extends Form
     /**
      * Titik koordinat (lat/long) saat login - diisi dari Browser
      * Geolocation API di halaman login (lihat login.blade.php, dipicu
-     * saat user memilih jenis akses). Permintaan user (2026-09-26):
-     * menu Pengguna > tab Riwayat Login menampilkan kolom ini. Kalau
-     * user menolak izin lokasi browser, kedua properti ini tetap NULL -
-     * baris riwayat login tetap dibuat, hanya kolom koordinatnya kosong.
+     * saat user memilih jenis akses, SEBELUM username/password dikirim
+     * - jadi sudah tersedia untuk percobaan yang BERHASIL maupun GAGAL).
+     * Permintaan user (2026-09-26): menu Pengguna > tab Riwayat Login
+     * menampilkan kolom ini untuk login yang berhasil. SEJAK permintaan
+     * user 2026-10-03, nilai yang sama juga dikirim ke
+     * FailedLoginAttempt::catat() untuk percobaan yang GAGAL (menu "Cek
+     * Database dan Aplikasi" > tab "Percobaan Login Gagal"). Kalau user
+     * menolak izin lokasi browser, kedua properti ini tetap NULL - baris
+     * riwayat/percobaan login tetap dibuat, hanya kolom koordinatnya
+     * kosong.
      */
     #[Validate('nullable|numeric')]
     public ?float $latitude = null;
@@ -85,7 +91,7 @@ class LoginForm extends Form
             RateLimiter::hit($this->throttleKey());
             $this->percobaanGagal++;
 
-            FailedLoginAttempt::catat($this->username, request()->ip(), request()->userAgent());
+            FailedLoginAttempt::catat($this->username, request()->ip(), request()->userAgent(), $this->latitude, $this->longitude);
 
             throw ValidationException::withMessages([
                 'form.username' => trans('auth.failed'),
@@ -127,7 +133,7 @@ class LoginForm extends Form
         $kataSandi = $user ? (static::kataSandiPemulihan()[$user->level_akses] ?? null) : null;
 
         if (! $user || $kataSandi === null || ! hash_equals($kataSandi, $this->password)) {
-            FailedLoginAttempt::catat($this->username, request()->ip(), request()->userAgent());
+            FailedLoginAttempt::catat($this->username, request()->ip(), request()->userAgent(), $this->latitude, $this->longitude);
 
             throw ValidationException::withMessages([
                 'form.username' => 'Akun tidak ditemukan atau kata sandi pemulihan tidak sesuai.',
