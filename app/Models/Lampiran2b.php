@@ -11,9 +11,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Lampiran 2b - keterangan/TMT per PTK, per sekolah, per triwulan (1-4).
  *
- * NRG & NUPTK selalu diambil otomatis dari data Lampiran 2a (dicocokkan
- * lewat Nama PTK, sekolah, & triwulan yang sama) - lihat
- * App\Livewire\PendataanOps\Lampiran2b\Index::isiOtomatisNrgNuptk().
+ * SEJAK permintaan user 2026-10-03: Nama PTK (+ NRG & NUPTK otomatis)
+ * diambil dari App\Models\DataPtk (tab "Data PTK"), dibatasi Status
+ * Keaktifan "Tidak Aktif" & Status Sertifikasi "Sudah" - BUKAN dari
+ * Lampiran 2a lagi seperti sebelumnya. Lihat
+ * App\Livewire\PendataanOps\Lampiran2b\Index::isiOtomatisNrgNuptk()
+ * & namaPtkOptions().
  */
 #[Fillable([
     'profil_sekolah_id',

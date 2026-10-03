@@ -160,10 +160,11 @@
                             <option value="{{ $nama }}">{{ $nama }}</option>
                         @endforeach
                     </select>
+                    <p class="text-xs text-slate-400 mt-1">Hanya menampilkan PTK pada sekolah ini dengan Status Keaktifan "Tidak Aktif" &amp; Status Sertifikasi "Sudah" (dari menu Data Sekolah - Tab Data PTK).</p>
                     @if (! $profil_sekolah_id)
                         <p class="text-xs text-amber-500 mt-1">Pilih Nama Sekolah terlebih dahulu.</p>
                     @elseif ($namaPtkOptions->isEmpty())
-                        <p class="text-xs text-amber-500 mt-1">Belum ada data PTK di Lampiran 2a {{ $triwulanOptions[$triwulan] }} untuk sekolah ini.</p>
+                        <p class="text-xs text-amber-500 mt-1">Belum ada Data PTK berstatus Keaktifan "Tidak Aktif" &amp; Sertifikasi "Sudah" untuk sekolah ini.</p>
                     @endif
                     <x-input-error :messages="$errors->get('nama_ptk')" class="mt-2" />
                 </div>

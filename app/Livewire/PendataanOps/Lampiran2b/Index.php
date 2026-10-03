@@ -5,7 +5,7 @@ namespace App\Livewire\PendataanOps\Lampiran2b;
 use App\Models\AksesDataLog;
 use App\Exports\Lampiran2bExport;
 use App\Imports\Lampiran2bImport;
-use App\Models\Lampiran2a;
+use App\Models\DataPtk;
 use App\Models\Lampiran2b;
 use App\Models\ProfilSekolah;
 use Illuminate\Support\Collection;
@@ -21,9 +21,26 @@ use Maatwebsite\Excel\Facades\Excel;
 /**
  * Lampiran 2b - keterangan & TMT per PTK, per sekolah, per triwulan.
  *
- * NRG & NUPTK selalu diambil otomatis dari Lampiran 2a (dicocokkan lewat
- * Nama PTK, sekolah, & triwulan yang sama) - field Nama PTK di sini
- * berupa pilihan dari data Lampiran 2a, bukan ketik bebas.
+ * SEJAK permintaan user 2026-10-03: Nama PTK (+ NRG & NUPTK otomatis)
+ * diambil dari App\Models\DataPtk (tab "Data PTK" pada menu "Data
+ * Sekolah"), BUKAN dari Lampiran 2a lagi seperti sebelumnya - field Nama
+ * PTK di sini TETAP berupa pilihan (bukan ketik bebas), hanya sumber
+ * datanya yang berubah. Dropdown HANYA menampilkan PTK pada sekolah yang
+ * sama dengan form ini, dengan Status Keaktifan "Tidak Aktif" (jawaban
+ * AskUserQuestion: "Nama PTK ... diambil dari tab data PTK dengan status
+ * Keaktifan TIDAK AKTIF ... Nama PTK yang status keaktifan nya AKTIF
+ * jangan dimunculkan") DAN Status Sertifikasi "Sudah" (jawaban
+ * AskUserQuestion "Tidak usah muncul - hanya PTK Sudah Sertifikasi",
+ * supaya NRG yang otomatis terisi selalu valid 12 digit, tidak pernah
+ * "-"). Lihat namaPtkOptions() & cariSumberDataPtk().
+ *
+ * KEPUTUSAN PENTING (dikonfirmasi AskUserQuestion 2026-10-03): syarat
+ * lama "Nama PTK harus ada di Lampiran 2a" DIHAPUS - kalau tetap
+ * dipertahankan, Lampiran 2b TIDAK AKAN PERNAH bisa disimpan (karena
+ * Lampiran 2a sendiri hanya menampilkan PTK berstatus Keaktifan "Aktif",
+ * sehingga PTK "Tidak Aktif" yang dipilih di sini pasti tidak akan
+ * pernah cocok dengan Lampiran 2a). simpan() sekarang memvalidasi ulang
+ * ke DataPtk (bukan Lampiran2a) sebagai jaring pengaman sisi server.
  *
  * - Superadmin: melihat & mengelola data semua sekolah, bisa memilih
  *   sekolah manapun saat menambah data, dan memfilter tabel per sekolah.
@@ -119,8 +136,8 @@ class Index extends Component
     }
 
     /**
-     * Nama PTK dipilih pada form - isi otomatis NRG & NUPTK dari data
-     * Lampiran 2a (sekolah & triwulan yang sama).
+     * Nama PTK dipilih pada form - isi otomatis NRG & NUPTK dari Data PTK
+     * (sekolah yang sama) - lihat docblock class di atas.
      */
     public function updatedNamaPtk(): void
     {
@@ -129,28 +146,36 @@ class Index extends Component
 
     protected function isiOtomatisNrgNuptk(): void
     {
-        $sumber = $this->cariSumberLampiran2a($this->profil_sekolah_id, $this->nama_ptk);
+        $sumber = $this->cariSumberDataPtk($this->profil_sekolah_id, $this->nama_ptk);
 
-        $this->nrg = $sumber->nrg ?? '';
+        $this->nrg = $sumber->nomor_registrasi_guru ?? '';
         $this->nuptk = $sumber->nuptk ?? '';
     }
 
-    protected function cariSumberLampiran2a(?int $profilSekolahId, string $namaPtk): ?Lampiran2a
+    /**
+     * Cari baris Data PTK sumber NRG/NUPTK (dicocokkan lewat sekolah &
+     * Nama PTK yang persis sama) - SENGAJA TIDAK dibatasi lagi di sini
+     * oleh status_keaktifan/status_sertifikasi (beda dengan
+     * namaPtkOptions() yang membatasi pilihan dropdown) supaya tetap bisa
+     * dicocokkan walau status PTK-nya berubah setelah baris Lampiran 2b
+     * ini pernah disimpan (pola sama seperti Lampiran2a::edit()).
+     */
+    protected function cariSumberDataPtk(?int $profilSekolahId, string $namaPtk): ?DataPtk
     {
         if (! $profilSekolahId || $namaPtk === '') {
             return null;
         }
 
-        return Lampiran2a::query()
+        return DataPtk::query()
             ->where('profil_sekolah_id', $profilSekolahId)
-            ->where('triwulan', $this->triwulan)
             ->where('nama_ptk', $namaPtk)
             ->first();
     }
 
     /**
-     * Daftar Nama PTK dari Lampiran 2a (sekolah pada form saat ini &
-     * triwulan aktif) untuk pilihan dropdown Nama PTK.
+     * Daftar Nama PTK dari Data PTK (sekolah pada form saat ini) untuk
+     * pilihan dropdown Nama PTK - HANYA status Keaktifan "Tidak Aktif" &
+     * status Sertifikasi "Sudah" (lihat docblock class di atas).
      */
     protected function namaPtkOptions(): Collection
     {
@@ -158,9 +183,10 @@ class Index extends Component
             return collect();
         }
 
-        return Lampiran2a::query()
+        return DataPtk::query()
             ->where('profil_sekolah_id', $this->profil_sekolah_id)
-            ->where('triwulan', $this->triwulan)
+            ->where('status_keaktifan', 'Tidak Aktif')
+            ->where('status_sertifikasi', DataPtk::STATUS_SERTIFIKASI_SUDAH)
             ->orderBy('nama_ptk')
             ->pluck('nama_ptk')
             ->unique()
@@ -226,18 +252,27 @@ class Index extends Component
             'tmt' => ['required', 'date'],
         ]);
 
-        // NRG & NUPTK selalu dihitung ulang di server dari data Lampiran 2a
-        // (tidak dipercaya begitu saja dari input client) supaya selalu
-        // konsisten dengan Nama PTK yang benar-benar dipilih.
-        $sumber = $this->cariSumberLampiran2a($validated['profil_sekolah_id'], $validated['nama_ptk']);
+        // NRG & NUPTK selalu dihitung ulang di server dari Data PTK (tidak
+        // dipercaya begitu saja dari input client) supaya selalu konsisten
+        // dengan Nama PTK yang benar-benar dipilih. Jaring pengaman ini
+        // SENGAJA memakai filter yang SAMA PERSIS dengan namaPtkOptions()
+        // (Tidak Aktif & Sudah Sertifikasi) - bukan cariSumberDataPtk()
+        // yang longgar - supaya tidak ada Nama PTK yang lolos tersimpan
+        // kalau sebenarnya sudah tidak memenuhi syarat dropdown saat ini.
+        $sumber = DataPtk::query()
+            ->where('profil_sekolah_id', $validated['profil_sekolah_id'])
+            ->where('nama_ptk', $validated['nama_ptk'])
+            ->where('status_keaktifan', 'Tidak Aktif')
+            ->where('status_sertifikasi', DataPtk::STATUS_SERTIFIKASI_SUDAH)
+            ->first();
 
         if (! $sumber) {
-            $this->addError('nama_ptk', 'Nama PTK tersebut tidak ditemukan di Lampiran 2a '.Lampiran2b::TRIWULAN_OPTIONS[$this->triwulan].' untuk sekolah ini. Silakan isi Lampiran 2a terlebih dahulu.');
+            $this->addError('nama_ptk', 'Nama PTK tersebut tidak ditemukan di Data PTK dengan Status Keaktifan "Tidak Aktif" & Status Sertifikasi "Sudah" untuk sekolah ini. Silakan lengkapi/periksa kembali Data PTK terlebih dahulu.');
 
             return;
         }
 
-        $validated['nrg'] = $sumber->nrg;
+        $validated['nrg'] = $sumber->nomor_registrasi_guru;
         $validated['nuptk'] = $sumber->nuptk;
         $validated['triwulan'] = $this->triwulan;
         $validated['created_by'] = auth()->id();

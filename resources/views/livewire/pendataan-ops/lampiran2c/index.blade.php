@@ -154,32 +154,50 @@
             </h2>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="sm:col-span-2">
+                    <x-input-label for="dataPtkId" value="Pilih PTK (dari Data PTK)" />
+                    <select wire:model.live="dataPtkId" id="dataPtkId" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm block mt-1 w-full">
+                        <option value="">-- Ketik Manual / Belum Ada di Data PTK --</option>
+                        @foreach ($daftarPtkOptions as $ptk)
+                            <option value="{{ $ptk->id }}">{{ $ptk->nama_ptk }} &mdash; {{ $ptk->profilSekolah->nama_sekolah ?? '-' }}</option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-slate-400 mt-1">
+                        Hanya menampilkan PTK berstatus Keaktifan "Aktif" &amp; Sertifikasi "Sudah".
+                        Kalau PTK yang dicari tidak ada di daftar, biarkan "Ketik Manual" lalu isi Nama PTK/NRG/NUPTK/Tempat Tugas di bawah sendiri.
+                    </p>
+                </div>
+
                 <div>
                     <x-input-label for="nrg" value="NRG" />
-                    <x-text-input wire:model="nrg" id="nrg" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="12" />
+                    <x-text-input wire:model="nrg" id="nrg" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="12" @disabled($dataPtkId) />
+                    <p class="text-xs text-slate-400 mt-1" @if (! $dataPtkId) style="display:none" @endif>Otomatis dari Nomor Registrasi Guru pada Data PTK.</p>
                     <x-input-error :messages="$errors->get('nrg')" class="mt-2" />
                 </div>
 
                 <div>
                     <x-input-label for="nuptk" value="NUPTK" />
-                    <x-text-input wire:model="nuptk" id="nuptk" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="16" />
+                    <x-text-input wire:model="nuptk" id="nuptk" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="16" @disabled($dataPtkId) />
+                    <p class="text-xs text-slate-400 mt-1" @if (! $dataPtkId) style="display:none" @endif>Otomatis dari Data PTK.</p>
                     <x-input-error :messages="$errors->get('nuptk')" class="mt-2" />
                 </div>
 
                 <div>
                     <x-input-label for="nama_ptk" value="Nama PTK" />
-                    <x-text-input wire:model="nama_ptk" id="nama_ptk" class="block mt-1 w-full" type="text" />
+                    <x-text-input wire:model="nama_ptk" id="nama_ptk" class="block mt-1 w-full" type="text" @disabled($dataPtkId) />
+                    <p class="text-xs text-slate-400 mt-1" @if (! $dataPtkId) style="display:none" @endif>Otomatis dari Data PTK.</p>
                     <x-input-error :messages="$errors->get('nama_ptk')" class="mt-2" />
                 </div>
 
                 <div>
                     <x-input-label for="profil_sekolah_id" value="Tempat Tugas" />
-                    <select wire:model="profil_sekolah_id" id="profil_sekolah_id" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm block mt-1 w-full" @disabled(! $bolehKelolaSemua)>
+                    <select wire:model="profil_sekolah_id" id="profil_sekolah_id" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm block mt-1 w-full" @disabled(! $bolehKelolaSemua || $dataPtkId)>
                         <option value="">-- Pilih Sekolah --</option>
                         @foreach ($sekolahOptions as $sekolah)
                             <option value="{{ $sekolah->id }}">{{ $sekolah->nama_sekolah }}</option>
                         @endforeach
                     </select>
+                    <p class="text-xs text-slate-400 mt-1" @if (! $dataPtkId || ! $bolehKelolaSemua) style="display:none" @endif>Otomatis dari Data PTK sesuai PTK yang dipilih.</p>
                     <x-input-error :messages="$errors->get('profil_sekolah_id')" class="mt-2" />
                 </div>
 

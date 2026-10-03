@@ -31,29 +31,35 @@
         teruji di dashboard Admin OPS/BOSP (lihat docblock
         App\Livewire\Beranda\Index).
     --}}
-    <div class="animate-fade-in-up flex flex-col lg:flex-row items-stretch gap-4">
+    {{--
+        ============ JAM DIGITAL ANIMASI (dirapikan 2026-10-03) ============
+        Permintaan user 2026-10-01, DIRAPIKAN 2026-10-03 atas permintaan
+        user: posisi di sebelah kanan, SEJAJAR (1 baris, items-center)
+        dengan baris filter Tahun/Triwulan, dan ukuran LEBIH KECIL -
+        kartu jam sekarang dibuat kompak (setinggi baris filter itu
+        sendiri) & dipakaikan gaya visual yang SAMA PERSIS dengan kartu
+        filter (bg-white, rounded-xl, shadow-sm, border-slate-200/70)
+        supaya terlihat sejajar/serasi sebagai 1 baris, bukan 2 kartu
+        yang berbeda tinggi seperti sebelumnya. Partial selector-triwulan
+        TETAP TIDAK diubah (dipakai bersama Dashboard Admin OPS/BOSP) -
+        jam ini tetap elemen terpisah di sampingnya, hanya gaya &
+        ukurannya yang disamakan supaya "menyatu" secara visual.
+
+        Animasinya: titik dua berkedip (Tailwind animate-pulse) & angka
+        detik "berdenyut" tiap kali berganti (scale 100%->125%->100%),
+        plus ikon jam kecil dengan cincin denyut (pola sama seperti badge
+        "Informasi Terkini" di bagian hero atas - animate-ping).
+    --}}
+    <div class="animate-fade-in-up flex flex-row flex-wrap items-center gap-4">
         <div class="flex-1 min-w-0">
             @include('livewire.dashboard.partials.selector-triwulan', ['warna' => 'blue'])
         </div>
 
-        {{--
-            ============ JAM DIGITAL ANIMASI ============
-            Permintaan user 2026-10-01: tambahkan jam bergaya animasi di
-            sebelah kanan baris filter Tahun/Triwulan pada landingpage
-            (jawaban AskUserQuestion "Jam digital animasi"). Murni
-            Alpine.js sisi client (memakai jam PERANGKAT PENGUNJUNG, bukan
-            jam server - wajar untuk widget dekoratif seperti ini), TIDAK
-            memakai data apapun dari Livewire\Beranda\Index. Animasinya:
-            titik dua berkedip (Tailwind animate-pulse) & angka detik
-            "berdenyut" tiap kali berganti (scale 100%->125%->100%),
-            dibungkus kartu dengan efek blob bergerak (dipakai ulang dari
-            animate-blob-a/animate-blob-c yang sudah ada di app.css).
-        --}}
-        <div class="lg:w-72 relative overflow-hidden rounded-xl shadow-sm border border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-black px-5 py-3 flex flex-col items-center justify-center text-center"
+        <div class="flex items-center gap-2.5 bg-white rounded-xl shadow-sm border border-slate-200/70 px-4 py-3"
              x-data="{
                 jamMenit: '00:00',
                 detik: '00',
-                tanggal: '',
+                tanggalSingkat: '',
                 centang: false,
                 perbarui() {
                     const sekarang = new Date();
@@ -61,23 +67,28 @@
                     this.jamMenit = pad(sekarang.getHours()) + ':' + pad(sekarang.getMinutes());
                     this.detik = pad(sekarang.getSeconds());
                     const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jum\'at', 'Sabtu'][sekarang.getDay()];
-                    const bulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][sekarang.getMonth()];
-                    this.tanggal = hari + ', ' + sekarang.getDate() + ' ' + bulan + ' ' + sekarang.getFullYear();
+                    const bulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][sekarang.getMonth()];
+                    this.tanggalSingkat = hari + ', ' + sekarang.getDate() + ' ' + bulan + ' ' + sekarang.getFullYear();
                     this.centang = true;
                     setTimeout(() => { this.centang = false; }, 350);
                 },
              }"
              x-init="perbarui(); setInterval(() => perbarui(), 1000)">
-            <div class="pointer-events-none absolute -top-8 -right-8 w-32 h-32 rounded-full bg-blue-500/20 blur-2xl animate-blob-a"></div>
-            <div class="pointer-events-none absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-sky-400/10 blur-2xl animate-blob-c"></div>
-
-            <p class="relative text-[11px] uppercase tracking-widest text-blue-200/70 font-semibold">Waktu Sekarang</p>
-            <div class="relative mt-1 flex items-center justify-center gap-1 font-mono font-bold text-white text-3xl tabular-nums">
-                <span x-text="jamMenit"></span>
-                <span class="text-sky-400 animate-pulse">:</span>
-                <span class="inline-block text-xl text-sky-300 transition-transform duration-300" :class="centang ? 'scale-125' : 'scale-100'" x-text="detik"></span>
+            <span class="relative flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-50">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-20"></span>
+                <svg class="relative h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3 3" />
+                </svg>
+            </span>
+            <div class="text-left leading-tight">
+                <p class="flex items-baseline gap-0.5 font-mono font-bold text-slate-700 text-base tabular-nums">
+                    <span x-text="jamMenit"></span>
+                    <span class="text-blue-500 animate-pulse">:</span>
+                    <span class="inline-block text-sm text-blue-500 transition-transform duration-300" :class="centang ? 'scale-125' : 'scale-100'" x-text="detik"></span>
+                </p>
+                <p class="text-[11px] text-slate-400" x-text="tanggalSingkat"></p>
             </div>
-            <p class="relative mt-1 text-xs text-blue-100/70" x-text="tanggal"></p>
         </div>
     </div>
 

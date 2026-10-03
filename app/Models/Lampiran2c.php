@@ -11,6 +11,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Lampiran 2c - Daftar Penyesuaian Gaji Pokok PTK, per sekolah, per
  * triwulan (1-4).
+ *
+ * SEJAK permintaan user 2026-10-03: Nama PTK dipilih dari App\Models\DataPtk
+ * (status Keaktifan "Aktif" & Sertifikasi "Sudah") - memilihnya otomatis
+ * mengisi NRG, NUPTK, & Tempat Tugas (profil_sekolah_id). Lihat
+ * App\Livewire\PendataanOps\Lampiran2c\Index::updatedDataPtkId()
+ * & daftarPtkUntukPilihan().
  */
 #[Fillable([
     'profil_sekolah_id',
