@@ -26,7 +26,9 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * jawaban AskUserQuestion "Dua fungsi berbeda"). Laporan ini TIDAK
  * mengandung dropdown (bukan untuk diimport ulang).
  *
- * Urutan kolom SAMA PERSIS dengan DataPtkExport (lihat catatan di sana).
+ * Urutan kolom SAMA PERSIS dengan DataPtkExport (lihat catatan di sana),
+ * TERMASUK kolom "No" di paling depan (permintaan user 2026-10-03,
+ * jawaban AskUserQuestion "Export Excel & Unduh, keduanya").
  */
 class DataPtkLaporanExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping, WithTitle
 {
@@ -36,11 +38,17 @@ class DataPtkLaporanExport implements FromCollection, ShouldAutoSize, WithCustom
 
     private const BARIS_HEADER_TABEL = 4;
 
-    private const KOLOM_TANGGAL_LAHIR = 'F';
+    private const KOLOM_TANGGAL_LAHIR = 'G';
 
-    private const KOLOM_TMT_SEKOLAH_INDUK = 'K';
+    private const KOLOM_TMT_SEKOLAH_INDUK = 'L';
 
-    private const JUMLAH_KOLOM = 23;
+    private const JUMLAH_KOLOM = 24;
+
+    /**
+     * Penghitung nomor urut baris untuk kolom "No" - diincrement tiap
+     * map() dipanggil (urutannya mengikuti urutan $daftar apa adanya).
+     */
+    private int $nomorBaris = 0;
 
     /**
      * @param  SupportCollection<int, DataPtk>  $daftar
@@ -68,7 +76,7 @@ class DataPtkLaporanExport implements FromCollection, ShouldAutoSize, WithCustom
     public function headings(): array
     {
         return [
-            'NIK', 'NUPTK', 'NIP', 'Nama PTK', 'Tempat Lahir', 'Tanggal Lahir',
+            'No', 'NIK', 'NUPTK', 'NIP', 'Nama PTK', 'Tempat Lahir', 'Tanggal Lahir',
             'Jabatan', 'Pangkat / Golongan', 'Status Kepegawaian', 'Jenis PTK', 'TMT Di Sekolah Induk',
             'Pendidikan Terakhir', 'Jurusan / Prodi Sesuai Ijazah Terakhir', 'Tahun Lulus Ijazah',
             'Status Sertifikasi', 'Bidang Studi Sertifikasi', 'Tahun Lulus Sertifikasi',
@@ -82,7 +90,10 @@ class DataPtkLaporanExport implements FromCollection, ShouldAutoSize, WithCustom
      */
     public function map($p): array
     {
+        $this->nomorBaris++;
+
         return [
+            $this->nomorBaris,
             $p->nik,
             $p->nuptk,
             $p->nip,

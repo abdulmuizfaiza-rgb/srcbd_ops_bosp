@@ -14,18 +14,6 @@
                 </div>
             @endif
 
-            @if ($errorImport)
-                <div class="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm whitespace-pre-line">
-                    {{ $errorImport }}
-                </div>
-            @endif
-
-            @if ($errorExport)
-                <div class="p-4 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-sm">
-                    {{ $errorExport }}
-                </div>
-            @endif
-
             <div class="bg-white shadow sm:rounded-lg overflow-hidden">
                 {{-- Tab Triwulan --}}
                 <div class="border-b border-slate-200 px-4 sm:px-8 pt-4 pb-4">
@@ -48,19 +36,7 @@
                         </div>
 
                         <div class="flex flex-wrap sm:flex-row sm:items-center gap-2.5">
-                            <div class="flex items-center gap-1.5 border border-black/10 rounded-md px-1.5 py-1 bg-black/10">
-                                <input type="file" wire:model="fileImport" accept=".xlsx,.xls,.csv" class="text-[11px] text-slate-700 w-28 sm:w-36 file:mr-1.5 file:py-0.5 file:px-1.5 file:rounded file:border-0 file:bg-white file:text-slate-700 file:text-[11px] file:shadow-sm hover:file:bg-slate-100">
-                                <x-secondary-button wire:click="import" wire:loading.attr="disabled" wire:target="fileImport,import" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
-                                    <x-icon name="upload" class="w-3.5 h-3.5 mr-1" />
-                                    Import Excel
-                                </x-secondary-button>
-                            </div>
-
                             <div class="flex items-center gap-1.5">
-                                <x-secondary-button wire:click="export" wire:loading.attr="disabled" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
-                                    <x-icon name="download" class="w-3.5 h-3.5 mr-1" />
-                                    Export Excel
-                                </x-secondary-button>
                                 <x-primary-button wire:click="tambah" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
                                     <x-icon name="plus" class="w-3.5 h-3.5 mr-1" />
                                     Tambah Data
@@ -72,9 +48,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <div wire:loading wire:target="fileImport,import" class="text-xs text-slate-400 -mt-3 mb-3">Memproses import...</div>
-                    <x-input-error :messages="$errors->get('fileImport')" class="text-xs -mt-3 mb-3 block" />
 
                     <div class="overflow-auto scrollbar-modern border border-slate-200 rounded-lg" style="max-height: 30rem;">
                         <table class="min-w-full divide-y divide-slate-200 text-sm">

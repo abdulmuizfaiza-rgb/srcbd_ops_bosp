@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\PendataanOps\Lampiran2b\Index;
-use App\Models\Lampiran2a;
+use App\Models\DataPtk;
 use App\Models\Lampiran2b;
 use App\Models\ProfilSekolah;
 use App\Models\User;
@@ -27,11 +27,12 @@ class Lampiran2bTest extends TestCase
     public function test_admin_ops_bisa_menambah_data_untuk_sekolahnya_sendiri(): void
     {
         $sekolah = ProfilSekolah::factory()->create();
-        Lampiran2a::factory()->create([
+        DataPtk::factory()->create([
             'profil_sekolah_id' => $sekolah->id,
-            'triwulan' => 1,
             'nama_ptk' => 'Ahmad Fauzi',
-            'nrg' => '123456789012',
+            'status_keaktifan' => 'Tidak Aktif',
+            'status_sertifikasi' => DataPtk::STATUS_SERTIFIKASI_SUDAH,
+            'nomor_registrasi_guru' => '123456789012',
             'nuptk' => '1234567890123456',
         ]);
         $adminOps = User::factory()->create([
@@ -60,10 +61,11 @@ class Lampiran2bTest extends TestCase
     public function test_tahun_otomatis_terisi_dengan_tahun_sekarang_saat_simpan(): void
     {
         $sekolah = ProfilSekolah::factory()->create();
-        Lampiran2a::factory()->create([
+        DataPtk::factory()->create([
             'profil_sekolah_id' => $sekolah->id,
-            'triwulan' => 1,
             'nama_ptk' => 'Ahmad Fauzi',
+            'status_keaktifan' => 'Tidak Aktif',
+            'status_sertifikasi' => DataPtk::STATUS_SERTIFIKASI_SUDAH,
         ]);
         $adminOps = User::factory()->create([
             'level_akses' => User::LEVEL_ADMIN_OPS,
@@ -88,11 +90,12 @@ class Lampiran2bTest extends TestCase
     public function test_nrg_nuptk_otomatis_terisi_setelah_pilih_nama_ptk(): void
     {
         $sekolah = ProfilSekolah::factory()->create();
-        Lampiran2a::factory()->create([
+        DataPtk::factory()->create([
             'profil_sekolah_id' => $sekolah->id,
-            'triwulan' => 1,
             'nama_ptk' => 'Siti Aminah',
-            'nrg' => '111122223333',
+            'status_keaktifan' => 'Tidak Aktif',
+            'status_sertifikasi' => DataPtk::STATUS_SERTIFIKASI_SUDAH,
+            'nomor_registrasi_guru' => '111122223333',
             'nuptk' => '4444555566667777',
         ]);
         $adminOps = User::factory()->create([
@@ -108,7 +111,7 @@ class Lampiran2bTest extends TestCase
             ->assertSet('nuptk', '4444555566667777');
     }
 
-    public function test_simpan_gagal_jika_nama_ptk_tidak_ada_di_lampiran_2a(): void
+    public function test_simpan_gagal_jika_nama_ptk_tidak_ada_di_data_ptk(): void
     {
         $sekolah = ProfilSekolah::factory()->create();
         $adminOps = User::factory()->create([
@@ -130,10 +133,11 @@ class Lampiran2bTest extends TestCase
     {
         $sekolahSaya = ProfilSekolah::factory()->create();
         $sekolahLain = ProfilSekolah::factory()->create();
-        Lampiran2a::factory()->create([
+        DataPtk::factory()->create([
             'profil_sekolah_id' => $sekolahSaya->id,
-            'triwulan' => 1,
             'nama_ptk' => 'Ahmad Fauzi',
+            'status_keaktifan' => 'Tidak Aktif',
+            'status_sertifikasi' => DataPtk::STATUS_SERTIFIKASI_SUDAH,
         ]);
         $adminOps = User::factory()->create([
             'level_akses' => User::LEVEL_ADMIN_OPS,
@@ -212,43 +216,4 @@ class Lampiran2bTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_superadmin_bisa_export_data(): void
-    {
-        $sekolah = ProfilSekolah::factory()->create();
-        Lampiran2b::factory()->create(['profil_sekolah_id' => $sekolah->id, 'triwulan' => 1]);
-        $superadmin = User::factory()->create(['level_akses' => User::LEVEL_SUPERADMIN]);
-
-        Livewire::actingAs($superadmin)
-            ->test(Index::class)
-            ->set('filterSekolahId', $sekolah->id)
-            ->call('export')
-            ->assertFileDownloaded('lampiran-2b-triwulan-1.xlsx');
-    }
-
-    public function test_superadmin_wajib_pilih_sekolah_dulu_sebelum_export(): void
-    {
-        $sekolah = ProfilSekolah::factory()->create();
-        Lampiran2b::factory()->create(['profil_sekolah_id' => $sekolah->id, 'triwulan' => 1]);
-        $superadmin = User::factory()->create(['level_akses' => User::LEVEL_SUPERADMIN]);
-
-        Livewire::actingAs($superadmin)
-            ->test(Index::class)
-            ->call('export')
-            ->assertSet('errorExport', fn ($pesan) => ! empty($pesan));
-    }
-
-    public function test_admin_ops_bisa_export_tanpa_pilih_sekolah_karena_sudah_terkunci(): void
-    {
-        $sekolah = ProfilSekolah::factory()->create();
-        Lampiran2b::factory()->create(['profil_sekolah_id' => $sekolah->id, 'triwulan' => 1]);
-        $adminOps = User::factory()->create([
-            'level_akses' => User::LEVEL_ADMIN_OPS,
-            'profil_sekolah_id' => $sekolah->id,
-        ]);
-
-        Livewire::actingAs($adminOps)
-            ->test(Index::class)
-            ->call('export')
-            ->assertFileDownloaded('lampiran-2b-triwulan-1.xlsx');
-    }
 }

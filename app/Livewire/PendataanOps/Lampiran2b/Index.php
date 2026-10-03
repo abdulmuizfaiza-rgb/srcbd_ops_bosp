@@ -2,9 +2,6 @@
 
 namespace App\Livewire\PendataanOps\Lampiran2b;
 
-use App\Models\AksesDataLog;
-use App\Exports\Lampiran2bExport;
-use App\Imports\Lampiran2bImport;
 use App\Models\DataPtk;
 use App\Models\Lampiran2b;
 use App\Models\ProfilSekolah;
@@ -14,9 +11,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 use Livewire\WithPagination;
-use Maatwebsite\Excel\Facades\Excel;
 
 /**
  * Lampiran 2b - keterangan & TMT per PTK, per sekolah, per triwulan.
@@ -46,12 +41,22 @@ use Maatwebsite\Excel\Facades\Excel;
  *   sekolah manapun saat menambah data, dan memfilter tabel per sekolah.
  * - Admin OPS: hanya melihat & mengelola data sekolahnya sendiri (field
  *   Nama Sekolah otomatis terkunci ke sekolahnya).
+ *
+ * SEJAK permintaan user 2026-10-03: tombol "Import Excel" & "Export
+ * Excel" (beserta properti $fileImport/$errorImport/$errorExport &
+ * method import()/export()) DIHAPUS dari tab ini - karena Nama PTK
+ * sekarang bersumber dari tab Data PTK (lihat paragraf di atas), fitur
+ * export-lalu-reimport data Lampiran 2b sudah tidak relevan lagi &
+ * berisiko menimbulkan data ganda/konflik. Kelas Lampiran2bExport &
+ * Lampiran2bImport TIDAK dihapus dari disk (tidak lagi dipakai di sini)
+ * - tombol "Unduh" pada menu Unduhan (App\Livewire\PendataanOps\Unduhan)
+ * TETAP ADA & TIDAK terpengaruh, karena memakai App\Exports\
+ * UnduhanLampiranExport yang sepenuhnya terpisah.
  */
 #[Layout('layouts.app')]
 #[Title('Lampiran 2b')]
 class Index extends Component
 {
-    use WithFileUploads;
     use WithPagination;
 
     #[Url(as: 'triwulan')]
@@ -78,12 +83,6 @@ class Index extends Component
     public bool $showForm = false;
 
     public ?int $confirmingDeleteId = null;
-
-    public $fileImport = null;
-
-    public ?string $errorImport = null;
-
-    public ?string $errorExport = null;
 
     public int $perPage = 10;
 
@@ -388,64 +387,6 @@ class Index extends Component
         }
 
         return $query;
-    }
-
-    public function export()
-    {
-        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Lampiran 2b', 'Excel');
-        $this->errorExport = null;
-
-        // Lembar tanda tangan Kepala Sekolah pada hasil export hanya berlaku
-        // untuk 1 sekolah, jadi Superadmin wajib memfilter ke 1 sekolah dulu
-        // (Admin OPS otomatis sudah terkunci ke sekolahnya sendiri).
-        $sekolahId = $this->bolehKelolaSemua() ? $this->filterSekolahId : $this->sekolahSayaId();
-
-        if (! $sekolahId) {
-            $this->errorExport = 'Pilih salah satu sekolah pada filter di atas terlebih dahulu sebelum Export Excel, karena lembar tanda tangan Kepala Sekolah pada hasil export hanya berlaku untuk 1 sekolah.';
-
-            return null;
-        }
-
-        $sekolah = ProfilSekolah::findOrFail($sekolahId);
-
-        return Excel::download(
-            new Lampiran2bExport(
-                $this->queryDasar()->orderBy('nama_ptk')->get(),
-                $this->triwulan,
-                now()->year,
-                $sekolah
-            ),
-            'lampiran-2b-triwulan-'.$this->triwulan.'.xlsx'
-        );
-    }
-
-    public function import(): void
-    {
-        $this->errorImport = null;
-
-        $this->validate([
-            'fileImport' => ['required', 'file', 'mimes:xlsx,xls,csv'],
-        ]);
-
-        try {
-            $sekolahDiperbolehkan = $this->bolehKelolaSemua()
-                ? null
-                : $this->sekolahSayaId();
-
-            Excel::import(
-                new Lampiran2bImport($this->triwulan, auth()->id(), $sekolahDiperbolehkan),
-                $this->fileImport->getRealPath()
-            );
-
-            $this->fileImport = null;
-            session()->flash('status', 'Import Lampiran 2b berhasil.');
-        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
-            $pesan = [];
-            foreach ($e->failures() as $failure) {
-                $pesan[] = 'Baris '.$failure->row().': '.implode(', ', $failure->errors());
-            }
-            $this->errorImport = implode(' | ', $pesan);
-        }
     }
 
     public function render()
