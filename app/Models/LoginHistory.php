@@ -9,8 +9,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Satu baris = satu sesi login (dari saat login sampai logout, kalau ada).
  * Lihat catatan lengkap di migration create_login_histories_table.
+ *
+ * SEJAK permintaan user 2026-10-03: kolom session_id (lihat migration
+ * tambah_session_id_ke_login_histories_table) dipakai untuk memastikan
+ * baris logout_at=NULL BENAR-BENAR masih aktif (dicocokkan ke tabel
+ * `sessions` bawaan Laravel) sebelum dipakai memblokir login kedua di
+ * perangkat lain - lihat App\Livewire\Forms\LoginForm::cariSesiLainAktif().
  */
-#[Fillable(['user_id', 'level_akses', 'email', 'nama_sekolah', 'login_at', 'logout_at', 'ip_address', 'latitude', 'longitude'])]
+#[Fillable(['user_id', 'level_akses', 'email', 'nama_sekolah', 'login_at', 'logout_at', 'ip_address', 'latitude', 'longitude', 'session_id'])]
 class LoginHistory extends Model
 {
     protected function casts(): array

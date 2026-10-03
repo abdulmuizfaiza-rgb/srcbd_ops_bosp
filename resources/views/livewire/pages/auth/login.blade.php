@@ -35,6 +35,16 @@ new #[Layout('layouts.guest')] class extends Component
 
         $this->form->authenticate();
 
+        // Permintaan user 2026-10-03 (kunci 1 perangkat per akun): kalau
+        // authenticate() mendeteksi akun ini (Admin OPS/Admin BOSP) masih
+        // aktif di perangkat lain, login DIBATALKAN di dalam authenticate()
+        // sendiri (Auth::logout() sudah dipanggil di sana) & pop-up
+        // penolakan ditampilkan sebagai gantinya (lihat blok pop-up di
+        // bawah) - jangan lanjutkan proses redirect/flash normal.
+        if ($this->form->tampilkanPopupPerangkatLain) {
+            return;
+        }
+
         // Round 9 Bagian C (permintaan user 2026-09-23, poin 4): tandai
         // "baru saja login" lewat session flash (otomatis tersedia SATU
         // kali saja pada request/kunjungan halaman BERIKUTNYA, lalu hilang
@@ -49,6 +59,38 @@ new #[Layout('layouts.guest')] class extends Component
         session()->forget('google2fa_terverifikasi');
 
         $this->redirectSetelahLoginKeAlur2fa(Auth::user());
+    }
+
+    /**
+     * Tombol "Paksa Logout Perangkat Lain" di pop-up penolakan - lihat
+     * App\Livewire\Forms\LoginForm::paksaLogoutPerangkatLain() untuk
+     * logika lengkap (verifikasi ulang password, akhiri sesi lama, lalu
+     * login di perangkat ini). Permintaan user 2026-10-03.
+     */
+    public function paksaLogoutPerangkatLain(): void
+    {
+        $this->form->paksaLogoutPerangkatLain();
+
+        if ($this->form->tampilkanPopupPerangkatLain) {
+            // Password konfirmasi salah/kosong - pop-up tetap tampil
+            // dengan pesan error (lihat $errors->get di Blade), jangan
+            // lanjut redirect.
+            return;
+        }
+
+        Session::flash('tampilkan_popup_timeline_login', true);
+        Session::regenerate();
+        session()->forget('google2fa_terverifikasi');
+
+        $this->redirectSetelahLoginKeAlur2fa(Auth::user());
+    }
+
+    /**
+     * Tombol "Batal" di pop-up penolakan - permintaan user 2026-10-03.
+     */
+    public function batalkanPopupPerangkatLain(): void
+    {
+        $this->form->batalkanPopupPerangkatLain();
     }
 
     /**
@@ -117,6 +159,71 @@ new #[Layout('layouts.guest')] class extends Component
         );
     },
 }">
+    {{--
+        Pop-up penolakan "Batas Perangkat Terpenuhi" (kunci 1 perangkat
+        per akun, khusus Admin OPS/Admin BOSP - permintaan user
+        2026-10-03). Gaya visual (gradient card, glow berdenyut, animasi
+        scale+opacity) SENGAJA mengikuti pop-up "Info Timeline Pekerjaan"
+        yang sudah ada di resources/views/layouts/app.blade.php - supaya
+        konsisten dengan kosa-kata animasi pop-up yang sudah dipakai di
+        aplikasi ini, hanya warnanya diganti merah/oranye (bukan ungu/pink)
+        karena ini pop-up PENOLAKAN, bukan info biasa. <style> ditaruh di
+        sini (bukan resources/css/app.css) karena halaman ini memakai
+        layouts.guest yang terpisah dari layouts.app - supaya tidak perlu
+        npm run build ulang, mengikuti pola yang sama seperti
+        animate-info-timeline-popup (juga inline di file layout-nya,
+        bukan di app.css).
+    --}}
+    <style>
+        @keyframes popupPerangkatLainGlow {
+            0%, 100% { box-shadow: 0 20px 45px -10px rgba(220, 38, 38, 0.55); }
+            50%      { box-shadow: 0 20px 55px -8px rgba(234, 88, 12, 0.65); }
+        }
+        .animate-popup-perangkat-lain {
+            animation: popupPerangkatLainGlow 1.8s ease-in-out infinite;
+        }
+    </style>
+
+    <div x-show="$wire.form.tampilkanPopupPerangkatLain" x-cloak
+        x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4">
+        <div
+            x-show="$wire.form.tampilkanPopupPerangkatLain"
+            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-75" x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-90"
+            class="animate-popup-perangkat-lain w-full max-w-md rounded-2xl bg-gradient-to-br from-rose-600 via-red-600 to-orange-500 p-6 text-white ring-1 ring-white/20">
+            <div class="flex items-start gap-3">
+                <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/30 animate-pulse">
+                    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="5" y="11" width="14" height="9" rx="2" />
+                        <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                        <circle cx="12" cy="15.5" r="1.3" fill="currentColor" stroke="none" />
+                    </svg>
+                </span>
+                <div>
+                    <h2 class="text-base font-semibold leading-snug">Akses Anda Ditolak: Batas Perangkat Terpenuhi !</h2>
+                    <p class="mt-1.5 text-sm text-white/90 leading-relaxed">Akun Anda terdeteksi sedang aktif di perangkat lain (otomatis Laptop/PC/Tablet/Android). Admin hanya diizinkan login menggunakan 1 perangkat. Silakan logout terlebih dahulu dari perangkat tersebut untuk masuk menggunakan perangkat ini.</p>
+                </div>
+            </div>
+
+            <form wire:submit="paksaLogoutPerangkatLain" class="mt-5 border-t border-white/20 pt-4">
+                <label for="password-konfirmasi-paksa" class="text-xs font-medium text-white/90 leading-relaxed">Atau, kalau Anda yakin perangkat lain itu sudah tidak dipakai (misal lupa logout), masukkan kata sandi Anda untuk mengakhiri sesi di perangkat lain & lanjut login di sini:</label>
+                <x-password-input wire:model="form.passwordKonfirmasiPaksa" id="password-konfirmasi-paksa" class="block mt-1.5 w-full !bg-white/10 !border-white/30 !text-white placeholder:!text-white/60" placeholder="Kata sandi Anda" autocomplete="current-password" />
+                <x-input-error :messages="$errors->get('form.passwordKonfirmasiPaksa')" class="mt-1.5 [&>p]:!text-amber-100" />
+
+                <div class="mt-4 flex justify-end gap-2">
+                    <button type="button" wire:click="batalkanPopupPerangkatLain" class="rounded-md bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/20 transition">
+                        Batal
+                    </button>
+                    <button type="submit" wire:loading.attr="disabled" wire:target="paksaLogoutPerangkatLain" class="rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 transition">
+                        Paksa Logout Perangkat Lain
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     {{--
         Permintaan user (2026-09-24, round ketujuh belas): tombol kembali
         ke landing page publik (route "beranda", halaman "/" - lihat

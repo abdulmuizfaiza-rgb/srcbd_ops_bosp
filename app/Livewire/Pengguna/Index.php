@@ -116,6 +116,24 @@ class Index extends Component
         $this->resetPage('riwayatPage');
     }
 
+    /**
+     * Tombol "Akhiri Sesi" pada baris Riwayat Login yang logout_at-nya
+     * masih NULL ("Masih berlangsung") - permintaan user 2026-10-03,
+     * jaring pengaman untuk fitur kunci 1 perangkat per akun (Admin
+     * OPS/Admin BOSP): kalau admin kehilangan akses ke perangkat lamanya
+     * (rusak/hilang/lupa logout) sehingga tidak bisa klik "Paksa Logout
+     * Perangkat Lain" sendiri di halaman login, Superadmin bisa membuka
+     * slotnya secara manual dari sini. whereNull('logout_at') dipasang
+     * lagi di query (bukan cuma percaya $id dari tombol) sebagai jaring
+     * pengaman supaya tidak menimpa logout_at yang sudah terisi.
+     */
+    public function akhiriSesi(int $id): void
+    {
+        LoginHistory::where('id', $id)->whereNull('logout_at')->update(['logout_at' => now()]);
+
+        session()->flash('status', 'Sesi berhasil diakhiri - akun tersebut sekarang bisa login lagi di perangkat lain.');
+    }
+
     public function updatedSearchAuthenticator(): void
     {
         $this->resetPage('authenticatorPage');

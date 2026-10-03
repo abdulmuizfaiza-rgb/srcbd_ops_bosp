@@ -108,6 +108,16 @@
                                                     {{ $item->logout_at->keWaktuLokal()->format('H:i:s') }}
                                                 @else
                                                     <span class="text-emerald-600 font-medium">Masih berlangsung</span>
+                                                    {{--
+                                                        Permintaan user 2026-10-03 (jaring pengaman fitur kunci 1
+                                                        perangkat per akun): Superadmin bisa mengakhiri paksa sesi
+                                                        yang "macet" (mis. admin lupa logout di perangkat lama yang
+                                                        sudah rusak/hilang, sehingga tidak bisa klik "Paksa Logout
+                                                        Perangkat Lain" sendiri dari halaman login).
+                                                    --}}
+                                                    <button type="button" wire:click="akhiriSesi({{ $item->id }})" wire:confirm="Akhiri sesi login ini sekarang? Akun ini akan bisa login lagi di perangkat lain setelah ini." class="ml-2 text-[11px] font-medium text-rose-600 hover:text-rose-800 hover:underline">
+                                                        Akhiri Sesi
+                                                    </button>
                                                 @endif
                                             </td>
                                             <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->durasi ?? '-' }}</td>

@@ -83,13 +83,27 @@
                     @elseif ($tab === 'login_gagal')
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                             <input wire:model.live.debounce.300ms="searchLoginGagal" type="text" placeholder="Cari username / IP address..." class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm sm:w-80">
-                            <x-zoom-controls :zoom="$zoomPercent" />
+                            <div class="flex items-center gap-2">
+                                {{-- Permintaan user 2026-10-03: tombol Hapus (per data & semua data) --}}
+                                <x-danger-button type="button" wire:click="konfirmasiHapusTerpilihLoginGagal" wire:loading.attr="disabled" :disabled="count($dipilihLoginGagal) === 0" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                                    <x-icon name="trash" class="w-3.5 h-3.5 mr-1" />
+                                    Hapus Terpilih ({{ count($dipilihLoginGagal) }})
+                                </x-danger-button>
+                                <x-secondary-button type="button" wire:click="konfirmasiHapusSemuaLoginGagal" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                                    <x-icon name="trash" class="w-3.5 h-3.5 mr-1" />
+                                    Hapus Semua
+                                </x-secondary-button>
+                                <x-zoom-controls :zoom="$zoomPercent" />
+                            </div>
                         </div>
 
                         <div class="overflow-auto scrollbar-modern border border-slate-200 rounded-lg" style="max-height: 28rem; zoom: {{ $zoomPercent }}%;">
                             <table class="min-w-full divide-y divide-slate-200 text-sm">
                                 <thead class="sticky top-0 bg-slate-50">
                                     <tr class="text-left text-slate-500">
+                                        <th class="px-3 py-2">
+                                            <input type="checkbox" wire:click="toggleSemuaLoginGagal" @checked($semuaTerpilihLoginGagal) class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" title="Pilih/batal pilih semua baris di halaman ini">
+                                        </th>
                                         <th class="px-3 py-2">Username Dicoba</th>
                                         <th class="px-3 py-2">Hari & Tanggal</th>
                                         <th class="px-3 py-2">Waktu</th>
@@ -101,6 +115,9 @@
                                 <tbody class="divide-y divide-slate-100 bg-white">
                                     @forelse ($loginGagal as $item)
                                         <tr>
+                                            <td class="px-3 py-2">
+                                                <input type="checkbox" wire:model="dipilihLoginGagal" value="{{ $item->id }}" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                                            </td>
                                             <td class="px-3 py-2 text-slate-700 whitespace-nowrap">{{ $item->username_dicoba ?: '-' }}</td>
                                             <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->created_at?->keWaktuLokal()->translatedFormat('l, d F Y') }}</td>
                                             <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->created_at?->keWaktuLokal()->format('H:i:s') }}</td>
@@ -116,7 +133,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="6" class="px-3 py-6 text-center text-slate-400">Belum ada percobaan login gagal yang tercatat.</td>
+                                            <td colspan="7" class="px-3 py-6 text-center text-slate-400">Belum ada percobaan login gagal yang tercatat.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -129,6 +146,35 @@
                             </div>
                             <x-pagination-per-page wire:model.live="perPageLoginGagal" />
                         </div>
+
+                        {{-- Modal konfirmasi Hapus Terpilih & Hapus Semua - permintaan user 2026-10-03 --}}
+                        <x-modal name="cek-database-login-gagal-hapus-terpilih" :show="$confirmingHapusTerpilihLoginGagal" maxWidth="md">
+                            <div class="p-6">
+                                <h2 class="text-lg font-medium text-slate-900">Hapus {{ count($dipilihLoginGagal) }} catatan terpilih?</h2>
+                                <p class="mt-1 text-sm text-slate-600">Semua baris percobaan login gagal yang dicentang akan dihapus sekaligus. Tindakan ini tidak dapat dibatalkan.</p>
+                                <div class="mt-6 flex justify-end gap-3">
+                                    <x-secondary-button wire:click="batalHapusTerpilihLoginGagal" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
+                                    <x-danger-button wire:click="hapusTerpilihLoginGagal" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Hapus</x-danger-button>
+                                </div>
+                            </div>
+                        </x-modal>
+
+                        <x-modal name="cek-database-login-gagal-hapus-semua" :show="$confirmingHapusSemuaLoginGagal" maxWidth="md">
+                            <div class="p-6">
+                                <h2 class="text-lg font-medium text-slate-900">Hapus SEMUA catatan percobaan login gagal?</h2>
+                                <p class="mt-1 text-sm text-slate-600">
+                                    @if ($searchLoginGagal)
+                                        Ini akan menghapus SEMUA baris yang cocok dengan pencarian "{{ $searchLoginGagal }}" saat ini (bukan hanya yang tampil di halaman ini). Tindakan ini tidak dapat dibatalkan.
+                                    @else
+                                        Tidak ada pencarian aktif - ini akan menghapus SEMUA catatan percobaan login gagal di database. Tindakan ini tidak dapat dibatalkan.
+                                    @endif
+                                </p>
+                                <div class="mt-6 flex justify-end gap-3">
+                                    <x-secondary-button wire:click="batalHapusSemuaLoginGagal" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
+                                    <x-danger-button wire:click="hapusSemuaLoginGagal" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Ya, Hapus Semua</x-danger-button>
+                                </div>
+                            </div>
+                        </x-modal>
                     @elseif ($tab === 'akses_data')
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                             <div class="flex flex-col sm:flex-row gap-3">
@@ -139,13 +185,27 @@
                                     <option value="unduh">Unduh</option>
                                 </select>
                             </div>
-                            <x-zoom-controls :zoom="$zoomPercent" />
+                            <div class="flex items-center gap-2">
+                                {{-- Permintaan user 2026-10-03: tombol Hapus (per data & semua data) --}}
+                                <x-danger-button type="button" wire:click="konfirmasiHapusTerpilihAksesData" wire:loading.attr="disabled" :disabled="count($dipilihAksesData) === 0" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                                    <x-icon name="trash" class="w-3.5 h-3.5 mr-1" />
+                                    Hapus Terpilih ({{ count($dipilihAksesData) }})
+                                </x-danger-button>
+                                <x-secondary-button type="button" wire:click="konfirmasiHapusSemuaAksesData" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                                    <x-icon name="trash" class="w-3.5 h-3.5 mr-1" />
+                                    Hapus Semua
+                                </x-secondary-button>
+                                <x-zoom-controls :zoom="$zoomPercent" />
+                            </div>
                         </div>
 
                         <div class="overflow-auto scrollbar-modern border border-slate-200 rounded-lg" style="max-height: 28rem; zoom: {{ $zoomPercent }}%;">
                             <table class="min-w-full divide-y divide-slate-200 text-sm">
                                 <thead class="sticky top-0 bg-slate-50">
                                     <tr class="text-left text-slate-500">
+                                        <th class="px-3 py-2">
+                                            <input type="checkbox" wire:click="toggleSemuaAksesData" @checked($semuaTerpilihAksesData) class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" title="Pilih/batal pilih semua baris di halaman ini">
+                                        </th>
                                         <th class="px-3 py-2">Username</th>
                                         <th class="px-3 py-2">Level Akses</th>
                                         <th class="px-3 py-2">Hari & Tanggal</th>
@@ -160,6 +220,9 @@
                                 <tbody class="divide-y divide-slate-100 bg-white">
                                     @forelse ($aksesData as $item)
                                         <tr>
+                                            <td class="px-3 py-2">
+                                                <input type="checkbox" wire:model="dipilihAksesData" value="{{ $item->id }}" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                                            </td>
                                             <td class="px-3 py-2 text-slate-700 whitespace-nowrap">{{ $item->username_snapshot ?: '-' }}</td>
                                             <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->level_akses_snapshot ?: '-' }}</td>
                                             <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->created_at?->keWaktuLokal()->translatedFormat('l, d F Y') }}</td>
@@ -184,7 +247,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="9" class="px-3 py-6 text-center text-slate-400">Belum ada log akses data untuk filter ini.</td>
+                                            <td colspan="10" class="px-3 py-6 text-center text-slate-400">Belum ada log akses data untuk filter ini.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -197,6 +260,35 @@
                             </div>
                             <x-pagination-per-page wire:model.live="perPageAksesData" />
                         </div>
+
+                        {{-- Modal konfirmasi Hapus Terpilih & Hapus Semua - permintaan user 2026-10-03 --}}
+                        <x-modal name="cek-database-akses-data-hapus-terpilih" :show="$confirmingHapusTerpilihAksesData" maxWidth="md">
+                            <div class="p-6">
+                                <h2 class="text-lg font-medium text-slate-900">Hapus {{ count($dipilihAksesData) }} log terpilih?</h2>
+                                <p class="mt-1 text-sm text-slate-600">Semua baris log akses data yang dicentang akan dihapus sekaligus. Tindakan ini tidak dapat dibatalkan.</p>
+                                <div class="mt-6 flex justify-end gap-3">
+                                    <x-secondary-button wire:click="batalHapusTerpilihAksesData" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
+                                    <x-danger-button wire:click="hapusTerpilihAksesData" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Hapus</x-danger-button>
+                                </div>
+                            </div>
+                        </x-modal>
+
+                        <x-modal name="cek-database-akses-data-hapus-semua" :show="$confirmingHapusSemuaAksesData" maxWidth="md">
+                            <div class="p-6">
+                                <h2 class="text-lg font-medium text-slate-900">Hapus SEMUA log akses data?</h2>
+                                <p class="mt-1 text-sm text-slate-600">
+                                    @if ($searchAksesData || $filterJenisAksi)
+                                        Ini akan menghapus SEMUA baris yang cocok dengan filter/pencarian aktif saat ini (bukan hanya yang tampil di halaman ini). Tindakan ini tidak dapat dibatalkan.
+                                    @else
+                                        Tidak ada filter/pencarian aktif - ini akan menghapus SEMUA log akses data di database. Tindakan ini tidak dapat dibatalkan.
+                                    @endif
+                                </p>
+                                <div class="mt-6 flex justify-end gap-3">
+                                    <x-secondary-button wire:click="batalHapusSemuaAksesData" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
+                                    <x-danger-button wire:click="hapusSemuaAksesData" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Ya, Hapus Semua</x-danger-button>
+                                </div>
+                            </div>
+                        </x-modal>
                     @elseif ($tab === 'kecocokan')
                         <p class="text-sm text-slate-500 mb-4">Membandingkan jumlah data yang dihitung lewat aplikasi dengan jumlah baris asli di database untuk setiap jenis data, dikelompokkan per sekolah. Klik simbol <strong>+</strong> pada nama sekolah untuk melihat rincian jenis data sekolah tersebut. Idealnya semua baris berstatus "Cocok".</p>
 

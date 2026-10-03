@@ -7,6 +7,8 @@ use App\Models\LoginHistory;
 use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -49,6 +51,20 @@ class LoginForm extends Form
      * Setelah 2x gagal, tombol "Pemulihan Akun" ditampilkan.
      */
     public int $percobaanGagal = 0;
+
+    /**
+     * Permintaan user 2026-10-03: kunci 1 perangkat per akun, KHUSUS
+     * Admin OPS & Admin BOSP (Superadmin dikecualikan). Kedua properti
+     * di bawah mengatur pop-up penolakan "Akses Anda Ditolak: Batas
+     * Perangkat Terpenuhi !" di login.blade.php - lihat authenticate()
+     * & cariSesiLainAktif() untuk logika lengkapnya, dan
+     * paksaLogoutPerangkatLain() untuk jalur "Paksa Logout Perangkat
+     * Lain" di pop-up tsb.
+     */
+    public bool $tampilkanPopupPerangkatLain = false;
+
+    #[Validate('nullable|string')]
+    public string $passwordKonfirmasiPaksa = '';
 
     /**
      * Kata sandi pemulihan (default) per level akses.
@@ -98,10 +114,143 @@ class LoginForm extends Form
             ]);
         }
 
+        $user = Auth::user();
+
+        // Permintaan user 2026-10-03: kunci 1 perangkat per akun, KHUSUS
+        // Admin OPS & Admin BOSP (Superadmin dikecualikan - bisa login
+        // dari beberapa perangkat sekaligus seperti sebelumnya).
+        // Kredensial SUDAH benar di titik ini (Auth::attempt sudah lolos)
+        // - pengecekan device-lock SENGAJA dilakukan SESUDAH ini (bukan
+        // sebelum Auth::attempt), supaya orang yang belum tahu password
+        // yang benar tidak bisa "mengintip" apakah akun ini sedang aktif
+        // di perangkat lain atau tidak.
+        if (in_array($user->level_akses, [User::LEVEL_ADMIN_OPS, User::LEVEL_ADMIN_BOSP], true)) {
+            $sesiLain = $this->cariSesiLainAktif($user);
+
+            if ($sesiLain) {
+                // Batalkan login yang baru saja berhasil - JANGAN
+                // lanjutkan, tampilkan pop-up penolakan sebagai gantinya
+                // (lihat login.blade.php). Auth::logout() di sini WAJIB
+                // (bukan kosmetik) - supaya state Auth bersih lagi saat
+                // user klik "Paksa Logout Perangkat Lain" (method
+                // paksaLogoutPerangkatLain() di bawah re-verifikasi
+                // password dari awal, tidak mengandalkan sesi Auth yang
+                // baru saja terbentuk ini).
+                Auth::logout();
+                $this->tampilkanPopupPerangkatLain = true;
+
+                return;
+            }
+        }
+
         RateLimiter::clear($this->throttleKey());
         $this->percobaanGagal = 0;
 
-        $this->catatRiwayatLogin(Auth::user());
+        $this->catatRiwayatLogin($user);
+    }
+
+    /**
+     * Mengakhiri sesi lain yang masih aktif (setelah user mengonfirmasi
+     * ulang password-nya lewat tombol "Paksa Logout Perangkat Lain" di
+     * pop-up penolakan - permintaan user 2026-10-03) lalu melanjutkan
+     * login di perangkat/browser ini. Password diminta ULANG di sini
+     * (bukan mengandalkan Auth::attempt yang sudah lolos sebelumnya di
+     * authenticate()) karena authenticate() SUDAH memanggil Auth::logout()
+     * begitu konflik terdeteksi - state Auth saat method ini dipanggil
+     * sudah bukan "sudah login" lagi, jadi verifikasi ulang memang perlu
+     * dilakukan dari awal, bukan sekadar pengulangan demi keamanan.
+     */
+    public function paksaLogoutPerangkatLain(): void
+    {
+        $akun = User::where('username', $this->username)->first();
+
+        if (trim($this->passwordKonfirmasiPaksa) === '') {
+            $this->addError('passwordKonfirmasiPaksa', 'Kata sandi wajib diisi.');
+
+            return;
+        }
+
+        if (! $akun || ! Hash::check($this->passwordKonfirmasiPaksa, $akun->password)) {
+            $this->addError('passwordKonfirmasiPaksa', 'Kata sandi tidak sesuai.');
+
+            return;
+        }
+
+        $sesiLain = $this->cariSesiLainAktif($akun);
+
+        if ($sesiLain) {
+            $sesiLain->update(['logout_at' => now()]);
+        }
+
+        Auth::login($akun, $this->remember);
+
+        RateLimiter::clear($this->throttleKey());
+        $this->percobaanGagal = 0;
+        $this->tampilkanPopupPerangkatLain = false;
+        $this->passwordKonfirmasiPaksa = '';
+
+        $this->catatRiwayatLogin($akun);
+    }
+
+    /**
+     * Membatalkan pop-up penolakan "Batas Perangkat Terpenuhi" (tombol
+     * "Batal" - permintaan user 2026-10-03) - user tetap di halaman
+     * login, bisa mencoba akun lain atau mencoba lagi nanti.
+     */
+    public function batalkanPopupPerangkatLain(): void
+    {
+        $this->tampilkanPopupPerangkatLain = false;
+        $this->passwordKonfirmasiPaksa = '';
+    }
+
+    /**
+     * Cari baris LoginHistory LAIN yang MASIH BENAR-BENAR AKTIF untuk 1
+     * akun (permintaan user 2026-10-03: kunci 1 perangkat per akun).
+     *
+     * "Aktif" di sini TIDAK HANYA logout_at masih NULL - itu saja tidak
+     * cukup, karena kebanyakan orang menutup tab/browser begitu saja
+     * TANPA klik Logout (logout_at akan tetap NULL SELAMANYA kalau hanya
+     * mengandalkan itu, berakibat akun terkunci PERMANEN tidak bisa
+     * login dari perangkat manapun termasuk perangkat lamanya sendiri).
+     * Baris logout_at=NULL baru dianggap BENAR-BENAR aktif kalau SESSION
+     * Laravel miliknya (tabel `sessions` bawaan Laravel, dicocokkan lewat
+     * kolom session_id yang direkam saat login - lihat
+     * catatRiwayatLogin()) juga masih tercatat last_activity dalam batas
+     * waktu sesi aplikasi (config('session.lifetime'), default 120
+     * menit) - last_activity ini otomatis terupdate oleh Laravel sendiri
+     * di SETIAP request yang diautentikasi, jadi tidak perlu mekanisme
+     * "heartbeat" tambahan apapun.
+     *
+     * Baris yang ternyata SUDAH BASI (session sudah tidak aktif/sudah
+     * dibersihkan housekeeping Laravel) langsung dibersihkan di sini
+     * (logout_at diisi) supaya tidak terus dicek ulang di percobaan
+     * login berikutnya, dan menu Pengguna > Riwayat Login tidak
+     * menampilkan "Masih berlangsung" selamanya untuk sesi yang
+     * sebenarnya sudah mati.
+     */
+    private function cariSesiLainAktif(User $user): ?LoginHistory
+    {
+        $batasAktif = now()->subMinutes((int) config('session.lifetime'))->getTimestamp();
+
+        $kandidat = LoginHistory::where('user_id', $user->id)
+            ->whereNull('logout_at')
+            ->latest('login_at')
+            ->get();
+
+        foreach ($kandidat as $riwayat) {
+            $masihAktif = $riwayat->session_id && DB::table('sessions')
+                ->where('id', $riwayat->session_id)
+                ->where('last_activity', '>=', $batasAktif)
+                ->exists();
+
+            if ($masihAktif) {
+                return $riwayat;
+            }
+
+            $riwayat->update(['logout_at' => $riwayat->login_at]);
+        }
+
+        return null;
     }
 
     /**
@@ -187,6 +336,7 @@ class LoginForm extends Form
             'ip_address' => request()->ip(),
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
+            'session_id' => session()->getId(),
         ]);
     }
 

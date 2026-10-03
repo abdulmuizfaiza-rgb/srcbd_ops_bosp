@@ -77,12 +77,39 @@ class Index extends Component
 
     public int $perPageLoginGagal = 15;
 
+    /**
+     * State tombol Hapus tab Percobaan Login Gagal (permintaan user
+     * 2026-10-03) - $dipilihLoginGagal diisi ulang via array_intersect()
+     * di render() setiap kali (mengikuti pola yang sama dipakai
+     * Lampiran2a/Index.php) supaya ID dari halaman/filter sebelumnya
+     * tidak "nyangkut" kalau Superadmin pindah halaman/ubah pencarian.
+     *
+     * @var array<int, int>
+     */
+    public array $dipilihLoginGagal = [];
+
+    public bool $confirmingHapusTerpilihLoginGagal = false;
+
+    public bool $confirmingHapusSemuaLoginGagal = false;
+
     // --- State tab Log Akses Data ---
     public string $searchAksesData = '';
 
     public string $filterJenisAksi = '';
 
     public int $perPageAksesData = 15;
+
+    /**
+     * State tombol Hapus tab Log Akses Data (permintaan user 2026-10-03)
+     * - lihat catatan $dipilihLoginGagal di atas, pola yang sama.
+     *
+     * @var array<int, int>
+     */
+    public array $dipilihAksesData = [];
+
+    public bool $confirmingHapusTerpilihAksesData = false;
+
+    public bool $confirmingHapusSemuaAksesData = false;
 
     // --- State tab Cek Kecocokan Data (permintaan user 2026-09-27) ---
     public string $searchKecocokan = '';
@@ -389,6 +416,187 @@ class Index extends Component
         $this->tab = $tab;
         $this->resetPage('loginGagalPage');
         $this->resetPage('aksesDataPage');
+        $this->dipilihLoginGagal = [];
+        $this->dipilihAksesData = [];
+    }
+
+    /**
+     * Query dasar tab Percobaan Login Gagal (sudah termasuk filter
+     * pencarian aktif, TANPA pagination & TANPA urutan) - dipakai bareng
+     * oleh render() (paginate), toggleSemuaLoginGagal(), dan
+     * hapusSemuaLoginGagal() (permintaan user 2026-10-03), supaya
+     * logika filter HANYA ditulis 1 kali di 1 tempat.
+     */
+    private function queryLoginGagal()
+    {
+        return FailedLoginAttempt::query()
+            ->when($this->searchLoginGagal, fn ($q) => $q->where(function ($q) {
+                $q->where('username_dicoba', 'like', "%{$this->searchLoginGagal}%")
+                    ->orWhere('ip_address', 'like', "%{$this->searchLoginGagal}%");
+            }));
+    }
+
+    /**
+     * Query dasar tab Log Akses Data (sudah termasuk filter jenis aksi &
+     * pencarian aktif, TANPA pagination & TANPA urutan) - lihat
+     * penjelasan queryLoginGagal() di atas, pola yang sama.
+     */
+    private function queryAksesData()
+    {
+        return AksesDataLog::query()
+            ->when($this->filterJenisAksi, fn ($q) => $q->where('jenis_aksi', $this->filterJenisAksi))
+            ->when($this->searchAksesData, fn ($q) => $q->where(function ($q) {
+                $q->where('username_snapshot', 'like', "%{$this->searchAksesData}%")
+                    ->orWhere('nama_menu', 'like', "%{$this->searchAksesData}%");
+            }));
+    }
+
+    /**
+     * Centang/batal-centang SEMUA baris di HALAMAN INI SAJA (bukan semua
+     * baris di seluruh tabel) - pola yang sama dengan
+     * Lampiran2a::toggleSemua(). Permintaan user 2026-10-03.
+     */
+    public function toggleSemuaLoginGagal(): void
+    {
+        $idHalamanIni = $this->queryLoginGagal()->orderByDesc('created_at')
+            ->paginate($this->perPageLoginGagal, ['id'], 'loginGagalPage')->pluck('id')->all();
+
+        if (count($idHalamanIni) > 0 && count(array_diff($idHalamanIni, $this->dipilihLoginGagal)) === 0) {
+            $this->dipilihLoginGagal = array_values(array_diff($this->dipilihLoginGagal, $idHalamanIni));
+        } else {
+            $this->dipilihLoginGagal = array_values(array_unique(array_merge($this->dipilihLoginGagal, $idHalamanIni)));
+        }
+    }
+
+    public function konfirmasiHapusTerpilihLoginGagal(): void
+    {
+        if (empty($this->dipilihLoginGagal)) {
+            return;
+        }
+
+        $this->confirmingHapusTerpilihLoginGagal = true;
+        $this->dispatch('open-modal', 'cek-database-login-gagal-hapus-terpilih');
+    }
+
+    public function batalHapusTerpilihLoginGagal(): void
+    {
+        $this->confirmingHapusTerpilihLoginGagal = false;
+        $this->dispatch('close-modal', 'cek-database-login-gagal-hapus-terpilih');
+    }
+
+    public function hapusTerpilihLoginGagal(): void
+    {
+        $jumlah = FailedLoginAttempt::whereIn('id', $this->dipilihLoginGagal)->count();
+        FailedLoginAttempt::whereIn('id', $this->dipilihLoginGagal)->delete();
+
+        $this->dipilihLoginGagal = [];
+        $this->confirmingHapusTerpilihLoginGagal = false;
+        $this->dispatch('close-modal', 'cek-database-login-gagal-hapus-terpilih');
+        $this->resetPage('loginGagalPage');
+        session()->flash('status', "Berhasil menghapus {$jumlah} catatan percobaan login gagal yang dipilih.");
+    }
+
+    public function konfirmasiHapusSemuaLoginGagal(): void
+    {
+        $this->confirmingHapusSemuaLoginGagal = true;
+        $this->dispatch('open-modal', 'cek-database-login-gagal-hapus-semua');
+    }
+
+    public function batalHapusSemuaLoginGagal(): void
+    {
+        $this->confirmingHapusSemuaLoginGagal = false;
+        $this->dispatch('close-modal', 'cek-database-login-gagal-hapus-semua');
+    }
+
+    /**
+     * Hapus SEMUA baris Percobaan Login Gagal yang cocok dengan
+     * pencarian AKTIF saat ini (bukan hanya yang tampil di halaman ini -
+     * kalau tidak ada pencarian aktif, berarti benar-benar semua baris).
+     * Permintaan user 2026-10-03, dikonfirmasi lewat AskUserQuestion.
+     *
+     * reorder() dipasang sebelum delete() - DELETE tidak mendukung
+     * ORDER BY di SQL standar, jadi urutan dari queryLoginGagal() (kalau
+     * ada) harus dibuang dulu sebelum menghapus.
+     */
+    public function hapusSemuaLoginGagal(): void
+    {
+        $jumlah = $this->queryLoginGagal()->count();
+        $this->queryLoginGagal()->reorder()->delete();
+
+        $this->dipilihLoginGagal = [];
+        $this->confirmingHapusSemuaLoginGagal = false;
+        $this->dispatch('close-modal', 'cek-database-login-gagal-hapus-semua');
+        $this->resetPage('loginGagalPage');
+        session()->flash('status', "Berhasil menghapus {$jumlah} catatan percobaan login gagal.");
+    }
+
+    public function toggleSemuaAksesData(): void
+    {
+        $idHalamanIni = $this->queryAksesData()->orderByDesc('created_at')
+            ->paginate($this->perPageAksesData, ['id'], 'aksesDataPage')->pluck('id')->all();
+
+        if (count($idHalamanIni) > 0 && count(array_diff($idHalamanIni, $this->dipilihAksesData)) === 0) {
+            $this->dipilihAksesData = array_values(array_diff($this->dipilihAksesData, $idHalamanIni));
+        } else {
+            $this->dipilihAksesData = array_values(array_unique(array_merge($this->dipilihAksesData, $idHalamanIni)));
+        }
+    }
+
+    public function konfirmasiHapusTerpilihAksesData(): void
+    {
+        if (empty($this->dipilihAksesData)) {
+            return;
+        }
+
+        $this->confirmingHapusTerpilihAksesData = true;
+        $this->dispatch('open-modal', 'cek-database-akses-data-hapus-terpilih');
+    }
+
+    public function batalHapusTerpilihAksesData(): void
+    {
+        $this->confirmingHapusTerpilihAksesData = false;
+        $this->dispatch('close-modal', 'cek-database-akses-data-hapus-terpilih');
+    }
+
+    public function hapusTerpilihAksesData(): void
+    {
+        $jumlah = AksesDataLog::whereIn('id', $this->dipilihAksesData)->count();
+        AksesDataLog::whereIn('id', $this->dipilihAksesData)->delete();
+
+        $this->dipilihAksesData = [];
+        $this->confirmingHapusTerpilihAksesData = false;
+        $this->dispatch('close-modal', 'cek-database-akses-data-hapus-terpilih');
+        $this->resetPage('aksesDataPage');
+        session()->flash('status', "Berhasil menghapus {$jumlah} log akses data yang dipilih.");
+    }
+
+    public function konfirmasiHapusSemuaAksesData(): void
+    {
+        $this->confirmingHapusSemuaAksesData = true;
+        $this->dispatch('open-modal', 'cek-database-akses-data-hapus-semua');
+    }
+
+    public function batalHapusSemuaAksesData(): void
+    {
+        $this->confirmingHapusSemuaAksesData = false;
+        $this->dispatch('close-modal', 'cek-database-akses-data-hapus-semua');
+    }
+
+    /**
+     * Hapus SEMUA baris Log Akses Data yang cocok dengan filter/pencarian
+     * AKTIF saat ini - lihat penjelasan hapusSemuaLoginGagal() di atas,
+     * pola yang sama. Permintaan user 2026-10-03.
+     */
+    public function hapusSemuaAksesData(): void
+    {
+        $jumlah = $this->queryAksesData()->count();
+        $this->queryAksesData()->reorder()->delete();
+
+        $this->dipilihAksesData = [];
+        $this->confirmingHapusSemuaAksesData = false;
+        $this->dispatch('close-modal', 'cek-database-akses-data-hapus-semua');
+        $this->resetPage('aksesDataPage');
+        session()->flash('status', "Berhasil menghapus {$jumlah} log akses data.");
     }
 
     public function updatedSearchLoginGagal(): void
@@ -465,24 +673,29 @@ class Index extends Component
     {
         $loginGagal = null;
         $aksesData = null;
+        $semuaTerpilihLoginGagal = false;
+        $semuaTerpilihAksesData = false;
 
         if ($this->tab === 'login_gagal') {
-            $loginGagal = FailedLoginAttempt::query()
-                ->when($this->searchLoginGagal, fn ($q) => $q->where(function ($q) {
-                    $q->where('username_dicoba', 'like', "%{$this->searchLoginGagal}%")
-                        ->orWhere('ip_address', 'like', "%{$this->searchLoginGagal}%");
-                }))
+            $loginGagal = $this->queryLoginGagal()
                 ->orderByDesc('created_at')
                 ->paginate($this->perPageLoginGagal, ['*'], 'loginGagalPage');
+
+            // Permintaan user 2026-10-03: hapus terpilih (checkbox) - ID
+            // yang sudah tidak ada di halaman ini (pindah halaman/ubah
+            // pencarian) otomatis disaring di sini, mengikuti pola yang
+            // sama dengan Lampiran2a::render().
+            $idHalamanIni = $loginGagal->pluck('id')->all();
+            $this->dipilihLoginGagal = array_values(array_intersect($this->dipilihLoginGagal, $idHalamanIni));
+            $semuaTerpilihLoginGagal = count($idHalamanIni) > 0 && count(array_diff($idHalamanIni, $this->dipilihLoginGagal)) === 0;
         } elseif ($this->tab === 'akses_data') {
-            $aksesData = AksesDataLog::query()
-                ->when($this->filterJenisAksi, fn ($q) => $q->where('jenis_aksi', $this->filterJenisAksi))
-                ->when($this->searchAksesData, fn ($q) => $q->where(function ($q) {
-                    $q->where('username_snapshot', 'like', "%{$this->searchAksesData}%")
-                        ->orWhere('nama_menu', 'like', "%{$this->searchAksesData}%");
-                }))
+            $aksesData = $this->queryAksesData()
                 ->orderByDesc('created_at')
                 ->paginate($this->perPageAksesData, ['*'], 'aksesDataPage');
+
+            $idHalamanIni = $aksesData->pluck('id')->all();
+            $this->dipilihAksesData = array_values(array_intersect($this->dipilihAksesData, $idHalamanIni));
+            $semuaTerpilihAksesData = count($idHalamanIni) > 0 && count(array_diff($idHalamanIni, $this->dipilihAksesData)) === 0;
         }
 
         return view('livewire.cek-database-aplikasi.index', [
@@ -491,6 +704,8 @@ class Index extends Component
             'temuanDuplikat' => $this->tab === 'integritas' ? $this->cekDataDuplikat() : [],
             'loginGagal' => $loginGagal,
             'aksesData' => $aksesData,
+            'semuaTerpilihLoginGagal' => $semuaTerpilihLoginGagal,
+            'semuaTerpilihAksesData' => $semuaTerpilihAksesData,
             'kecocokanData' => $this->tab === 'kecocokan' ? $this->cekKecocokanData() : [],
         ]);
     }
