@@ -25,3 +25,12 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Audit 2026-10-04: file backup database/storage JANGAN ikut tercommit -
+# berisi data asli (lihat laporan audit). File backup lama yang SUDAH
+# tercommit sebelumnya harus dikeluarkan manual (git rm --cached), lihat
+# panduan update.
+*_backup.sql
+*-backup.tar.gz
+/srcbd_backup.sql
+/storage-public-backup.tar.gz

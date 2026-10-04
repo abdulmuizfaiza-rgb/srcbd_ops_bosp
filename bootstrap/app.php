@@ -12,6 +12,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Audit 2026-10-04: percayai reverse proxy (Nginx) di VPS supaya Laravel
+        // mendeteksi skema HTTPS dengan benar lewat header X-Forwarded-Proto
+        // (tanpa ini, url()/redirect() bisa menghasilkan link http:// walau
+        // koneksi sebenarnya sudah https://). "*" aman untuk setup 1 server
+        // (Nginx + PHP-FPM di mesin yang sama, satu-satunya pintu masuk) -
+        // BUKAN untuk arsitektur multi-layer load balancer pihak ketiga.
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
         ]);
