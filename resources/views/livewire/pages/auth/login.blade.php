@@ -210,6 +210,27 @@ new #[Layout('layouts.guest')] class extends Component
         npm run build ulang, mengikuti pola yang sama seperti
         animate-info-timeline-popup (juga inline di file layout-nya,
         bukan di app.css).
+
+        PENTING (perbaikan bug, ditemukan 2026-10-04 saat user melaporkan
+        pop-up "Login Salah" di bawah tampil terpotong/tidak di tengah):
+        kedua pop-up di bawah ini DIBUNGKUS <template x-teleport="body">.
+        Kartu login (div pembungkus {{ $slot }} di resources/views/layouts/
+        guest.blade.php) punya efek tilt 3D yang memakai `:style="{
+        transform: ... }"` + class `will-change-transform` - elemen
+        manapun yang py KETURUNAN dari elemen ber-transform akan membuat
+        `position: fixed` pada keturunannya itu TERIKAT ke elemen tsb
+        (bukan ke seluruh viewport layar) - ditambah `overflow-hidden`
+        pada kartu yang sama ikut MEMOTONG pop-up yang coba tampil lebih
+        besar dari kartu itu. Hasilnya: pop-up tampil terpotong di area
+        kartu login yang kecil, bukan di tengah layar. Solusinya SAMA
+        PERSIS seperti yang sudah pernah diterapkan untuk modal
+        "Pengumuman" di resources/views/layouts/beranda.blade.php (lihat
+        komentar di sana) - `x-teleport="body"` memindahkan pop-up ke
+        akhir <body> saat ditampilkan, keluar dari kartu ber-transform
+        itu, sehingga `fixed inset-0` benar-benar terikat ke seluruh
+        layar. `$wire` tetap bisa dipakai di dalam <template> ini karena
+        Alpine mempertahankan context/scope aslinya walau elemennya
+        dipindah secara visual.
     --}}
     <style>
         @keyframes popupPerangkatLainGlow {
@@ -219,91 +240,116 @@ new #[Layout('layouts.guest')] class extends Component
         .animate-popup-perangkat-lain {
             animation: popupPerangkatLainGlow 1.8s ease-in-out infinite;
         }
+
+        /* Pop-up "Login Salah" (permintaan user 2026-10-04, lanjutan) -
+           kartu kaca gelap + ikon segitiga peringatan amber yang
+           berpendar, mengikuti referensi gambar yang diberikan user. */
+        @keyframes popupLoginSalahGlow {
+            0%, 100% { box-shadow: 0 20px 45px -10px rgba(217, 119, 6, 0.45), 0 0 0 1px rgba(251, 191, 36, 0.15); }
+            50%      { box-shadow: 0 20px 55px -8px rgba(251, 146, 60, 0.6), 0 0 0 1px rgba(251, 191, 36, 0.25); }
+        }
+        .animate-popup-login-salah {
+            animation: popupLoginSalahGlow 2s ease-in-out infinite;
+        }
+        @keyframes popupLoginSalahIkonGlow {
+            0%, 100% { opacity: 0.55; transform: scale(1); }
+            50%      { opacity: 0.9; transform: scale(1.12); }
+        }
+        .animate-popup-login-salah-ikon {
+            animation: popupLoginSalahIkonGlow 1.8s ease-in-out infinite;
+        }
     </style>
 
-    <div x-show="$wire.form.tampilkanPopupPerangkatLain" x-cloak
-        x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-        x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-        class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4">
-        <div
-            x-show="$wire.form.tampilkanPopupPerangkatLain"
-            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-75" x-transition:enter-end="opacity-100 scale-100"
-            x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-90"
-            class="animate-popup-perangkat-lain w-full max-w-md rounded-2xl bg-gradient-to-br from-rose-600 via-red-600 to-orange-500 p-6 text-white ring-1 ring-white/20">
-            <div class="flex items-start gap-3">
-                <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/30 animate-pulse">
-                    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="5" y="11" width="14" height="9" rx="2" />
-                        <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-                        <circle cx="12" cy="15.5" r="1.3" fill="currentColor" stroke="none" />
-                    </svg>
-                </span>
-                <div>
-                    <h2 class="text-base font-semibold leading-snug">Akses Anda Ditolak: Batas Perangkat Terpenuhi !</h2>
-                    <p class="mt-1.5 text-sm text-white/90 leading-relaxed">Akun Anda terdeteksi sedang aktif di perangkat lain (otomatis Laptop/PC/Tablet/Android). Admin hanya diizinkan login menggunakan 1 perangkat. Silakan logout terlebih dahulu dari perangkat tersebut untuk masuk menggunakan perangkat ini.</p>
+    <template x-teleport="body">
+        <div x-show="$wire.form.tampilkanPopupPerangkatLain" x-cloak
+            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+            class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4">
+            <div
+                x-show="$wire.form.tampilkanPopupPerangkatLain"
+                x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-75" x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-90"
+                class="animate-popup-perangkat-lain w-full max-w-md rounded-2xl bg-gradient-to-br from-rose-600 via-red-600 to-orange-500 p-6 text-white ring-1 ring-white/20">
+                <div class="flex items-start gap-3">
+                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/30 animate-pulse">
+                        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="5" y="11" width="14" height="9" rx="2" />
+                            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                            <circle cx="12" cy="15.5" r="1.3" fill="currentColor" stroke="none" />
+                        </svg>
+                    </span>
+                    <div>
+                        <h2 class="text-base font-semibold leading-snug">Akses Anda Ditolak: Batas Perangkat Terpenuhi !</h2>
+                        <p class="mt-1.5 text-sm text-white/90 leading-relaxed">Akun Anda terdeteksi sedang aktif di perangkat lain (otomatis Laptop/PC/Tablet/Android). Admin hanya diizinkan login menggunakan 1 perangkat. Silakan logout terlebih dahulu dari perangkat tersebut untuk masuk menggunakan perangkat ini.</p>
+                    </div>
                 </div>
+
+                <form wire:submit="paksaLogoutPerangkatLain" class="mt-5 border-t border-white/20 pt-4">
+                    <label for="password-konfirmasi-paksa" class="text-xs font-medium text-white/90 leading-relaxed">Atau, kalau Anda yakin perangkat lain itu sudah tidak dipakai (misal lupa logout), masukkan kata sandi Anda untuk mengakhiri sesi di perangkat lain & lanjut login di sini:</label>
+                    <x-password-input wire:model="form.passwordKonfirmasiPaksa" id="password-konfirmasi-paksa" class="block mt-1.5 w-full !bg-white/10 !border-white/30 !text-white placeholder:!text-white/60" placeholder="Kata sandi Anda" autocomplete="current-password" />
+                    <x-input-error :messages="$errors->get('form.passwordKonfirmasiPaksa')" class="mt-1.5 [&>p]:!text-amber-100" />
+
+                    <div class="mt-4 flex justify-end gap-2">
+                        <button type="button" wire:click="batalkanPopupPerangkatLain" class="rounded-md bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/20 transition">
+                            Batal
+                        </button>
+                        <button type="submit" wire:loading.attr="disabled" wire:target="paksaLogoutPerangkatLain" class="rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 transition">
+                            Paksa Logout Perangkat Lain
+                        </button>
+                    </div>
+                </form>
             </div>
-
-            <form wire:submit="paksaLogoutPerangkatLain" class="mt-5 border-t border-white/20 pt-4">
-                <label for="password-konfirmasi-paksa" class="text-xs font-medium text-white/90 leading-relaxed">Atau, kalau Anda yakin perangkat lain itu sudah tidak dipakai (misal lupa logout), masukkan kata sandi Anda untuk mengakhiri sesi di perangkat lain & lanjut login di sini:</label>
-                <x-password-input wire:model="form.passwordKonfirmasiPaksa" id="password-konfirmasi-paksa" class="block mt-1.5 w-full !bg-white/10 !border-white/30 !text-white placeholder:!text-white/60" placeholder="Kata sandi Anda" autocomplete="current-password" />
-                <x-input-error :messages="$errors->get('form.passwordKonfirmasiPaksa')" class="mt-1.5 [&>p]:!text-amber-100" />
-
-                <div class="mt-4 flex justify-end gap-2">
-                    <button type="button" wire:click="batalkanPopupPerangkatLain" class="rounded-md bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/20 transition">
-                        Batal
-                    </button>
-                    <button type="submit" wire:loading.attr="disabled" wire:target="paksaLogoutPerangkatLain" class="rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 transition">
-                        Paksa Logout Perangkat Lain
-                    </button>
-                </div>
-            </form>
         </div>
-    </div>
+    </template>
 
     {{--
         Pop-up "Login Salah: Akun Tidak Sesuai Verifikasi Email" -
-        permintaan user 2026-10-04 (lanjutan dari fitur "login harus
-        sesuai email yang diverifikasi" di tanggal yang sama). Gaya
-        visual SENGAJA mengikuti pop-up "Batas Perangkat Terpenuhi" di
-        atas (gradient merah/oranye yang sama, class animasi
-        animate-popup-perangkat-lain dipakai ulang - sama-sama pop-up
-        PENOLAKAN, tidak perlu @keyframes baru) - bedanya cuma ikon &
-        teks, dan cuma 1 tombol ("Verifikasi Ulang") karena satu-satunya
-        langkah lanjutan yang valid dari kondisi ini memang verifikasi
-        ulang (gerbang verifikasi lama sudah dihapus dari session begitu
-        ketidaksesuaian ini terdeteksi - lihat LoginForm::
-        pastikanSesuaiEmailTerverifikasi()).
+        permintaan user 2026-10-04 (lanjutan). Didesain ulang 2026-10-04
+        (lanjutan lagi) atas permintaan user: tampilan lebih rapi & menarik,
+        selalu tepat di tengah layar (lihat catatan x-teleport di atas),
+        memakai ikon segitiga peringatan (warning triangle) amber/oranye
+        yang berpendar - mengikuti contoh gambar yang diberikan user, beda
+        dari kartu gradient merah/oranye pop-up "Batas Perangkat Terpenuhi"
+        di atas (kartu kaca gelap + aksen amber, lebih tenang/"warning"
+        ketimbang merah penuh/"danger"). Konten disusun rata tengah
+        (ikon-judul-isi-tombol) khas gaya dialog peringatan, bukan
+        horizontal ikon+teks seperti pop-up di atas. Cuma 1 tombol
+        ("Verifikasi Ulang") karena satu-satunya langkah lanjutan yang
+        valid dari kondisi ini memang verifikasi ulang (gerbang verifikasi
+        lama sudah dihapus dari session begitu ketidaksesuaian ini
+        terdeteksi - lihat LoginForm::pastikanSesuaiEmailTerverifikasi()).
     --}}
-    <div x-show="$wire.form.tidakSesuaiEmailTerverifikasi" x-cloak
-        x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-        x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-        class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4">
-        <div
-            x-show="$wire.form.tidakSesuaiEmailTerverifikasi"
-            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-75" x-transition:enter-end="opacity-100 scale-100"
-            x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-90"
-            class="animate-popup-perangkat-lain w-full max-w-md rounded-2xl bg-gradient-to-br from-rose-600 via-red-600 to-orange-500 p-6 text-white ring-1 ring-white/20">
-            <div class="flex items-start gap-3">
-                <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/30 animate-pulse">
-                    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="9" />
-                        <path d="M9.5 9.5l5 5M14.5 9.5l-5 5" />
+    <template x-teleport="body">
+        <div x-show="$wire.form.tidakSesuaiEmailTerverifikasi" x-cloak
+            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+            class="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-md px-4">
+            <div
+                x-show="$wire.form.tidakSesuaiEmailTerverifikasi"
+                x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-75" x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-90"
+                class="animate-popup-login-salah relative w-full max-w-sm rounded-2xl bg-slate-900/95 p-7 text-center text-white ring-1 ring-amber-400/30">
+
+                <div class="relative mx-auto flex h-16 w-16 items-center justify-center">
+                    <span class="animate-popup-login-salah-ikon absolute inset-0 rounded-full bg-amber-500/40 blur-xl"></span>
+                    <svg class="relative h-11 w-11 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.65)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3.2 L21.6 20 H2.4 Z" />
+                        <line x1="12" y1="9.2" x2="12" y2="13.8" />
+                        <circle cx="12" cy="16.6" r="0.95" fill="currentColor" stroke="none" />
                     </svg>
-                </span>
-                <div>
-                    <h2 class="text-base font-semibold leading-snug">Login Salah: Akun Tidak Sesuai Verifikasi Email !</h2>
-                    <p class="mt-1.5 text-sm text-white/90 leading-relaxed">Akun yang Anda masukkan tidak sesuai dengan email yang baru saja Anda verifikasi. Silakan lakukan verifikasi ulang menggunakan email yang terdaftar saat registrasi, lalu login menggunakan akun yang sesuai dengan email tersebut.</p>
+                </div>
+
+                <h2 class="mt-4 text-base font-semibold leading-snug">Login Salah: Akun Tidak Sesuai Verifikasi Email !</h2>
+                <p class="mt-2 text-sm text-slate-300 leading-relaxed">Akun yang Anda masukkan tidak sesuai dengan email yang baru saja Anda verifikasi. Silakan lakukan verifikasi ulang menggunakan email yang terdaftar saat registrasi, lalu login menggunakan akun yang sesuai dengan email tersebut.</p>
+
+                <div class="mt-6 border-t border-white/10 pt-4">
+                    <button type="button" wire:click="verifikasiUlang" class="w-full rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-900 shadow-[0_0_15px_rgba(251,191,36,0.4)] hover:bg-amber-400 transition">
+                        Verifikasi Ulang
+                    </button>
                 </div>
             </div>
-
-            <div class="mt-5 flex justify-end border-t border-white/20 pt-4">
-                <button type="button" wire:click="verifikasiUlang" class="rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 transition">
-                    Verifikasi Ulang
-                </button>
-            </div>
         </div>
-    </div>
+    </template>
 
     {{--
         Permintaan user (2026-09-24, round ketujuh belas): tombol kembali
