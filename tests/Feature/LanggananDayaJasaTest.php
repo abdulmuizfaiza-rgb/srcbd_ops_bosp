@@ -847,7 +847,7 @@ class LanggananDayaJasaTest extends TestCase
             ->html();
 
         $this->assertStringContainsString(
-            'x-show="terbuka" x-cloak>'."\n".'                                        <td colspan="7" class="px-2 py-2 text-right">Jumlah Langganan Daya Jasa</td>',
+            'x-show="terbuka" x-cloak>'."\n".'                                        <td colspan="8" class="px-2 py-2 text-right">Jumlah Langganan Daya Jasa</td>',
             $html
         );
     }
@@ -907,7 +907,7 @@ class LanggananDayaJasaTest extends TestCase
             ->html();
 
         $this->assertStringContainsString(
-            '<tr class="bg-slate-200 font-bold text-slate-800 border-t-2 border-slate-400">'."\n".'                                        <td colspan="7" class="px-2 py-2.5 text-right">Jumlah Langganan Daya Jasa Seluruh Sekolah</td>',
+            '<tr class="bg-slate-200 font-bold text-slate-800 border-t-2 border-slate-400">'."\n".'                                        <td colspan="8" class="px-2 py-2.5 text-right">Jumlah Langganan Daya Jasa Seluruh Sekolah</td>',
             $html
         );
     }

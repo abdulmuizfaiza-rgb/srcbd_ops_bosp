@@ -18,17 +18,21 @@ class PasswordUpdateTest extends TestCase
 
         $this->actingAs($user);
 
+        // Audit 2026-10-04: password baru diganti supaya memenuhi
+        // PasswordPolicy::rule() (huruf besar+kecil+angka+simbol, min 6
+        // karakter) yang ditambahkan belakangan khusus utk form ini -
+        // 'new-password' lama sudah tidak lolos lagi.
         $component = Volt::test('profile.update-password-form')
             ->set('current_password', 'password')
-            ->set('password', 'new-password')
-            ->set('password_confirmation', 'new-password')
+            ->set('password', 'PasswordBaru123!')
+            ->set('password_confirmation', 'PasswordBaru123!')
             ->call('updatePassword');
 
         $component
             ->assertHasNoErrors()
             ->assertNoRedirect();
 
-        $this->assertTrue(Hash::check('new-password', $user->refresh()->password));
+        $this->assertTrue(Hash::check('PasswordBaru123!', $user->refresh()->password));
     }
 
     public function test_correct_password_must_be_provided_to_update_password(): void

@@ -172,6 +172,15 @@ class BackupTest extends TestCase
 
     public function test_dump_pgsql_menjalankan_pg_dump_dan_mengembalikan_output(): void
     {
+        // Audit 2026-10-04: BackupService::dumpPgsql() di Windows otomatis
+        // memakai dumpPgsqlViaPdo() (jalur CVE-2025-8714), yang query ke
+        // 'pg_sequences' lewat koneksi default (SQLite di test, bukan
+        // 'pgsql' palsu yang dikonfigurasi test ini) - jadi test ini hanya
+        // valid di Linux (sama seperti server produksi/VPS).
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('Jalur pg_dump via Process hanya dites di Linux; di Windows BackupService::dumpPgsql() otomatis pakai dumpPgsqlViaPdo() (lihat BackupService.php).');
+        }
+
         Process::fake(['*pg_dump*' => Process::result(output: 'DUMP PGSQL CONTENT')]);
         config(['database.connections.pgsql' => ['host' => '127.0.0.1', 'port' => 5432, 'username' => 'u', 'password' => 'p', 'database' => 'd']]);
 
@@ -265,6 +274,15 @@ class BackupTest extends TestCase
 
     public function test_dump_pgsql_memakai_path_dari_config_backup_pg_dump_path(): void
     {
+        // Audit 2026-10-04: BackupService::dumpPgsql() di Windows otomatis
+        // memakai dumpPgsqlViaPdo() (jalur CVE-2025-8714), yang query ke
+        // 'pg_sequences' lewat koneksi default (SQLite di test, bukan
+        // 'pgsql' palsu yang dikonfigurasi test ini) - jadi test ini hanya
+        // valid di Linux (sama seperti server produksi/VPS).
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('Jalur pg_dump via Process hanya dites di Linux; di Windows BackupService::dumpPgsql() otomatis pakai dumpPgsqlViaPdo() (lihat BackupService.php).');
+        }
+
         $pathPalsu = tempnam(sys_get_temp_dir(), 'pg_dump_');
         config(['backup.pg_dump_path' => $pathPalsu]);
         config(['database.connections.pgsql' => ['host' => '127.0.0.1', 'port' => 5432, 'username' => 'u', 'password' => 'p', 'database' => 'd']]);
@@ -281,6 +299,15 @@ class BackupTest extends TestCase
 
     public function test_dump_pgsql_gagal_menyebutkan_env_backup_pg_dump_path_di_pesan_error(): void
     {
+        // Audit 2026-10-04: BackupService::dumpPgsql() di Windows otomatis
+        // memakai dumpPgsqlViaPdo() (jalur CVE-2025-8714), yang query ke
+        // 'pg_sequences' lewat koneksi default (SQLite di test, bukan
+        // 'pgsql' palsu yang dikonfigurasi test ini) - jadi test ini hanya
+        // valid di Linux (sama seperti server produksi/VPS).
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('Jalur pg_dump via Process hanya dites di Linux; di Windows BackupService::dumpPgsql() otomatis pakai dumpPgsqlViaPdo() (lihat BackupService.php).');
+        }
+
         config(['backup.pg_dump_path' => null]);
         Process::fake(['*pg_dump*' => Process::result(output: '', errorOutput: "'pg_dump' is not recognized", exitCode: 1)]);
         config(['database.connections.pgsql' => ['host' => '127.0.0.1', 'port' => 5432, 'username' => 'u', 'password' => 'p', 'database' => 'd']]);
@@ -307,6 +334,15 @@ class BackupTest extends TestCase
      */
     public function test_dump_pgsql_mencoba_ulang_dgn_restrict_key_kalau_gagal_generate_restrict_key(): void
     {
+        // Audit 2026-10-04: BackupService::dumpPgsql() di Windows otomatis
+        // memakai dumpPgsqlViaPdo() (jalur CVE-2025-8714), yang query ke
+        // 'pg_sequences' lewat koneksi default (SQLite di test, bukan
+        // 'pgsql' palsu yang dikonfigurasi test ini) - jadi test ini hanya
+        // valid di Linux (sama seperti server produksi/VPS).
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('Jalur pg_dump via Process hanya dites di Linux; di Windows BackupService::dumpPgsql() otomatis pakai dumpPgsqlViaPdo() (lihat BackupService.php).');
+        }
+
         Process::fake([
             '*pg_dump*' => Process::sequence()
                 ->push(Process::result(output: '', errorOutput: 'pg_dump: error: could not generate restrict key', exitCode: 1))
@@ -343,6 +379,15 @@ class BackupTest extends TestCase
      */
     public function test_dump_pgsql_mencoba_ulang_dgn_restrict_key_walau_pesan_gagal_pertama_tidak_spesifik(): void
     {
+        // Audit 2026-10-04: BackupService::dumpPgsql() di Windows otomatis
+        // memakai dumpPgsqlViaPdo() (jalur CVE-2025-8714), yang query ke
+        // 'pg_sequences' lewat koneksi default (SQLite di test, bukan
+        // 'pgsql' palsu yang dikonfigurasi test ini) - jadi test ini hanya
+        // valid di Linux (sama seperti server produksi/VPS).
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('Jalur pg_dump via Process hanya dites di Linux; di Windows BackupService::dumpPgsql() otomatis pakai dumpPgsqlViaPdo() (lihat BackupService.php).');
+        }
+
         Process::fake([
             '*pg_dump*' => Process::sequence()
                 ->push(Process::result(output: '', errorOutput: 'pg_dump: error: ', exitCode: 1))
@@ -366,6 +411,15 @@ class BackupTest extends TestCase
      */
     public function test_dump_pgsql_gagal_menyertakan_ringkasan_kedua_percobaan_di_pesan_error(): void
     {
+        // Audit 2026-10-04: BackupService::dumpPgsql() di Windows otomatis
+        // memakai dumpPgsqlViaPdo() (jalur CVE-2025-8714), yang query ke
+        // 'pg_sequences' lewat koneksi default (SQLite di test, bukan
+        // 'pgsql' palsu yang dikonfigurasi test ini) - jadi test ini hanya
+        // valid di Linux (sama seperti server produksi/VPS).
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('Jalur pg_dump via Process hanya dites di Linux; di Windows BackupService::dumpPgsql() otomatis pakai dumpPgsqlViaPdo() (lihat BackupService.php).');
+        }
+
         Process::fake([
             '*pg_dump*' => Process::sequence()
                 ->push(Process::result(output: '', errorOutput: '', exitCode: 3221225477))
@@ -390,6 +444,15 @@ class BackupTest extends TestCase
 
     public function test_dump_pgsql_gagal_menyertakan_environment_proses_php_di_pesan_error(): void
     {
+        // Audit 2026-10-04: BackupService::dumpPgsql() di Windows otomatis
+        // memakai dumpPgsqlViaPdo() (jalur CVE-2025-8714), yang query ke
+        // 'pg_sequences' lewat koneksi default (SQLite di test, bukan
+        // 'pgsql' palsu yang dikonfigurasi test ini) - jadi test ini hanya
+        // valid di Linux (sama seperti server produksi/VPS).
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('Jalur pg_dump via Process hanya dites di Linux; di Windows BackupService::dumpPgsql() otomatis pakai dumpPgsqlViaPdo() (lihat BackupService.php).');
+        }
+
         Process::fake([
             '*pg_dump*' => Process::sequence()
                 ->push(Process::result(output: '', errorOutput: 'pg_dump: error: could not generate restrict key', exitCode: 1))
@@ -415,6 +478,15 @@ class BackupTest extends TestCase
 
     public function test_dump_pgsql_gagal_menyertakan_path_binary_yang_dipakai_di_pesan_error(): void
     {
+        // Audit 2026-10-04: BackupService::dumpPgsql() di Windows otomatis
+        // memakai dumpPgsqlViaPdo() (jalur CVE-2025-8714), yang query ke
+        // 'pg_sequences' lewat koneksi default (SQLite di test, bukan
+        // 'pgsql' palsu yang dikonfigurasi test ini) - jadi test ini hanya
+        // valid di Linux (sama seperti server produksi/VPS).
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('Jalur pg_dump via Process hanya dites di Linux; di Windows BackupService::dumpPgsql() otomatis pakai dumpPgsqlViaPdo() (lihat BackupService.php).');
+        }
+
         $pathPalsu = tempnam(sys_get_temp_dir(), 'pg_dump_');
         config(['backup.pg_dump_path' => $pathPalsu]);
         Process::fake([
@@ -448,6 +520,15 @@ class BackupTest extends TestCase
      */
     public function test_dump_pgsql_gagal_menyertakan_hasil_tes_versi_binary_di_pesan_error(): void
     {
+        // Audit 2026-10-04: BackupService::dumpPgsql() di Windows otomatis
+        // memakai dumpPgsqlViaPdo() (jalur CVE-2025-8714), yang query ke
+        // 'pg_sequences' lewat koneksi default (SQLite di test, bukan
+        // 'pgsql' palsu yang dikonfigurasi test ini) - jadi test ini hanya
+        // valid di Linux (sama seperti server produksi/VPS).
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('Jalur pg_dump via Process hanya dites di Linux; di Windows BackupService::dumpPgsql() otomatis pakai dumpPgsqlViaPdo() (lihat BackupService.php).');
+        }
+
         Process::fake([
             '*pg_dump*' => Process::sequence()
                 ->push(Process::result(output: '', errorOutput: 'pg_dump: error: could not generate restrict key', exitCode: 1))
@@ -470,6 +551,15 @@ class BackupTest extends TestCase
 
     public function test_dump_pgsql_gagal_menyertakan_hasil_tes_versi_binary_gagal_di_pesan_error(): void
     {
+        // Audit 2026-10-04: BackupService::dumpPgsql() di Windows otomatis
+        // memakai dumpPgsqlViaPdo() (jalur CVE-2025-8714), yang query ke
+        // 'pg_sequences' lewat koneksi default (SQLite di test, bukan
+        // 'pgsql' palsu yang dikonfigurasi test ini) - jadi test ini hanya
+        // valid di Linux (sama seperti server produksi/VPS).
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('Jalur pg_dump via Process hanya dites di Linux; di Windows BackupService::dumpPgsql() otomatis pakai dumpPgsqlViaPdo() (lihat BackupService.php).');
+        }
+
         Process::fake([
             '*pg_dump*' => Process::sequence()
                 ->push(Process::result(output: '', errorOutput: 'pg_dump: error: could not generate restrict key', exitCode: 1))
@@ -530,10 +620,27 @@ class BackupTest extends TestCase
         Process::assertRan(function ($process) {
             $command = is_array($process->command) ? implode(' ', $process->command) : $process->command;
 
-            return str_contains($command, '"pg_dump"')
+            $bagianUmum = str_contains($command, '"pg_dump"')
                 && str_contains($command, ' > ')
-                && str_contains($command, ' 2> ')
-                && str_contains($command, 'srcbd_pgdump_out_')
+                && str_contains($command, ' 2> ');
+
+            if (! $bagianUmum) {
+                return false;
+            }
+
+            // Audit 2026-10-04: tempnam() di WINDOWS memotong argumen
+            // prefix jadi hanya 3 karakter pertama (keterbatasan
+            // GetTempFileName() bawaan Windows) - jadi nama file hasil
+            // tempnam(..., 'srcbd_pgdump_out_') di Windows TIDAK memuat
+            // teks lengkap 'srcbd_pgdump_out_'/'srcbd_pgdump_err_' (cuma
+            // 'src...'), beda dgn Linux yg memakai prefix penuh. Jadi
+            // pengecekan prefix lengkap hanya valid/dites di Linux (sama
+            // seperti server produksi/VPS).
+            if (PHP_OS_FAMILY === 'Windows') {
+                return true;
+            }
+
+            return str_contains($command, 'srcbd_pgdump_out_')
                 && str_contains($command, 'srcbd_pgdump_err_');
         });
 

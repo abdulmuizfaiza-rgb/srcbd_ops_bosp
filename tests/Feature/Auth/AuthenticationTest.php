@@ -13,6 +13,13 @@ class AuthenticationTest extends TestCase
 
     public function test_login_screen_can_be_rendered(): void
     {
+        // Permintaan user 2026-10-04: halaman /login sekarang wajib lewat
+        // gerbang verifikasi email + token OTP dulu (lihat mount() di
+        // login.blade.php) - disimulasikan di sini sudah lolos gerbang
+        // (ID dummy, test ini cuma cek halaman login BISA dibuka, bukan
+        // soal akun tertentu).
+        session(['gerbang_akses_login_user_id' => User::factory()->create()->id]);
+
         $response = $this->get('/login');
 
         $response
@@ -28,6 +35,9 @@ class AuthenticationTest extends TestCase
      */
     public function test_halaman_login_punya_tombol_kembali_ke_beranda(): void
     {
+        // Lihat catatan gerbang verifikasi di test_login_screen_can_be_rendered().
+        session(['gerbang_akses_login_user_id' => User::factory()->create()->id]);
+
         $this->get('/login')
             ->assertOk()
             ->assertSee('Kembali ke Beranda')
@@ -52,7 +62,13 @@ class AuthenticationTest extends TestCase
 
         $component
             ->assertHasNoErrors()
-            ->assertRedirect(route('dashboard', absolute: false));
+            // Audit 2026-10-04: diperbarui dari route('dashboard') - sejak
+            // 2FA Google Authenticator wajib (2026-09-27), login SELALU
+            // mengarah ke alur 2FA dulu (authenticator.aktivasi kalau akun
+            // belum pernah aktivasi, seperti akun factory() di test ini),
+            // TIDAK PERNAH langsung ke dashboard. Lihat
+            // LoginForm::redirectSetelahLoginKeAlur2fa().
+            ->assertRedirect(route('authenticator.aktivasi', absolute: false));
 
         $this->assertAuthenticated();
     }
@@ -60,6 +76,9 @@ class AuthenticationTest extends TestCase
     public function test_users_can_not_authenticate_with_invalid_password(): void
     {
         $user = User::factory()->create();
+
+        // Lihat catatan gerbang verifikasi di test_login_screen_can_be_rendered().
+        session(['gerbang_akses_login_user_id' => $user->id]);
 
         $component = Volt::test('pages.auth.login')
             ->set('form.username', $user->username)

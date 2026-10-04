@@ -54,6 +54,10 @@ class RegistrationTest extends TestCase
 
     public function test_link_registrasi_di_halaman_login_pakai_teks_dan_icon_baru(): void
     {
+        // Permintaan user 2026-10-04: /login wajib lewat gerbang verifikasi
+        // email + token OTP dulu (lihat mount() di login.blade.php).
+        session(['gerbang_akses_login_user_id' => User::factory()->create()->id]);
+
         $response = $this->get(route('login'));
 
         $response->assertOk();
@@ -65,10 +69,14 @@ class RegistrationTest extends TestCase
     {
         $sekolah = ProfilSekolah::factory()->create(['nama_sekolah' => 'SR Cibadak', 'npsn' => '20102030']);
 
+        // Audit 2026-10-04: field "No Whatsapp" ditambahkan belakangan jadi
+        // wajib diisi di form registrasi - test lama ini belum pernah
+        // mengisinya.
         Volt::test('pages.auth.register')
             ->set('level_akses', User::LEVEL_ADMIN_OPS)
             ->set('profil_sekolah_id', $sekolah->id)
             ->set('email', 'ops.cibadak@contoh.sch.id')
+            ->set('no_whatsapp', '081234567890')
             ->set('password', 'rahasia123')
             ->set('password_confirmation', 'rahasia123')
             ->call('daftar')
@@ -93,10 +101,13 @@ class RegistrationTest extends TestCase
             'profil_sekolah_id' => $sekolah->id,
         ]);
 
+        // Lihat catatan field "No Whatsapp" di
+        // test_admin_ops_dapat_mendaftar_dan_menunggu_persetujuan().
         Volt::test('pages.auth.register')
             ->set('level_akses', User::LEVEL_ADMIN_OPS)
             ->set('profil_sekolah_id', $sekolah->id)
             ->set('email', 'ops.baru@contoh.sch.id')
+            ->set('no_whatsapp', '081234567890')
             ->set('password', 'rahasia123')
             ->set('password_confirmation', 'rahasia123')
             ->call('daftar')
@@ -105,12 +116,16 @@ class RegistrationTest extends TestCase
 
     public function test_akun_yang_belum_disetujui_tidak_bisa_login(): void
     {
-        User::factory()->create([
+        $user = User::factory()->create([
             'username' => 'ops.belum@contoh.sch.id',
             'level_akses' => User::LEVEL_ADMIN_OPS,
             'password' => bcrypt('rahasia123'),
             'is_approved' => false,
         ]);
+
+        // Permintaan user 2026-10-04: lihat catatan gerbang verifikasi di
+        // test_link_registrasi_di_halaman_login_pakai_teks_dan_icon_baru().
+        session(['gerbang_akses_login_user_id' => $user->id]);
 
         Volt::test('pages.auth.login')
             ->set('form.username', 'ops.belum@contoh.sch.id')

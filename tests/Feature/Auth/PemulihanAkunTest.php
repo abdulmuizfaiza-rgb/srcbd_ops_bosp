@@ -14,7 +14,12 @@ class PemulihanAkunTest extends TestCase
 
     public function test_tombol_pemulihan_muncul_setelah_dua_kali_gagal_login(): void
     {
-        User::factory()->create(['username' => 'superadmin', 'level_akses' => User::LEVEL_SUPERADMIN]);
+        $user = User::factory()->create(['username' => 'superadmin', 'level_akses' => User::LEVEL_SUPERADMIN]);
+
+        // Permintaan user 2026-10-04: lihat catatan gerbang verifikasi di
+        // test_pemulihan_superadmin_berhasil_dengan_kata_sandi_default()
+        // di bawah.
+        session(['gerbang_akses_login_user_id' => $user->id]);
 
         $component = Volt::test('pages.auth.login')
             ->set('form.username', 'superadmin')
@@ -54,7 +59,9 @@ class PemulihanAkunTest extends TestCase
 
     public function test_pemulihan_admin_ops_gagal_jika_kata_sandi_tidak_sesuai(): void
     {
-        User::factory()->create(['username' => 'ops-sekolah-a', 'level_akses' => User::LEVEL_ADMIN_OPS]);
+        $user = User::factory()->create(['username' => 'ops-sekolah-a', 'level_akses' => User::LEVEL_ADMIN_OPS]);
+
+        session(['gerbang_akses_login_user_id' => $user->id]);
 
         Volt::test('pages.auth.login')
             ->set('form.username', 'ops-sekolah-a')
@@ -78,6 +85,8 @@ class PemulihanAkunTest extends TestCase
     {
         $user = User::factory()->create(['username' => 'bosp-sekolah-a', 'level_akses' => User::LEVEL_ADMIN_BOSP]);
 
+        session(['gerbang_akses_login_user_id' => $user->id]);
+
         Volt::test('pages.auth.login')
             ->set('form.username', 'bosp-sekolah-a')
             ->set('form.password', 'adminbosp')
@@ -94,6 +103,8 @@ class PemulihanAkunTest extends TestCase
     public function test_pemulihan_admin_ops_ditolak_karena_jalur_pemulihan_mandiri_dinonaktifkan(): void
     {
         $user = User::factory()->create(['username' => 'ops-sekolah-b', 'level_akses' => User::LEVEL_ADMIN_OPS]);
+
+        session(['gerbang_akses_login_user_id' => $user->id]);
 
         Volt::test('pages.auth.login')
             ->set('form.username', 'ops-sekolah-b')

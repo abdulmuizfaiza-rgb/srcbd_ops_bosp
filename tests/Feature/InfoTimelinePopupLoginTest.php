@@ -249,7 +249,9 @@ class InfoTimelinePopupLoginTest extends TestCase
             ->set('form.username', $user->username)
             ->set('form.password', 'password')
             ->call('login')
-            ->assertRedirect(route('dashboard', absolute: false));
+            // Audit 2026-10-04: diperbarui dari route('dashboard') - lihat
+            // catatan di AuthenticationTest::test_users_can_authenticate_using_the_login_screen().
+            ->assertRedirect(route('authenticator.aktivasi', absolute: false));
 
         $this->assertTrue((bool) session('tampilkan_popup_timeline_login'));
     }
@@ -257,6 +259,10 @@ class InfoTimelinePopupLoginTest extends TestCase
     public function test_login_gagal_tidak_menandai_session_flag_popup_timeline(): void
     {
         $user = User::factory()->create(['level_akses' => User::LEVEL_ADMIN_BOSP]);
+
+        // Permintaan user 2026-10-04: lihat catatan gerbang verifikasi di
+        // test_login_berhasil_menandai_session_flag_popup_timeline().
+        session(['gerbang_akses_login_user_id' => $user->id]);
 
         Volt::test('pages.auth.login')
             ->set('form.username', $user->username)

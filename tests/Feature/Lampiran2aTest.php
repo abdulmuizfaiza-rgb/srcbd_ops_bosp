@@ -60,7 +60,14 @@ class Lampiran2aTest extends TestCase
 
         $component = Livewire::actingAs($adminOps)->test(Index::class)->call('tambah');
 
-        foreach ($this->dataLengkap(['profil_sekolah_id' => $sekolahLain->id]) as $field => $value) {
+        // Audit 2026-10-04: profil_sekolah_id WAJIB diisi lebih dulu -
+        // updatedProfilSekolahId() di komponen mengosongkan nrg/nuptk/
+        // nama_ptk tiap kali sekolah berganti (mencegah data PTK sekolah
+        // lain terbawa), jadi kalau diisi BELAKANGAN (urutan array_merge
+        // lama) nilai yang sudah diisi sebelumnya ikut terhapus lagi.
+        $component->set('profil_sekolah_id', $sekolahLain->id);
+
+        foreach ($this->dataLengkap() as $field => $value) {
             $component->set($field, $value);
         }
 

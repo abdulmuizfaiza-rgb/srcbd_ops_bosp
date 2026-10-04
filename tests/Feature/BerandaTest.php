@@ -50,11 +50,17 @@ class BerandaTest extends TestCase
             ->assertRedirect(route('dashboard', absolute: false));
     }
 
-    public function test_tombol_masuk_mengarah_ke_halaman_login(): void
+    /**
+     * Audit 2026-10-04: diperbarui - sejak gerbang verifikasi email+OTP
+     * ditambahkan (2026-09-26), tombol "Masuk" di beranda mengarah ke
+     * /verifikasi-akses dulu (BUKAN langsung /login lagi), lihat
+     * resources/views/livewire/pages/beranda.blade.php.
+     */
+    public function test_tombol_masuk_mengarah_ke_halaman_verifikasi_akses(): void
     {
         $this->get('/')
             ->assertOk()
-            ->assertSee(route('login'), false);
+            ->assertSee(route('verifikasi-akses'), false);
     }
 
     public function test_sekolah_selesai_pendataan_ops_pakai_definisi_lampiran_2a_2b_2c_lengkap(): void

@@ -817,7 +817,7 @@ class BelanjaPemeliharaanBangunanTest extends TestCase
             ->html();
 
         $this->assertStringContainsString(
-            'x-show="terbuka" x-cloak>'."\n".'                                        <td colspan="9" class="px-2 py-2 text-right">Jumlah Belanja Pemeliharaan Bangunan</td>',
+            'x-show="terbuka" x-cloak>'."\n".'                                        <td colspan="10" class="px-2 py-2 text-right">Jumlah Belanja Pemeliharaan Bangunan</td>',
             $html
         );
     }
@@ -913,7 +913,7 @@ class BelanjaPemeliharaanBangunanTest extends TestCase
             ->html();
 
         $this->assertStringContainsString(
-            '<tr class="bg-slate-200 font-bold text-slate-800 border-t-2 border-slate-400">'."\n".'                                        <td colspan="9" class="px-2 py-2.5 text-right">Jumlah Belanja Pemeliharaan Bangunan Seluruh Sekolah</td>',
+            '<tr class="bg-slate-200 font-bold text-slate-800 border-t-2 border-slate-400">'."\n".'                                        <td colspan="10" class="px-2 py-2.5 text-right">Jumlah Belanja Pemeliharaan Bangunan Seluruh Sekolah</td>',
             $html
         );
     }

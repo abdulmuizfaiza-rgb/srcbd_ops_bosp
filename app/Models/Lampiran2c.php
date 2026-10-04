@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'profil_sekolah_id',
     'triwulan',
+    'tahun',
     'nrg',
     'nuptk',
     'nama_ptk',
