@@ -35,6 +35,19 @@ new #[Layout('layouts.guest')] class extends Component
 
         $this->form->authenticate();
 
+        // Permintaan user 2026-10-04: akun yang baru saja berhasil
+        // autentikasi harus SAMA dengan akun yang baru lolos gerbang
+        // verifikasi email + token OTP (lihat LoginForm::
+        // pastikanSesuaiEmailTerverifikasi()) - kalau tidak sesuai,
+        // JANGAN lanjutkan proses redirect/flash normal, arahkan balik
+        // ke halaman Verifikasi Akses untuk verifikasi ulang dari awal.
+        if ($this->form->tidakSesuaiEmailTerverifikasi) {
+            Session::flash('status', 'Akun yang Anda masukkan tidak sesuai dengan email yang baru saja Anda verifikasi. Silakan lakukan verifikasi ulang menggunakan email yang terdaftar untuk akun Anda.');
+            $this->redirect(route('verifikasi-akses'), navigate: true);
+
+            return;
+        }
+
         // Permintaan user 2026-10-03 (kunci 1 perangkat per akun): kalau
         // authenticate() mendeteksi akun ini (Admin OPS/Admin BOSP) masih
         // aktif di perangkat lain, login DIBATALKAN di dalam authenticate()
@@ -100,6 +113,15 @@ new #[Layout('layouts.guest')] class extends Component
     public function pemulihan(): void
     {
         $this->form->pemulihan();
+
+        // Permintaan user 2026-10-04: berlaku juga untuk jalur Pemulihan
+        // Akun - lihat penjelasan lengkap di method login() di atas.
+        if ($this->form->tidakSesuaiEmailTerverifikasi) {
+            Session::flash('status', 'Akun yang Anda masukkan tidak sesuai dengan email yang baru saja Anda verifikasi. Silakan lakukan verifikasi ulang menggunakan email yang terdaftar untuk akun Anda.');
+            $this->redirect(route('verifikasi-akses'), navigate: true);
+
+            return;
+        }
 
         Session::regenerate();
         session()->forget('google2fa_terverifikasi');

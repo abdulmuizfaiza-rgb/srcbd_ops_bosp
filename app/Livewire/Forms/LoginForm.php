@@ -67,6 +67,23 @@ class LoginForm extends Form
     public string $passwordKonfirmasiPaksa = '';
 
     /**
+     * Permintaan user 2026-10-04: login (baik jalur biasa maupun jalur
+     * Pemulihan Akun) WAJIB dilakukan oleh akun yang SAMA dengan yang
+     * baru saja lolos gerbang verifikasi email + token OTP (lihat
+     * resources/views/livewire/pages/auth/verifikasi-akses.blade.php).
+     * SEBELUM ini, session 'gerbang_akses_login_user_id' hanya dicek
+     * KEBERADAANNYA (lihat login.blade.php::mount()), bukan NILAINYA -
+     * jadi siapapun yang sudah lolos verifikasi 1 akun bisa login pakai
+     * akun LAIN yang berbeda sama sekali. Properti ini diset true oleh
+     * pastikanSesuaiEmailTerverifikasi() kalau akun yang baru saja
+     * authenticate()/pemulihan() TIDAK SAMA dengan akun yang
+     * terverifikasi - login.blade.php membaca properti ini untuk
+     * mengarahkan balik ke halaman Verifikasi Akses (bukan menampilkan
+     * error di halaman Login).
+     */
+    public bool $tidakSesuaiEmailTerverifikasi = false;
+
+    /**
      * Kata sandi pemulihan (default) per level akses.
      *
      * SENGAJA HANYA Superadmin (2026-09-05) - jalur pemulihan mandiri
@@ -115,6 +132,18 @@ class LoginForm extends Form
         }
 
         $user = Auth::user();
+
+        // Permintaan user 2026-10-04: akun yang baru saja berhasil
+        // autentikasi harus SAMA dengan akun yang baru lolos gerbang
+        // verifikasi email + token OTP - lihat docblock
+        // pastikanSesuaiEmailTerverifikasi() untuk detail lengkap.
+        // Auth::logout() WAJIB di sini supaya state Auth tidak
+        // "nyangkut" sudah login padahal ditolak.
+        if (! $this->pastikanSesuaiEmailTerverifikasi($user)) {
+            Auth::logout();
+
+            return;
+        }
 
         // Permintaan user 2026-10-03: kunci 1 perangkat per akun, KHUSUS
         // Admin OPS & Admin BOSP (Superadmin dikecualikan - bisa login
@@ -201,6 +230,44 @@ class LoginForm extends Form
     {
         $this->tampilkanPopupPerangkatLain = false;
         $this->passwordKonfirmasiPaksa = '';
+    }
+
+    /**
+     * Pastikan akun yang baru saja berhasil autentikasi (lewat
+     * authenticate() maupun pemulihan()) adalah akun YANG SAMA dengan
+     * yang baru saja lolos gerbang verifikasi email + token OTP - lihat
+     * docblock properti $tidakSesuaiEmailTerverifikasi di atas untuk
+     * latar belakang lengkapnya. Dipanggil SETELAH kredensial
+     * (password/kata sandi pemulihan) sudah dipastikan benar, supaya
+     * tidak membocorkan informasi apapun ke orang yang belum tahu
+     * kredensial yang benar.
+     *
+     * Kalau TIDAK sesuai: dihitung sebagai percobaan gagal juga (ikut
+     * rate-limit 5x & tercatat di log Percobaan Login Gagal - permintaan
+     * user 2026-10-04, karena pola "password/kata sandi benar tapi akun
+     * tidak sesuai verifikasi" dianggap cukup mencurigakan untuk
+     * diperlakukan sama seperti password salah), gerbang verifikasi lama
+     * DIHAPUS dari session (supaya wajib verifikasi ulang dari awal,
+     * bukan sekadar diarahkan balik ke langkah yang sama), dan
+     * $tidakSesuaiEmailTerverifikasi diset true supaya login.blade.php
+     * mengarahkan balik ke halaman Verifikasi Akses.
+     */
+    private function pastikanSesuaiEmailTerverifikasi(User $user): bool
+    {
+        if ((int) session('gerbang_akses_login_user_id') === $user->id) {
+            return true;
+        }
+
+        RateLimiter::hit($this->throttleKey());
+        $this->percobaanGagal++;
+
+        FailedLoginAttempt::catat($this->username, request()->ip(), request()->userAgent(), $this->latitude, $this->longitude);
+
+        session()->forget('gerbang_akses_login_user_id');
+
+        $this->tidakSesuaiEmailTerverifikasi = true;
+
+        return false;
     }
 
     /**
@@ -293,6 +360,15 @@ class LoginForm extends Form
             throw ValidationException::withMessages([
                 'form.username' => 'Akun Anda masih menunggu persetujuan Superadmin dan belum bisa digunakan untuk login.',
             ]);
+        }
+
+        // Permintaan user 2026-10-04: berlaku juga untuk jalur Pemulihan
+        // Akun (bukan cuma login biasa) - lihat docblock
+        // pastikanSesuaiEmailTerverifikasi() untuk detail lengkap. Belum
+        // ada Auth::login() yang terjadi di titik ini, jadi tidak perlu
+        // Auth::logout().
+        if (! $this->pastikanSesuaiEmailTerverifikasi($user)) {
+            return;
         }
 
         Auth::login($user, $this->remember);

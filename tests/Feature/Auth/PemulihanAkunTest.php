@@ -32,6 +32,12 @@ class PemulihanAkunTest extends TestCase
     {
         $user = User::factory()->create(['username' => 'superadmin', 'level_akses' => User::LEVEL_SUPERADMIN]);
 
+        // Permintaan user 2026-10-04: jalur Pemulihan Akun sekarang juga
+        // wajib lewat gerbang verifikasi email + token OTP untuk akun
+        // yang SAMA (lihat LoginForm::pastikanSesuaiEmailTerverifikasi())
+        // - disimulasikan di sini seperti sudah lolos gerbang tsb.
+        session(['gerbang_akses_login_user_id' => $user->id]);
+
         Volt::test('pages.auth.login')
             ->set('form.username', 'superadmin')
             ->set('form.password', 'salah')

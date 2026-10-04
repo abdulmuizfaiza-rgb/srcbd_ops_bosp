@@ -239,6 +239,12 @@ class InfoTimelinePopupLoginTest extends TestCase
     {
         $user = User::factory()->create(['level_akses' => User::LEVEL_ADMIN_BOSP]);
 
+        // Permintaan user 2026-10-04: login sekarang wajib lewat gerbang
+        // verifikasi email + token OTP untuk akun yang SAMA (lihat
+        // LoginForm::pastikanSesuaiEmailTerverifikasi()) - disimulasikan
+        // di sini seperti sudah lolos gerbang tsb untuk akun ini.
+        session(['gerbang_akses_login_user_id' => $user->id]);
+
         Volt::test('pages.auth.login')
             ->set('form.username', $user->username)
             ->set('form.password', 'password')
