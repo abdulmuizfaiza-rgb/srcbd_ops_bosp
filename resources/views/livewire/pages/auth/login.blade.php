@@ -231,6 +231,22 @@ new #[Layout('layouts.guest')] class extends Component
         layar. `$wire` tetap bisa dipakai di dalam <template> ini karena
         Alpine mempertahankan context/scope aslinya walau elemennya
         dipindah secara visual.
+
+        TAMBAHAN (2026-10-04, laporan user lewat screenshot): walau sudah
+        di-teleport ke <body>, pop-up masih terlihat seperti "tertutupi"
+        oleh kartu login - sebabnya DUA hal sekaligus: (1) kartu login
+        SENGAJA digeser ke sisi KANAN layar (lihat layouts/guest.blade.php,
+        class "sm:items-end ... sm:pr-6 md:pr-16 lg:pr-24 xl:pr-32"),
+        sementara pop-up tadinya diposisikan di tengah LAYAR PENUH
+        (`justify-center` tanpa penyesuaian) - jadi pop-up muncul di area
+        kosong sisi kiri, bukan tepat menimpa kartu login yang ada di
+        kanan; (2) sebagai pengaman tambahan, z-index pop-up juga
+        dinaikkan jauh lebih tinggi (dari z-[80] ke z-[9999]) supaya
+        pasti tampil di atas kartu login dalam kondisi apapun. Solusi:
+        posisi horizontal pop-up SEKARANG MENGIKUTI posisi kartu login
+        (class "sm:justify-end" + padding kanan yang SAMA PERSIS dengan
+        kartu login), supaya pop-up tepat menimpa & menggantikan kartu
+        login secara visual (bukan muncul terpisah di ruang kosong).
     --}}
     <style>
         @keyframes popupPerangkatLainGlow {
@@ -264,7 +280,7 @@ new #[Layout('layouts.guest')] class extends Component
         <div x-show="$wire.form.tampilkanPopupPerangkatLain" x-cloak
             x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
             x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-            class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4">
+            class="fixed inset-0 z-[9999] flex items-center justify-center sm:justify-end bg-slate-900/70 backdrop-blur-sm px-4 sm:px-0 sm:pr-6 md:pr-16 lg:pr-24 xl:pr-32">
             <div
                 x-show="$wire.form.tampilkanPopupPerangkatLain"
                 x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-75" x-transition:enter-end="opacity-100 scale-100"
@@ -323,7 +339,7 @@ new #[Layout('layouts.guest')] class extends Component
         <div x-show="$wire.form.tidakSesuaiEmailTerverifikasi" x-cloak
             x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
             x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-            class="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-md px-4">
+            class="fixed inset-0 z-[9999] flex items-center justify-center sm:justify-end bg-black/80 backdrop-blur-md px-4 sm:px-0 sm:pr-6 md:pr-16 lg:pr-24 xl:pr-32">
             <div
                 x-show="$wire.form.tidakSesuaiEmailTerverifikasi"
                 x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-75" x-transition:enter-end="opacity-100 scale-100"
