@@ -75,3 +75,130 @@ Artisan::command('audit:lihat-data-ringkasan', function () {
     $this->comment('Command ini TIDAK mengubah atau menghapus data apa pun - cuma menampilkan.');
     $this->comment('Gunakan daftar di atas untuk menentukan akun/data mana yang menurut Anda data uji coba, lalu beri tahu ID/username-nya ke Claude.');
 })->purpose('Audit: tampilkan ringkasan data users & profil_sekolah (BACA SAJA) untuk membantu identifikasi data uji coba');
+
+/**
+ * Audit 2026-10-04 (lanjutan "Pembersihan Data Uji Coba") - user sudah
+ * mengonfirmasi data uji coba yang dimaksud: User dgn email
+ * "abdulmuizfaiza2@gmail.com" (level admin_bosp) & Sekolah dgn NPSN
+ * "12345678" ("SMPS UJI COBA" - NPSN ini jelas angka dummy berurutan,
+ * BEDA dgn 60 sekolah lain yg semua punya NPSN resmi 8 digit asli dari
+ * data Kemendikbud & dibuat bersamaan 2026-09-04).
+ *
+ * Tabel lain yg terhubung ke sekolah ini (lewat kolom profil_sekolah_id)
+ * DITEMUKAN OTOMATIS lewat information_schema - BUKAN daftar manual -
+ * supaya tidak ada tabel yg kelewat/lupa (termasuk yg tidak ada di
+ * daftar command audit:lihat-data-ringkasan sebelumnya, misalnya
+ * lampiran_2a/2b/2c & deadline_pekerjaan).
+ *
+ * SAFETY: tabel 'users' SENGAJA tidak ikut dihapus lewat loop generik -
+ * hanya user yg emailnya persis cocok yg dihapus. Kalau ternyata ADA
+ * user LAIN yg juga terhubung ke sekolah "uji coba" ini (di luar
+ * dugaan), command BERHENTI tanpa menghapus apa pun & minta dicek
+ * manual dulu - supaya tidak ada akun asli yang ikut terhapus.
+ *
+ * DEFAULT (tanpa flag) = HANYA PREVIEW, tidak mengubah/menghapus apa
+ * pun. Untuk benar-benar menghapus, WAJIB pakai flag --hapus-sungguhan
+ * DAN menjawab "ya" pada konfirmasi interaktif.
+ *
+ * Jalankan:
+ *   php artisan audit:bersihkan-data-uji-coba                    (preview, aman)
+ *   php artisan audit:bersihkan-data-uji-coba --hapus-sungguhan  (hapus beneran)
+ */
+Artisan::command('audit:bersihkan-data-uji-coba {--hapus-sungguhan : Benar-benar menghapus, bukan cuma preview}', function () {
+    $emailUjiCoba = 'abdulmuizfaiza2@gmail.com';
+    $npsnUjiCoba = '12345678';
+
+    $user = \App\Models\User::where('email', $emailUjiCoba)->first();
+    $sekolah = \App\Models\ProfilSekolah::where('npsn', $npsnUjiCoba)->first();
+
+    if (! $user && ! $sekolah) {
+        $this->error("Tidak ditemukan User dgn email {$emailUjiCoba} maupun Sekolah dgn NPSN {$npsnUjiCoba}. Mungkin sudah pernah dihapus sebelumnya, atau datanya sudah berubah - tidak ada tindakan yang dilakukan.");
+
+        return;
+    }
+
+    $this->info('=== Data Uji Coba yang Terdeteksi ===');
+    if ($user) {
+        $this->line("User: #{$user->id} | username: {$user->username} | email: {$user->email} | level: {$user->level_akses}");
+    } else {
+        $this->comment("User dgn email {$emailUjiCoba} TIDAK ditemukan (mungkin sudah dihapus sebelumnya).");
+    }
+    if ($sekolah) {
+        $this->line("Sekolah: #{$sekolah->id} | NPSN: {$sekolah->npsn} | nama: {$sekolah->nama_sekolah}");
+    } else {
+        $this->comment("Sekolah dgn NPSN {$npsnUjiCoba} TIDAK ditemukan (mungkin sudah dihapus sebelumnya).");
+    }
+
+    $tabelDenganProfilSekolahId = collect(\Illuminate\Support\Facades\DB::select(
+        "select table_name from information_schema.columns where column_name = 'profil_sekolah_id' and table_schema = 'public' order by table_name"
+    ))->pluck('table_name')->reject(fn ($t) => in_array($t, ['profil_sekolah', 'users']))->values();
+
+    $jumlahPerTabel = [];
+    $userLainTerhubung = collect();
+
+    if ($sekolah) {
+        $this->newLine();
+        $this->info('--- Baris di Tabel Lain yang Terhubung ke Sekolah Ini (otomatis ditemukan lewat profil_sekolah_id) ---');
+        foreach ($tabelDenganProfilSekolahId as $tabel) {
+            $jumlah = \Illuminate\Support\Facades\DB::table($tabel)->where('profil_sekolah_id', $sekolah->id)->count();
+            if ($jumlah > 0) {
+                $jumlahPerTabel[$tabel] = $jumlah;
+                $this->line("{$tabel}: {$jumlah} baris");
+            }
+        }
+        if (empty($jumlahPerTabel)) {
+            $this->line('(tidak ada baris lain yang terhubung)');
+        }
+
+        $this->newLine();
+        $this->info('--- Pengecekan Keamanan: User LAIN yang Juga Terhubung ke Sekolah Ini ---');
+        $userLainTerhubung = \App\Models\User::where('profil_sekolah_id', $sekolah->id)
+            ->when($user, fn ($q) => $q->where('id', '!=', $user->id))
+            ->get(['id', 'username', 'email', 'level_akses']);
+        if ($userLainTerhubung->isEmpty()) {
+            $this->line('(tidak ada user lain yang terhubung ke sekolah ini - aman)');
+        } else {
+            $userLainTerhubung->each(function ($u) {
+                $this->warn("PERHATIAN: User LAIN juga terhubung ke sekolah ini -> #{$u->id} | {$u->username} | {$u->email} | {$u->level_akses}");
+            });
+        }
+    }
+
+    if (! $this->option('hapus-sungguhan')) {
+        $this->newLine();
+        $this->comment('Ini BARU PREVIEW - belum ada yang dihapus. Jalankan ulang dengan --hapus-sungguhan untuk benar-benar menghapus (akan ada konfirmasi interaktif lagi sebelum eksekusi).');
+
+        return;
+    }
+
+    if ($userLainTerhubung->isNotEmpty()) {
+        $this->newLine();
+        $this->error('DIBATALKAN: ada user LAIN (di luar dugaan) yang juga terhubung ke sekolah ini (lihat daftar di atas). Tidak ada yang dihapus, supaya akun lain tidak ikut terhapus tanpa sengaja. Mohon cek manual dulu & beri tahu Claude.');
+
+        return;
+    }
+
+    $this->newLine();
+    $this->warn('MODE HAPUS SUNGGUHAN. Pastikan Anda SUDAH membuat backup penuh lewat menu Backup aplikasi sebelum lanjut.');
+    if (! $this->confirm('Yakin mau menghapus data di atas? Tindakan ini TIDAK BISA dibatalkan.', false)) {
+        $this->comment('Dibatalkan, tidak ada yang dihapus.');
+
+        return;
+    }
+
+    \Illuminate\Support\Facades\DB::transaction(function () use ($user, $sekolah, $jumlahPerTabel) {
+        if ($sekolah) {
+            foreach (array_keys($jumlahPerTabel) as $tabel) {
+                \Illuminate\Support\Facades\DB::table($tabel)->where('profil_sekolah_id', $sekolah->id)->delete();
+            }
+        }
+        if ($user) {
+            $user->delete();
+        }
+        if ($sekolah) {
+            $sekolah->delete();
+        }
+    });
+
+    $this->info('Selesai. Data uji coba (user, sekolah, & data transaksi terkait) sudah dihapus.');
+})->purpose('Hapus data uji coba yang sudah dikonfirmasi user (email abdulmuizfaiza2@gmail.com + sekolah NPSN 12345678) - default PREVIEW, pakai --hapus-sungguhan utk eksekusi');
