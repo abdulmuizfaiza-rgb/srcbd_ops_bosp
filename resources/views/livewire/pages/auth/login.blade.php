@@ -39,12 +39,15 @@ new #[Layout('layouts.guest')] class extends Component
         // autentikasi harus SAMA dengan akun yang baru lolos gerbang
         // verifikasi email + token OTP (lihat LoginForm::
         // pastikanSesuaiEmailTerverifikasi()) - kalau tidak sesuai,
-        // JANGAN lanjutkan proses redirect/flash normal, arahkan balik
-        // ke halaman Verifikasi Akses untuk verifikasi ulang dari awal.
+        // JANGAN lanjutkan proses redirect/flash normal. SEJAK permintaan
+        // user 2026-10-04 (lanjutan): tampilkan pop-up animasi penolakan
+        // dulu (lihat blok pop-up "Login Salah" di bawah, properti
+        // $tidakSesuaiEmailTerverifikasi sudah true dari authenticate())
+        // - redirect ke halaman Verifikasi Akses baru dilakukan user
+        // sendiri lewat tombol "Verifikasi Ulang" di pop-up itu (method
+        // verifikasiUlang() di bawah), BUKAN otomatis diam-diam seperti
+        // sebelumnya.
         if ($this->form->tidakSesuaiEmailTerverifikasi) {
-            Session::flash('status', 'Akun yang Anda masukkan tidak sesuai dengan email yang baru saja Anda verifikasi. Silakan lakukan verifikasi ulang menggunakan email yang terdaftar untuk akun Anda.');
-            $this->redirect(route('verifikasi-akses'), navigate: true);
-
             return;
         }
 
@@ -107,6 +110,20 @@ new #[Layout('layouts.guest')] class extends Component
     }
 
     /**
+     * Tombol "Verifikasi Ulang" di pop-up "Login Salah: Akun Tidak
+     * Sesuai Verifikasi Email" - permintaan user 2026-10-04 (lanjutan).
+     * Gerbang verifikasi lama (session 'gerbang_akses_login_user_id')
+     * SUDAH dihapus sejak di LoginForm::pastikanSesuaiEmailTerverifikasi(),
+     * jadi di sini cukup arahkan balik ke halaman Verifikasi Akses -
+     * mount() di sana akan menampilkan form "Masukkan Email" dari awal.
+     */
+    public function verifikasiUlang(): void
+    {
+        Session::flash('status', 'Silakan lakukan verifikasi ulang menggunakan email yang terdaftar saat registrasi, lalu login menggunakan akun yang sesuai dengan email tersebut.');
+        $this->redirect(route('verifikasi-akses'), navigate: true);
+    }
+
+    /**
      * Login menggunakan kata sandi pemulihan (default) setelah gagal login
      * beberapa kali, lalu diarahkan untuk wajib ganti password.
      */
@@ -115,11 +132,9 @@ new #[Layout('layouts.guest')] class extends Component
         $this->form->pemulihan();
 
         // Permintaan user 2026-10-04: berlaku juga untuk jalur Pemulihan
-        // Akun - lihat penjelasan lengkap di method login() di atas.
+        // Akun - lihat penjelasan lengkap di method login() di atas
+        // (pop-up "Login Salah", bukan redirect otomatis diam-diam).
         if ($this->form->tidakSesuaiEmailTerverifikasi) {
-            Session::flash('status', 'Akun yang Anda masukkan tidak sesuai dengan email yang baru saja Anda verifikasi. Silakan lakukan verifikasi ulang menggunakan email yang terdaftar untuk akun Anda.');
-            $this->redirect(route('verifikasi-akses'), navigate: true);
-
             return;
         }
 
@@ -243,6 +258,50 @@ new #[Layout('layouts.guest')] class extends Component
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    {{--
+        Pop-up "Login Salah: Akun Tidak Sesuai Verifikasi Email" -
+        permintaan user 2026-10-04 (lanjutan dari fitur "login harus
+        sesuai email yang diverifikasi" di tanggal yang sama). Gaya
+        visual SENGAJA mengikuti pop-up "Batas Perangkat Terpenuhi" di
+        atas (gradient merah/oranye yang sama, class animasi
+        animate-popup-perangkat-lain dipakai ulang - sama-sama pop-up
+        PENOLAKAN, tidak perlu @keyframes baru) - bedanya cuma ikon &
+        teks, dan cuma 1 tombol ("Verifikasi Ulang") karena satu-satunya
+        langkah lanjutan yang valid dari kondisi ini memang verifikasi
+        ulang (gerbang verifikasi lama sudah dihapus dari session begitu
+        ketidaksesuaian ini terdeteksi - lihat LoginForm::
+        pastikanSesuaiEmailTerverifikasi()).
+    --}}
+    <div x-show="$wire.form.tidakSesuaiEmailTerverifikasi" x-cloak
+        x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4">
+        <div
+            x-show="$wire.form.tidakSesuaiEmailTerverifikasi"
+            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-75" x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-90"
+            class="animate-popup-perangkat-lain w-full max-w-md rounded-2xl bg-gradient-to-br from-rose-600 via-red-600 to-orange-500 p-6 text-white ring-1 ring-white/20">
+            <div class="flex items-start gap-3">
+                <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/30 animate-pulse">
+                    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="9" />
+                        <path d="M9.5 9.5l5 5M14.5 9.5l-5 5" />
+                    </svg>
+                </span>
+                <div>
+                    <h2 class="text-base font-semibold leading-snug">Login Salah: Akun Tidak Sesuai Verifikasi Email !</h2>
+                    <p class="mt-1.5 text-sm text-white/90 leading-relaxed">Akun yang Anda masukkan tidak sesuai dengan email yang baru saja Anda verifikasi. Silakan lakukan verifikasi ulang menggunakan email yang terdaftar saat registrasi, lalu login menggunakan akun yang sesuai dengan email tersebut.</p>
+                </div>
+            </div>
+
+            <div class="mt-5 flex justify-end border-t border-white/20 pt-4">
+                <button type="button" wire:click="verifikasiUlang" class="rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 transition">
+                    Verifikasi Ulang
+                </button>
+            </div>
         </div>
     </div>
 
