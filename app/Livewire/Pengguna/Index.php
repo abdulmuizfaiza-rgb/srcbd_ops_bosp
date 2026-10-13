@@ -59,6 +59,20 @@ class Index extends Component
 
     public ?int $confirmingResetAuthenticatorId = null;
 
+    /**
+     * State modal "Samakan Kunci Authenticator" (permintaan user
+     * 2026-10-13) - Superadmin menempelkan kunci manual yang SUDAH dipakai
+     * di aplikasi (lokal/online) satunya ke akun ini, supaya satu kunci
+     * yang sama berlaku di kedua aplikasi (tidak perlu scan barcode baru
+     * lagi). Kode 6 digit WAJIB diisi juga sebagai pengaman salah ketik
+     * kunci manual - divalidasi harus cocok sebelum kunci disimpan.
+     */
+    public ?int $confirmingSamakanAuthenticatorId = null;
+
+    public string $kunciManualSama = '';
+
+    public string $kodeSamaValid = '';
+
     // State form modal
     public bool $showForm = false;
 
@@ -475,6 +489,77 @@ class Index extends Component
     }
 
     /**
+     * Tampilkan modal "Samakan Kunci Authenticator" (permintaan user
+     * 2026-10-13) - bisa dipakai untuk SEMUA level akses termasuk
+     * Superadmin, sama seperti modal reset di atas.
+     */
+    public function konfirmasiSamakanAuthenticator(int $id): void
+    {
+        $this->confirmingSamakanAuthenticatorId = $id;
+        $this->kunciManualSama = '';
+        $this->kodeSamaValid = '';
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', 'pengguna-samakan-authenticator');
+    }
+
+    public function batalSamakanAuthenticator(): void
+    {
+        $this->confirmingSamakanAuthenticatorId = null;
+        $this->kunciManualSama = '';
+        $this->kodeSamaValid = '';
+        $this->resetErrorBag();
+        $this->dispatch('close-modal', 'pengguna-samakan-authenticator');
+    }
+
+    /**
+     * Simpan kunci manual yang ditempel Superadmin (disalin dari aplikasi
+     * lokal/online satunya) ke akun ini, supaya SATU kunci yang sama
+     * berlaku di kedua aplikasi (permintaan user 2026-10-13: "barcode dan
+     * token nya sama baik yang aplikasi online maupun aplikasi lokal").
+     *
+     * Kode 6 digit WAJIB diisi & divalidasi cocok dgn kunci yang ditempel
+     * SEBELUM disimpan - ini pengaman salah ketik/salah tempel kunci (kalau
+     * kuncinya salah, akun bisa terkunci karena kode dari HP pemilik akun
+     * tidak akan pernah cocok). Begitu lolos verifikasi, langsung ditandai
+     * AKTIF (google2fa_aktif_at diisi sekarang) - tidak perlu aktivasi
+     * ulang lagi, karena kunci ini sudah terbukti valid & sudah di-scan
+     * sebelumnya di aplikasi satunya.
+     */
+    public function samakanAuthenticator(GoogleAuthenticatorService $layanan): void
+    {
+        $this->validate([
+            'kunciManualSama' => ['required', 'string', 'max:255'],
+            'kodeSamaValid' => ['required', 'digits:6'],
+        ], [], [
+            'kunciManualSama' => 'kunci manual',
+            'kodeSamaValid' => 'kode 6 digit',
+        ]);
+
+        $kunciRapi = $layanan->rapikanKunciManual($this->kunciManualSama);
+
+        if (! $layanan->kodeValid($kunciRapi, $this->kodeSamaValid)) {
+            $this->addError('kodeSamaValid', 'Kunci atau kode tidak cocok. Pastikan kunci manual disalin PERSIS dari aplikasi (lokal/online) satunya, dan kode yang dimasukkan adalah kode TERBARU yang sedang tampil di aplikasi Authenticator utk kunci tersebut.');
+
+            return;
+        }
+
+        $user = User::findOrFail($this->confirmingSamakanAuthenticatorId);
+
+        $user->forceFill([
+            'google2fa_secret' => $kunciRapi,
+            'google2fa_aktif_at' => now(),
+            'google2fa_reset_diminta_at' => null,
+        ])->save();
+
+        $this->confirmingSamakanAuthenticatorId = null;
+        $this->kunciManualSama = '';
+        $this->kodeSamaValid = '';
+        $this->dispatch('close-modal', 'pengguna-samakan-authenticator');
+
+        session()->flash('status', "Kunci Authenticator {$user->username} berhasil disamakan. Akun ini sekarang bisa login memakai kode yang sama seperti di aplikasi (lokal/online) satunya, tanpa perlu scan barcode baru.");
+    }
+
+    /**
      * Password sementara 6 karakter, kombinasi huruf & angka (dijamin
      * mengandung minimal 1 huruf DAN 1 angka, bukan cuma acak murni yang
      * bisa saja kebetulan semua huruf/semua angka). Karakter yang mirip
@@ -560,6 +645,7 @@ class Index extends Component
             ],
             'penggunaDireset' => $this->confirmingResetId ? User::find($this->confirmingResetId) : null,
             'penggunaDiresetAuthenticator' => $this->confirmingResetAuthenticatorId ? User::find($this->confirmingResetAuthenticatorId) : null,
+            'penggunaDisamakanAuthenticator' => $this->confirmingSamakanAuthenticatorId ? User::find($this->confirmingSamakanAuthenticatorId) : null,
         ]);
     }
 }

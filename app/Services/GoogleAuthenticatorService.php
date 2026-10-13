@@ -7,6 +7,9 @@ use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
+use PragmaRX\Google2FA\Exceptions\IncompatibleWithGoogleAuthenticatorException;
+use PragmaRX\Google2FA\Exceptions\InvalidCharactersException;
+use PragmaRX\Google2FA\Exceptions\SecretKeyTooShortException;
 use PragmaRX\Google2FA\Google2FA;
 
 /**
@@ -75,9 +78,34 @@ class GoogleAuthenticatorService
      * Periksa apakah kode 6 digit yang diketik pengguna cocok dengan secret-nya.
      * $window = 1 memberi toleransi ±30 detik pergeseran jam HP, wajar untuk
      * TOTP standar (default paket ini).
+     *
+     * Dibungkus try/catch (fitur "Samakan Kunci Authenticator" 2026-10-13):
+     * kalau $secret datang dari ketikan manual Superadmin (bukan hasil
+     * buatSecretBaru() sendiri), bisa saja mengandung karakter di luar
+     * Base32 atau kepanjangan/kependekan - paket google2fa melempar
+     * exception utk kasus itu, bukan return false biasa. Di jalur normal
+     * (aktivasi/login harian, $secret selalu dari server) exception ini
+     * tidak akan pernah terjadi, jadi perubahan ini aman utk alur lama.
      */
     public function kodeValid(string $secret, string $kode): bool
     {
-        return $this->google2fa->verifyKey($secret, $kode);
+        try {
+            return (bool) $this->google2fa->verifyKey($secret, $kode);
+        } catch (IncompatibleWithGoogleAuthenticatorException|InvalidCharactersException|SecretKeyTooShortException $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Bersihkan kunci manual yang ditempel Superadmin (fitur "Samakan Kunci
+     * Authenticator" 2026-10-13): huruf besarkan & buang spasi, karena
+     * sebagian aplikasi Authenticator / email menampilkan kunci manual
+     * dikelompokkan per 4 karakter dengan spasi (mis. "ABCD EFGH ...") yang
+     * kalau ditempel apa adanya akan dianggap karakter tidak valid oleh
+     * paket google2fa.
+     */
+    public function rapikanKunciManual(string $kunci): string
+    {
+        return strtoupper(preg_replace('/\s+/', '', $kunci));
     }
 }

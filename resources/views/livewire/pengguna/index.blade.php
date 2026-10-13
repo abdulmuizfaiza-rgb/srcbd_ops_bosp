@@ -182,6 +182,8 @@
                                                 @endif
                                             </td>
                                             <td class="px-3 py-2 text-right whitespace-nowrap">
+                                                <button wire:click="konfirmasiSamakanAuthenticator({{ $item->id }})" class="text-blue-600 hover:underline">Samakan Kunci</button>
+                                                <span class="text-slate-300">|</span>
                                                 <button wire:click="konfirmasiResetAuthenticator({{ $item->id }})" class="text-amber-600 hover:underline">Reset & Kirim Barcode Baru</button>
                                             </td>
                                         </tr>
@@ -395,6 +397,44 @@
                 <x-secondary-button wire:click="batalResetAuthenticator">Batal</x-secondary-button>
                 <x-primary-button wire:click="resetAuthenticator" class="!bg-amber-600 hover:!bg-amber-700">Reset & Kirim Barcode Baru</x-primary-button>
             </div>
+        </div>
+    </x-modal>
+
+    {{-- Modal Samakan Kunci Authenticator (permintaan user 2026-10-13) -
+    supaya 1 kunci yang sama berlaku di aplikasi lokal maupun online,
+    Superadmin tempelkan di sini kunci manual yang SUDAH dipakai di aplikasi
+    satunya, lalu buktikan dgn kode 6 digit TERBARU dari aplikasi
+    Authenticator. --}}
+    <x-modal name="pengguna-samakan-authenticator" :show="$confirmingSamakanAuthenticatorId !== null" maxWidth="md">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900">Samakan Kunci Authenticator akun ini?</h2>
+            <p class="mt-1 text-sm text-slate-600">
+                Untuk akun
+                <span class="font-medium text-slate-800">{{ $penggunaDisamakanAuthenticator?->username }}</span>
+                supaya bisa login memakai kode yang SAMA seperti di aplikasi (lokal/online) satunya - tanpa scan barcode baru lagi.
+            </p>
+            <p class="mt-2 text-xs text-slate-500">
+                Dapatkan kunci manual ini dari aplikasi satunya: kalau akun itu BELUM aktif, kunci manual muncul di halaman aktivasinya ("Tidak bisa scan? Masukkan kunci secara manual"); kalau SUDAH aktif, pakai tombol "Reset & Kirim Barcode Baru" di sana dulu untuk dapat kunci baru (scan juga ke HP dari sana), baru tempelkan kunci yang sama persis di sini.
+            </p>
+
+            <form wire:submit="samakanAuthenticator" class="mt-4 space-y-4">
+                <div>
+                    <x-input-label for="kunciManualSama" value="Kunci Manual (dari aplikasi satunya)" />
+                    <x-text-input wire:model="kunciManualSama" id="kunciManualSama" class="block mt-1 w-full font-mono tracking-wider" type="text" autocomplete="off" />
+                    <x-input-error :messages="$errors->get('kunciManualSama')" class="mt-2" />
+                </div>
+
+                <div>
+                    <x-input-label for="kodeSamaValid" value="Kode 6 Digit Terbaru dari Aplikasi Authenticator" />
+                    <x-text-input wire:model="kodeSamaValid" id="kodeSamaValid" class="block mt-1 w-full text-center tracking-[0.5em] text-lg" type="text" inputmode="numeric" maxlength="6" autocomplete="off" />
+                    <x-input-error :messages="$errors->get('kodeSamaValid')" class="mt-2" />
+                </div>
+
+                <div class="flex justify-end gap-3">
+                    <x-secondary-button type="button" wire:click="batalSamakanAuthenticator">Batal</x-secondary-button>
+                    <x-primary-button type="submit">Samakan Kunci</x-primary-button>
+                </div>
+            </form>
         </div>
     </x-modal>
 </div>
