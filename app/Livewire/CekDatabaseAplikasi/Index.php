@@ -117,6 +117,18 @@ class Index extends Component
     public string $searchKecocokan = '';
 
     /**
+     * BARU (permintaan user 2026-10-14, klarifikasi ulang): tombol "Cek
+     * Ulang" eksplisit untuk tabel kecocokan data PER SEKOLAH (Aplikasi vs
+     * Database MENTAH, 1 instalasi yang sama - BUKAN Lokal vs Online).
+     * Catatan: cekKecocokanData() di bawah SUDAH otomatis dihitung ulang
+     * dari database setiap kali render() dipanggil (lihat render()) - jadi
+     * datanya sebenarnya SELALU fresh. Properti ini HANYA menyimpan waktu
+     * "terakhir diperiksa" supaya user merasa yakin datanya baru, diisi
+     * otomatis saat pindah ke tab ini DAN saat tombol "Cek Ulang" diklik.
+     */
+    public ?string $kecocokanDataDiperiksaPada = null;
+
+    /**
      * Hasil perbandingan akun Superadmin Lokal vs Online (permintaan
      * user 2026-10-14, lanjutan - AskUserQuestion: "Hanya data akun
      * Superadmin sendiri", dipicu HANYA manual lewat tombol "Cek Ulang",
@@ -390,6 +402,16 @@ class Index extends Component
     }
 
     /**
+     * BARU: dipicu tombol "Cek Ulang" (dan otomatis saat pindah ke tab ini
+     * lewat pindahTab()) - hanya memperbarui cap waktu "terakhir diperiksa",
+     * KARENA cekKecocokanData() di atas sudah otomatis fresh tiap render().
+     */
+    public function cekUlangKecocokanData(): void
+    {
+        $this->kecocokanDataDiperiksaPada = now()->keWaktuLokal()->translatedFormat('d M Y H:i');
+    }
+
+    /**
      * Tombol "Cek Ulang" - permintaan user 2026-10-14 ("tambahkan untuk
      * kecocokan data pada login superadmin untuk cek data di lokal sama
      * yang di online cocok atau tidak"), dikonfirmasi lewat
@@ -458,6 +480,10 @@ class Index extends Component
         $this->resetPage('aksesDataPage');
         $this->dipilihLoginGagal = [];
         $this->dipilihAksesData = [];
+
+        if ($tab === 'kecocokan') {
+            $this->cekUlangKecocokanData();
+        }
     }
 
     /**

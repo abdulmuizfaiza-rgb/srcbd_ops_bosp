@@ -292,10 +292,29 @@
                     @elseif ($tab === 'kecocokan')
                         <p class="text-sm text-slate-500 mb-4">Membandingkan jumlah data yang dihitung lewat aplikasi dengan jumlah baris asli di database untuk setiap jenis data, dikelompokkan per sekolah. Klik simbol <strong>+</strong> pada nama sekolah untuk melihat rincian jenis data sekolah tersebut. Idealnya semua baris berstatus "Cocok".</p>
 
-                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                        {{--
+                            Tombol "Cek Ulang" BARU (permintaan user
+                            2026-10-14, klarifikasi ulang) - cekKecocokanData()
+                            di PHP sudah otomatis fresh tiap render(), tombol
+                            ini + "Terakhir diperiksa" HANYA untuk kepastian
+                            visual bagi user (lihat App\Livewire\
+                            CekDatabaseAplikasi\Index::cekUlangKecocokanData()).
+                        --}}
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-1">
                             <input wire:model.live.debounce.300ms="searchKecocokan" type="text" placeholder="Cari nama sekolah..." class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm sm:w-80">
-                            <x-zoom-controls :zoom="$zoomPercent" />
+                            <div class="flex items-center gap-3">
+                                <x-secondary-button type="button" wire:click="cekUlangKecocokanData" wire:loading.attr="disabled" wire:target="cekUlangKecocokanData" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                                    <span wire:loading.remove wire:target="cekUlangKecocokanData">Cek Ulang</span>
+                                    <span wire:loading wire:target="cekUlangKecocokanData">Memeriksa...</span>
+                                </x-secondary-button>
+                                <x-zoom-controls :zoom="$zoomPercent" />
+                            </div>
                         </div>
+                        @if ($kecocokanDataDiperiksaPada)
+                            <p class="text-xs text-slate-400 mb-3">Terakhir diperiksa: {{ $kecocokanDataDiperiksaPada }}</p>
+                        @else
+                            <div class="mb-3"></div>
+                        @endif
 
                         <div class="overflow-auto scrollbar-modern border border-slate-200 rounded-lg" style="max-height: 32rem; zoom: {{ $zoomPercent }}%;">
                             <table class="min-w-full divide-y divide-slate-200 text-sm">

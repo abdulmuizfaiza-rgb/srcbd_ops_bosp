@@ -34,6 +34,14 @@ class Index extends Component
 
     public $backgroundLoginBaru = null;
 
+    /**
+     * BARU (permintaan user 2026-10-14, lanjutan perombakan halaman
+     * login/verifikasi jadi tata-letak dua panel): tombol "Hapus Gambar"
+     * untuk Background Form Login, supaya Superadmin bisa menghapus gambar
+     * lama tanpa harus mengunggah gambar pengganti dulu.
+     */
+    public bool $confirmingHapusBackgroundLogin = false;
+
     public string $warnaHalaman = '#f1f5f9';
 
     public string $warnaMenu = '#0f172a';
@@ -154,6 +162,39 @@ class Index extends Component
         }
 
         return $path;
+    }
+
+    public function konfirmasiHapusBackgroundLogin(): void
+    {
+        abort_unless(auth()->user()->can('akses-tampilan'), 403);
+
+        $this->confirmingHapusBackgroundLogin = true;
+        $this->dispatch('open-modal', 'tampilan-hapus-background-login');
+    }
+
+    public function batalHapusBackgroundLogin(): void
+    {
+        $this->confirmingHapusBackgroundLogin = false;
+        $this->dispatch('close-modal', 'tampilan-hapus-background-login');
+    }
+
+    public function hapusBackgroundLogin(): void
+    {
+        abort_unless(auth()->user()->can('akses-tampilan'), 403);
+
+        $tampilan = PengaturanTampilan::current();
+
+        if ($tampilan->background_login) {
+            Storage::disk('public')->delete($tampilan->background_login);
+            $tampilan->update(['background_login' => null]);
+            PengaturanTampilan::lupakanCache();
+        }
+
+        $this->backgroundLoginBaru = null;
+        $this->confirmingHapusBackgroundLogin = false;
+        $this->dispatch('close-modal', 'tampilan-hapus-background-login');
+
+        session()->flash('status', 'Gambar Background Form Login berhasil dihapus.');
     }
 
     public function render()

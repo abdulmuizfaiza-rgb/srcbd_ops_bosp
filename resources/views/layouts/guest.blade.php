@@ -32,94 +32,63 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans text-slate-900 antialiased">
-        {{-- Permintaan user (2026-09-05, lanjutan): kotak landing/login/
-             registrasi digeser ke sisi kanan, tengah secara vertikal.
-             "items-end" pada flex-col mengatur cross-axis (horizontal),
-             jadi menggeser logo+kartu ke tepi kanan container - "justify-
-             center" tetap menjaga posisi tengah secara vertikal. Hanya
-             berlaku mulai breakpoint sm ke atas supaya di layar sempit
-             (mobile) tetap center seperti semula (ruang tidak cukup untuk
-             digeser tanpa terpotong). --}}
-        <div class="relative min-h-screen flex flex-col sm:justify-center items-center sm:items-end pt-6 sm:pt-0 sm:pr-6 md:pr-16 lg:pr-24 xl:pr-32 overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900"
-            @if ($tampilanHalaman->background_landing_url)
-                style="background-image: url('{{ $tampilanHalaman->background_landing_url }}'); background-size: cover; background-position: center;"
-            @endif
-        >
-            {{-- Dekorasi latar belakang animasi --}}
-            <div class="pointer-events-none absolute inset-0 overflow-hidden">
-                <div class="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-blue-600/30 blur-3xl animate-blob-a"></div>
-                <div class="absolute top-1/3 -right-24 h-96 w-96 rounded-full bg-sky-500/20 blur-3xl animate-blob-b"></div>
-                <div class="absolute -bottom-32 left-1/3 h-96 w-96 rounded-full bg-indigo-500/20 blur-3xl animate-blob-c"></div>
-            </div>
+        {{--
+            PEROMBAKAN TATA LETAK (permintaan user 2026-10-14, menggantikan
+            pendekatan "kotak transparan di atas gambar" yang dipakai
+            sebelumnya hari ini): sekarang dibagi 2 panel berdampingan -
+            panel KIRI menampilkan gambar (Background Form Login, dengan
+            Background Landing sebagai cadangan kalau belum diisi, lalu
+            gradasi bawaan kalau keduanya belum diisi), panel KANAN berisi
+            form (Login/Registrasi/Verifikasi Akses/Authenticator) dengan
+            tingkat transparansi "normal" (bg-white/70, SEBELUM rentetan
+            perubahan transparansi hari ini). Berlaku untuk SEMUA halaman
+            yang memakai layout ini (ditegaskan user: form Verifikasi &
+            form Login, tapi layout ini memang dipakai bersama oleh semua
+            halaman auth).
 
-            <div class="relative z-10 animate-fade-in-down">
-                <a href="/" wire:navigate class="block">
-                    <x-application-logo class="w-16 h-16 fill-current text-blue-300 drop-shadow-lg animate-float-logo" />
-                </a>
-            </div>
-
-            {{-- Permintaan user 2026-10-14: kotak form dibuat LEBIH transparan
-                 (bg-white/70 -> bg-white/25) supaya latar belakang halaman
-                 (gradasi/gambar yang diatur Superadmin lewat menu Tampilan)
-                 lebih terlihat jelas menembus kotak form - berlaku untuk
-                 SEMUA halaman auth yang memakai layout ini (Login,
-                 Registrasi, Verifikasi Akses, Verifikasi Authenticator,
-                 Aktivasi Authenticator). Blur (backdrop-blur-2xl) & teks
-                 tebal (.teks-tebal-akses, lihat resources/css/app.css)
-                 DIPERTAHANKAN supaya tulisan & kotak input tetap mudah
-                 dibaca walau kotaknya lebih transparan.
-
-                 PERBAIKAN (2026-10-14, lanjutan): user melaporkan kotak
-                 masih terlihat SOLID/gelap, bukan transparan - ROOT CAUSE-
-                 nya adalah background_login_url (gambar kustom kotak Login
-                 yang diatur Superadmin lewat menu Tampilan): background-
-                 image SELALU digambar DI ATAS background-color (bg-white/
-                 25), jadi kalau gambar itu diisi, gambar menutupi TOTAL
-                 efek transparan di atas, berapa pun persentase opacity
-                 Tailwind yang dipasang. Dikonfirmasi user lewat
-                 AskUserQuestion: gambar TETAP dipakai, HANYA kepekatannya
-                 yang dikurangi - dicapai dengan menumpuk gradient putih
-                 tembus-pandang (linear-gradient rgba 0.55) DI ATAS gambar
-                 dalam 1 properti background-image yang sama (bisa berisi
-                 banyak "lapisan", dipisah koma, lapisan pertama = paling
-                 atas) - BUKAN dengan opacity biasa (opacity akan ikut
-                 memudarkan teks/isi kotak, bukan cuma gambarnya). --}}
+            Panel gambar KIRI disembunyikan di layar sempit/HP (permintaan
+            user) - "hidden sm:block" - supaya form tetap lega & full-width
+            di HP.
+        --}}
+        <div class="min-h-screen flex">
+            {{-- Panel kiri: gambar --}}
             <div
-                x-data="{
-                    rotateX: 0,
-                    rotateY: 0,
-                    tilt(e) {
-                        const r = $el.getBoundingClientRect();
-                        const px = (e.clientX - r.left) / r.width;
-                        const py = (e.clientY - r.top) / r.height;
-                        this.rotateY = (px - 0.5) * 10;
-                        this.rotateX = (0.5 - py) * 10;
-                    },
-                    reset() { this.rotateX = 0; this.rotateY = 0; }
-                }"
-                @mousemove="tilt($event)"
-                @mouseleave="reset()"
-                {{--
-                    PENTING: pakai bentuk OBJECT ({ transform: ... }), BUKAN
-                    string ("transform: ..."). Alpine men-set style dalam
-                    bentuk string dengan cara menimpa SELURUH isi atribut
-                    "style" milik elemen ini (el.style.cssText = ...) - kalau
-                    dipakai di sini, background-image dari atribut "style"
-                    statis di bawah (kondisi background_login_url) akan ikut
-                    KEHAPUS begitu Alpine aktif, walau gambarnya sendiri
-                    tersimpan & termuat dengan benar. Bentuk object membuat
-                    Alpine hanya mengubah properti "transform" saja lewat
-                    style.setProperty(), tanpa menyentuh properti lain
-                    (termasuk background-image) yang sudah ada di style
-                    attribute yang sama.
-                --}}
-                :style="{ transform: 'perspective(1200px) rotateX(' + rotateX + 'deg) rotateY(' + rotateY + 'deg)' }"
-                class="teks-tebal-akses relative z-10 w-full sm:max-w-md mt-6 px-6 py-6 bg-white/25 backdrop-blur-2xl shadow-2xl ring-1 ring-white/30 overflow-hidden sm:rounded-2xl transition-transform duration-200 ease-out will-change-transform animate-fade-in-up"
+                class="hidden sm:block sm:w-1/2 lg:w-3/5 bg-cover bg-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900"
                 @if ($tampilanHalaman->background_login_url)
-                    style="background-image: linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.55)), url('{{ $tampilanHalaman->background_login_url }}'); background-size: cover; background-position: center;"
+                    style="background-image: url('{{ $tampilanHalaman->background_login_url }}');"
+                @elseif ($tampilanHalaman->background_landing_url)
+                    style="background-image: url('{{ $tampilanHalaman->background_landing_url }}');"
                 @endif
-            >
-                {{ $slot }}
+            ></div>
+
+            {{-- Panel kanan: form --}}
+            <div class="relative w-full sm:w-1/2 lg:w-2/5 flex flex-col items-center justify-center px-6 py-10 bg-slate-50">
+                <div class="mb-6">
+                    <a href="/" wire:navigate class="block">
+                        <x-application-logo class="w-16 h-16 fill-current text-blue-600" />
+                    </a>
+                </div>
+
+                <div
+                    x-data="{
+                        rotateX: 0,
+                        rotateY: 0,
+                        tilt(e) {
+                            const r = $el.getBoundingClientRect();
+                            const px = (e.clientX - r.left) / r.width;
+                            const py = (e.clientY - r.top) / r.height;
+                            this.rotateY = (px - 0.5) * 10;
+                            this.rotateX = (0.5 - py) * 10;
+                        },
+                        reset() { this.rotateX = 0; this.rotateY = 0; }
+                    }"
+                    @mousemove="tilt($event)"
+                    @mouseleave="reset()"
+                    :style="{ transform: 'perspective(1200px) rotateX(' + rotateX + 'deg) rotateY(' + rotateY + 'deg)' }"
+                    class="teks-tebal-akses w-full sm:max-w-md px-6 py-6 bg-white/70 backdrop-blur-2xl shadow-2xl ring-1 ring-white/30 overflow-hidden rounded-2xl transition-transform duration-200 ease-out will-change-transform"
+                >
+                    {{ $slot }}
+                </div>
             </div>
         </div>
     </body>

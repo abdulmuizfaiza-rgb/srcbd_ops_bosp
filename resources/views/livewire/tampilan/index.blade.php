@@ -59,6 +59,19 @@
                         <input type="file" wire:model="backgroundLoginBaru" accept="image/*" class="mt-2 block w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
                         <div wire:loading wire:target="backgroundLoginBaru" class="text-xs text-slate-400 mt-1">Mengunggah...</div>
                         <x-input-error :messages="$errors->get('backgroundLoginBaru')" class="mt-2" />
+
+                        {{--
+                            Tombol "Hapus Gambar" BARU (permintaan user
+                            2026-10-14) - supaya bisa menghapus gambar lama
+                            tanpa harus unggah gambar pengganti dulu. HANYA
+                            tampil kalau sudah ada gambar tersimpan & tidak
+                            sedang ada pratinjau upload baru yang menunggu
+                            disimpan (lihat App\Livewire\Tampilan\Index::
+                            konfirmasiHapusBackgroundLogin()).
+                        --}}
+                        @if ($tampilan->background_login_url && ! $backgroundLoginBaru)
+                            <button type="button" wire:click="konfirmasiHapusBackgroundLogin" class="mt-2 text-xs font-medium text-red-600 hover:text-red-700">Hapus Gambar</button>
+                        @endif
                     </div>
                 </div>
 
@@ -205,6 +218,17 @@
                     <x-primary-button>Simpan Tampilan</x-primary-button>
                 </div>
             </form>
+
+            <x-modal name="tampilan-hapus-background-login" :show="$confirmingHapusBackgroundLogin" maxWidth="md">
+                <div class="p-6">
+                    <h2 class="text-lg font-medium text-slate-900">Hapus Gambar Background Form Login?</h2>
+                    <p class="mt-2 text-sm text-slate-500">Gambar yang sedang dipakai di halaman Login/Verifikasi Akses akan dihapus. Halaman akan kembali memakai tampilan bawaan sampai Superadmin mengunggah gambar baru.</p>
+                    <div class="mt-6 flex justify-end gap-3">
+                        <x-secondary-button wire:click="batalHapusBackgroundLogin">Batal</x-secondary-button>
+                        <x-danger-button wire:click="hapusBackgroundLogin" wire:loading.attr="disabled">Ya, Hapus Gambar</x-danger-button>
+                    </div>
+                </div>
+            </x-modal>
         </div>
     </div>
 </div>
