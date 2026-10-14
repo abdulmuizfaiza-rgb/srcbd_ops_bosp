@@ -31,6 +31,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'pendidikan_terakhir',
     'jurusan_prodi',
     'tahun_lulus_ijazah',
+    'npwp',
     'status_sertifikasi',
     'bidang_studi_sertifikasi',
     'tahun_lulus_sertifikasi',

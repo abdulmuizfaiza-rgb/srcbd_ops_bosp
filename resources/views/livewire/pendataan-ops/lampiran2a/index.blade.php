@@ -180,8 +180,9 @@
 
                 <div class="sm:col-span-2">
                     <x-input-label for="npwp" value="NPWP" />
-                    <x-text-input wire:model="npwp" id="npwp" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="16" />
-                    <p class="text-xs text-slate-400 mt-1">15 digit (format lama) atau 16 digit (format NIK).</p>
+                    <x-text-input wire:model="npwp" id="npwp" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="16" @disabled($dataPtkId) />
+                    <p class="text-xs text-slate-400 mt-1" @if ($dataPtkId) style="display:none" @endif>15 digit (format lama) atau 16 digit (format NIK).</p>
+                    <p class="text-xs text-slate-400 mt-1" @if (! $dataPtkId) style="display:none" @endif>Otomatis dari Data PTK.</p>
                     <x-input-error :messages="$errors->get('npwp')" class="mt-2" />
                 </div>
             </div>

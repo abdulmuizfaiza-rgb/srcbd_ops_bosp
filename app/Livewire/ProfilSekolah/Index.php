@@ -465,6 +465,8 @@ class Index extends Component
 
     public string $tahun_lulus_ijazah = '';
 
+    public string $npwp = '';
+
     public string $status_sertifikasi = '';
 
     public string $bidang_studi_sertifikasi = '';
@@ -640,6 +642,7 @@ class Index extends Component
         $this->pendidikan_terakhir = (string) $baris->pendidikan_terakhir;
         $this->jurusan_prodi = (string) $baris->jurusan_prodi;
         $this->tahun_lulus_ijazah = (string) $baris->tahun_lulus_ijazah;
+        $this->npwp = (string) $baris->npwp;
         $this->status_sertifikasi = (string) $baris->status_sertifikasi;
         $this->bidang_studi_sertifikasi = (string) $baris->bidang_studi_sertifikasi;
         $this->tahun_lulus_sertifikasi = (string) $baris->tahun_lulus_sertifikasi;
@@ -658,7 +661,7 @@ class Index extends Component
             'editingPtkId', 'profil_sekolah_id', 'nik', 'nuptk', 'nip', 'nama_ptk',
             'tempat_lahir', 'tanggal_lahir', 'jabatan', 'pangkat_golongan',
             'status_kepegawaian', 'jenis_ptk', 'tmt_sekolah_induk', 'pendidikan_terakhir',
-            'jurusan_prodi', 'tahun_lulus_ijazah', 'status_sertifikasi',
+            'jurusan_prodi', 'tahun_lulus_ijazah', 'npwp', 'status_sertifikasi',
             'bidang_studi_sertifikasi', 'tahun_lulus_sertifikasi', 'nomor_sertifikat_sertifikasi',
             'nomor_registrasi_guru', 'nomor_peserta_sertifikasi', 'status_dapodik', 'status_keaktifan',
         ]);
@@ -702,6 +705,7 @@ class Index extends Component
             'pendidikan_terakhir' => ['required', Rule::in(array_keys(DataPtk::pendidikanTerakhirOptions()))],
             'jurusan_prodi' => ['nullable', 'string', 'max:255'],
             'tahun_lulus_ijazah' => ['nullable', 'regex:/^[0-9]{4}$/'],
+            'npwp' => ['nullable', 'regex:/^[0-9]{15,16}$/'],
             'status_sertifikasi' => ['required', Rule::in(array_keys(DataPtk::statusSertifikasiOptions()))],
             'bidang_studi_sertifikasi' => $rincianSertifikasiWajib ? ['nullable', 'string', 'max:255'] : ['nullable'],
             'tahun_lulus_sertifikasi' => $rincianSertifikasiWajib ? ['nullable', 'regex:/^([0-9]{4}|-)$/'] : ['nullable'],
@@ -716,6 +720,7 @@ class Index extends Component
             'nuptk.regex' => 'NUPTK harus berupa 16 digit angka.',
             'nip.regex' => 'NIP harus berupa 18 digit angka.',
             'tahun_lulus_ijazah.regex' => 'Tahun Lulus Ijazah harus berupa 4 digit angka tahun.',
+            'npwp.regex' => 'NPWP harus berupa 15-16 digit angka.',
             'tahun_lulus_sertifikasi.regex' => 'Tahun Lulus Sertifikasi harus berupa 4 digit angka tahun.',
         ]);
 
@@ -724,7 +729,7 @@ class Index extends Component
         // longgar utk field ini, aturan SEBENARNYA diterapkan di sini).
         $validated = DataPtk::terapkanAturanSertifikasi($validated);
 
-        foreach (['nuptk', 'nip', 'tempat_lahir', 'jurusan_prodi', 'pangkat_golongan', 'tanggal_lahir', 'tmt_sekolah_induk', 'tahun_lulus_ijazah', 'nomor_sertifikat_sertifikasi', 'nomor_registrasi_guru', 'nomor_peserta_sertifikasi'] as $fieldOpsional) {
+        foreach (['nuptk', 'nip', 'tempat_lahir', 'jurusan_prodi', 'pangkat_golongan', 'tanggal_lahir', 'tmt_sekolah_induk', 'tahun_lulus_ijazah', 'npwp', 'nomor_sertifikat_sertifikasi', 'nomor_registrasi_guru', 'nomor_peserta_sertifikasi'] as $fieldOpsional) {
             if (($validated[$fieldOpsional] ?? '') === '') {
                 $validated[$fieldOpsional] = null;
             }

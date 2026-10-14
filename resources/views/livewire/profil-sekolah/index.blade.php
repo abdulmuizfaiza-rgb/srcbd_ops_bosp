@@ -280,6 +280,7 @@
                                         <th class="px-3 py-2">Pendidikan Terakhir</th>
                                         <th class="px-3 py-2">Jurusan / Prodi</th>
                                         <th class="px-3 py-2">Tahun Lulus Ijazah</th>
+                                        <th class="px-3 py-2">NPWP</th>
                                         <th class="px-3 py-2">Status Sertifikasi</th>
                                         <th class="px-3 py-2">Bidang Studi Sertifikasi</th>
                                         <th class="px-3 py-2">Tahun Lulus Sertifikasi</th>
@@ -327,6 +328,7 @@
                                             <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->pendidikan_terakhir }}</td>
                                             <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->jurusan_prodi ?: '-' }}</td>
                                             <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->tahun_lulus_ijazah ?: '-' }}</td>
+                                            <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->npwp ?: '-' }}</td>
                                             <td class="px-3 py-2 whitespace-nowrap">
                                                 <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full
                                                     @class([
@@ -692,6 +694,13 @@
                     <x-input-label for="tahun_lulus_ijazah" value="Tahun Lulus Ijazah" />
                     <x-text-input wire:model="tahun_lulus_ijazah" id="tahun_lulus_ijazah" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="4" />
                     <x-input-error :messages="$errors->get('tahun_lulus_ijazah')" class="mt-2" />
+                </div>
+
+                <div>
+                    <x-input-label for="npwp" value="NPWP" />
+                    <x-text-input wire:model="npwp" id="npwp" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="16" />
+                    <p class="text-xs text-slate-400 mt-1">15 digit (format lama) atau 16 digit (format NIK).</p>
+                    <x-input-error :messages="$errors->get('npwp')" class="mt-2" />
                 </div>
 
                 <div class="sm:col-span-2">

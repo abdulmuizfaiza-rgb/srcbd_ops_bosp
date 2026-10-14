@@ -237,6 +237,7 @@ class Index extends Component
         $this->nama_ptk = $ptk->nama_ptk;
         $this->nrg = (string) ($ptk->nomor_registrasi_guru ?: '');
         $this->nuptk = (string) ($ptk->nuptk ?: '');
+        $this->npwp = (string) ($ptk->npwp ?: '');
     }
 
     /**
