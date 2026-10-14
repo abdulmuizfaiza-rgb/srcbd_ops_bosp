@@ -124,13 +124,39 @@
             @endif
 
             <div class="bg-white shadow sm:rounded-lg overflow-hidden">
-                <div class="px-4 sm:px-8 py-4 border-b border-slate-200">
+                <div class="px-4 sm:px-8 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <h3 class="text-base font-bold text-slate-800">Riwayat Sinkronisasi Terakhir</h3>
+
+                    {{--
+                        Filter tanggal, tombol Hapus & zoom (permintaan user
+                        2026-10-14) - pola SAMA dengan tab Percobaan Login
+                        Gagal di App\Livewire\CekDatabaseAplikasi\Index.
+                    --}}
+                    <div class="flex flex-wrap items-center gap-2">
+                        <x-input-label for="filterTanggalRiwayat" value="Tanggal" class="text-xs text-slate-500 !mb-0" />
+                        <input type="date" wire:model.live="filterTanggalRiwayat" id="filterTanggalRiwayat" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
+                        @if ($filterTanggalRiwayat !== '')
+                            <button type="button" wire:click="$set('filterTanggalRiwayat', '')" class="text-slate-400 hover:text-red-600" title="Hapus filter tanggal">&times;</button>
+                        @endif
+
+                        <x-danger-button type="button" wire:click="konfirmasiHapusTerpilihRiwayat" wire:loading.attr="disabled" :disabled="count($dipilihRiwayat) === 0" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                            <x-icon name="trash" class="w-3.5 h-3.5 mr-1" />
+                            Hapus Terpilih ({{ count($dipilihRiwayat) }})
+                        </x-danger-button>
+                        <x-secondary-button type="button" wire:click="konfirmasiHapusSemuaRiwayat" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                            <x-icon name="trash" class="w-3.5 h-3.5 mr-1" />
+                            Hapus Semua
+                        </x-secondary-button>
+                        <x-zoom-controls :zoom="$zoomPercent" />
+                    </div>
                 </div>
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto" style="zoom: {{ $zoomPercent }}%;">
                     <table class="min-w-full divide-y divide-slate-200 text-sm">
                         <thead class="bg-slate-50">
                             <tr>
+                                <th class="px-4 py-2">
+                                    <input type="checkbox" wire:click="toggleSemuaRiwayat" @checked($semuaTerpilihRiwayat) class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" title="Pilih/batal pilih semua baris yang tampil">
+                                </th>
                                 <th class="px-4 py-2 text-left font-semibold text-slate-600">Waktu</th>
                                 <th class="px-4 py-2 text-left font-semibold text-slate-600">Arah</th>
                                 <th class="px-4 py-2 text-left font-semibold text-slate-600">Status</th>
@@ -141,6 +167,9 @@
                         <tbody class="divide-y divide-slate-100">
                             @forelse ($riwayat as $log)
                                 <tr>
+                                    <td class="px-4 py-2">
+                                        <input type="checkbox" wire:model="dipilihRiwayat" value="{{ $log->id }}" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                                    </td>
                                     <td class="px-4 py-2 whitespace-nowrap text-slate-600">{{ $log->created_at->format('d/m/Y H:i') }}</td>
                                     <td class="px-4 py-2 whitespace-nowrap text-slate-800">{{ \App\Models\SyncLog::labelArah($log->arah) }}</td>
                                     <td class="px-4 py-2 whitespace-nowrap">
@@ -159,13 +188,42 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="px-4 py-6 text-center text-slate-400">Belum ada riwayat sinkronisasi.</td>
+                                    <td colspan="6" class="px-4 py-6 text-center text-slate-400">Belum ada riwayat sinkronisasi.</td>
                                 </tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
             </div>
+
+            {{-- Modal konfirmasi Hapus Terpilih & Hapus Semua (permintaan user 2026-10-14) --}}
+            <x-modal name="sinkronisasi-riwayat-hapus-terpilih" :show="$confirmingHapusTerpilihRiwayat" maxWidth="md">
+                <div class="p-6">
+                    <h2 class="text-lg font-medium text-slate-900">Hapus {{ count($dipilihRiwayat) }} baris riwayat terpilih?</h2>
+                    <p class="mt-1 text-sm text-slate-600">Semua baris riwayat sinkronisasi yang dicentang akan dihapus sekaligus. Tindakan ini tidak dapat dibatalkan.</p>
+                    <div class="mt-6 flex justify-end gap-3">
+                        <x-secondary-button wire:click="batalHapusTerpilihRiwayat" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
+                        <x-danger-button wire:click="hapusTerpilihRiwayat" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Hapus</x-danger-button>
+                    </div>
+                </div>
+            </x-modal>
+
+            <x-modal name="sinkronisasi-riwayat-hapus-semua" :show="$confirmingHapusSemuaRiwayat" maxWidth="md">
+                <div class="p-6">
+                    <h2 class="text-lg font-medium text-slate-900">Hapus SEMUA riwayat sinkronisasi?</h2>
+                    <p class="mt-1 text-sm text-slate-600">
+                        @if ($filterTanggalRiwayat !== '')
+                            Ini akan menghapus SEMUA baris pada tanggal {{ \Illuminate\Support\Carbon::parse($filterTanggalRiwayat)->translatedFormat('d F Y') }} (bukan hanya yang tampil di atas). Tindakan ini tidak dapat dibatalkan.
+                        @else
+                            Tidak ada filter tanggal aktif - ini akan menghapus SEMUA riwayat sinkronisasi di database. Tindakan ini tidak dapat dibatalkan.
+                        @endif
+                    </p>
+                    <div class="mt-6 flex justify-end gap-3">
+                        <x-secondary-button wire:click="batalHapusSemuaRiwayat" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
+                        <x-danger-button wire:click="hapusSemuaRiwayat" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Ya, Hapus Semua</x-danger-button>
+                    </div>
+                </div>
+            </x-modal>
 
         </div>
     </div>

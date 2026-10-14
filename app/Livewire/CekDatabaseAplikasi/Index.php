@@ -30,6 +30,7 @@ use App\Models\StockOpnameBarangPersediaan;
 use App\Models\SuratTpg;
 use App\Models\User;
 use App\Models\VervalRealisasiBosp;
+use App\Services\SyncClient;
 use App\Support\RegistriModulSekolah;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -114,6 +115,23 @@ class Index extends Component
 
     // --- State tab Cek Kecocokan Data (permintaan user 2026-09-27) ---
     public string $searchKecocokan = '';
+
+    /**
+     * Hasil perbandingan akun Superadmin Lokal vs Online (permintaan
+     * user 2026-10-14, lanjutan - AskUserQuestion: "Hanya data akun
+     * Superadmin sendiri", dipicu HANYA manual lewat tombol "Cek Ulang",
+     * BUKAN otomatis setiap tab dibuka). Null = belum pernah dicek sejak
+     * halaman ini dibuka (state Livewire murni, SENGAJA tidak disimpan
+     * ke database - hasil basi/kadaluarsa tidak berguna, selalu harus
+     * "Cek Ulang" lagi untuk info terbaru).
+     *
+     * @var array<int, array{email: string, lokal: array{username: string, email: string, is_approved: bool}|null, online: array{username: string, email: string, is_approved: bool}|null, cocok: bool}>|null
+     */
+    public ?array $kecocokanSuperadmin = null;
+
+    public ?string $kecocokanSuperadminError = null;
+
+    public ?string $kecocokanSuperadminDiperiksaPada = null;
 
     /**
      * Daftar modul yang datanya terikat ke satu sekolah (profil_sekolah_id)
@@ -369,6 +387,68 @@ class Index extends Component
         }
 
         return $hasil;
+    }
+
+    /**
+     * Tombol "Cek Ulang" - permintaan user 2026-10-14 ("tambahkan untuk
+     * kecocokan data pada login superadmin untuk cek data di lokal sama
+     * yang di online cocok atau tidak"), dikonfirmasi lewat
+     * AskUserQuestion: HANYA membandingkan akun Superadmin (username,
+     * email, status disetujui), BUKAN seluruh data modul sekolah -
+     * karena akun Pengguna TIDAK ikut lingkup Sinkronisasi poin 3 (lihat
+     * App\Http\Controllers\Api\SuperadminCheckController).
+     *
+     * HANYA berarti/aktif di sisi LOKAL (sama seperti seluruh tombol aksi
+     * menu Sinkronisasi - Online tidak bisa memulai koneksi balik ke
+     * Lokal), dan HANYA dijalankan saat tombol diklik manual (dikonfirmasi
+     * AskUserQuestion - supaya tab ini tetap cepat dibuka, tidak otomatis
+     * memanggil API ke Online setiap kali tab "Cek Kecocokan Data" dibuka).
+     * Memakai URL + Token API yang SAMA dengan menu Sinkronisasi (menu
+     * itu yang mengisi App\Models\SyncSetting) - tidak ada pengaturan
+     * token terpisah di sini.
+     */
+    public function cekUlangSuperadmin(SyncClient $client): void
+    {
+        abort_unless(auth()->user()->isSuperadmin(), 403);
+
+        if (config('sync.peran') !== 'lokal') {
+            return;
+        }
+
+        $this->kecocokanSuperadminError = null;
+
+        try {
+            $daftarOnline = collect($client->cekSuperadmin())->keyBy('email');
+
+            $daftarLokal = User::query()
+                ->where('level_akses', User::LEVEL_SUPERADMIN)
+                ->orderBy('email')
+                ->get(['username', 'email', 'is_approved'])
+                ->map(fn (User $u) => ['username' => $u->username, 'email' => $u->email, 'is_approved' => (bool) $u->is_approved])
+                ->keyBy('email');
+
+            $semuaEmail = $daftarLokal->keys()->merge($daftarOnline->keys())->unique()->sort()->values();
+
+            $this->kecocokanSuperadmin = $semuaEmail->map(function ($email) use ($daftarLokal, $daftarOnline) {
+                $lokal = $daftarLokal->get($email);
+                $online = $daftarOnline->get($email);
+
+                return [
+                    'email' => $email,
+                    'lokal' => $lokal,
+                    'online' => $online,
+                    'cocok' => $lokal !== null && $online !== null
+                        && $lokal['username'] === $online['username']
+                        && $lokal['is_approved'] === $online['is_approved'],
+                ];
+            })->values()->all();
+
+            $this->kecocokanSuperadminDiperiksaPada = now()->keWaktuLokal()->translatedFormat('d M Y H:i');
+        } catch (\Throwable $e) {
+            report($e);
+            $this->kecocokanSuperadmin = null;
+            $this->kecocokanSuperadminError = 'Gagal memeriksa kecocokan akun Superadmin: '.$e->getMessage();
+        }
     }
 
     public function pindahTab(string $tab): void

@@ -82,6 +82,31 @@ class SyncClient
         }
     }
 
+    /**
+     * Ambil daftar akun Superadmin dari sisi Online (permintaan user
+     * 2026-10-14, lanjutan fitur "Cek Kecocokan Data" - tombol "Cek
+     * Ulang" di App\Livewire\CekDatabaseAplikasi\Index::
+     * cekUlangSuperadmin()). TIDAK mengubah data apapun di sisi Online,
+     * murni GET - aman dipanggil berkali-kali.
+     */
+    public function cekSuperadmin(): array
+    {
+        $pengaturan = SyncSetting::current();
+        $this->pastikanTerkonfigurasi($pengaturan);
+
+        $respons = Http::withToken($pengaturan->token_online)
+            ->timeout(config('sync.timeout_detik'))
+            ->get($this->urlApi($pengaturan, 'sync/superadmin-check'));
+
+        if ($respons->failed()) {
+            throw new RuntimeException(
+                'Online menolak/gagal menyajikan data akun Superadmin: '.($respons->json('message') ?? $respons->status())
+            );
+        }
+
+        return $respons->json('superadmin') ?? [];
+    }
+
     protected function pastikanTerkonfigurasi(SyncSetting $pengaturan): void
     {
         if (empty($pengaturan->url_online) || empty($pengaturan->token_online)) {

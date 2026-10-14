@@ -67,7 +67,23 @@
                  Aktivasi Authenticator). Blur (backdrop-blur-2xl) & teks
                  tebal (.teks-tebal-akses, lihat resources/css/app.css)
                  DIPERTAHANKAN supaya tulisan & kotak input tetap mudah
-                 dibaca walau kotaknya lebih transparan. --}}
+                 dibaca walau kotaknya lebih transparan.
+
+                 PERBAIKAN (2026-10-14, lanjutan): user melaporkan kotak
+                 masih terlihat SOLID/gelap, bukan transparan - ROOT CAUSE-
+                 nya adalah background_login_url (gambar kustom kotak Login
+                 yang diatur Superadmin lewat menu Tampilan): background-
+                 image SELALU digambar DI ATAS background-color (bg-white/
+                 25), jadi kalau gambar itu diisi, gambar menutupi TOTAL
+                 efek transparan di atas, berapa pun persentase opacity
+                 Tailwind yang dipasang. Dikonfirmasi user lewat
+                 AskUserQuestion: gambar TETAP dipakai, HANYA kepekatannya
+                 yang dikurangi - dicapai dengan menumpuk gradient putih
+                 tembus-pandang (linear-gradient rgba 0.55) DI ATAS gambar
+                 dalam 1 properti background-image yang sama (bisa berisi
+                 banyak "lapisan", dipisah koma, lapisan pertama = paling
+                 atas) - BUKAN dengan opacity biasa (opacity akan ikut
+                 memudarkan teks/isi kotak, bukan cuma gambarnya). --}}
             <div
                 x-data="{
                     rotateX: 0,
@@ -100,7 +116,7 @@
                 :style="{ transform: 'perspective(1200px) rotateX(' + rotateX + 'deg) rotateY(' + rotateY + 'deg)' }"
                 class="teks-tebal-akses relative z-10 w-full sm:max-w-md mt-6 px-6 py-6 bg-white/25 backdrop-blur-2xl shadow-2xl ring-1 ring-white/30 overflow-hidden sm:rounded-2xl transition-transform duration-200 ease-out will-change-transform animate-fade-in-up"
                 @if ($tampilanHalaman->background_login_url)
-                    style="background-image: url('{{ $tampilanHalaman->background_login_url }}'); background-size: cover; background-position: center;"
+                    style="background-image: linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.55)), url('{{ $tampilanHalaman->background_login_url }}'); background-size: cover; background-position: center;"
                 @endif
             >
                 {{ $slot }}

@@ -366,6 +366,80 @@
                                 @endforelse
                             </table>
                         </div>
+
+                        {{--
+                            Kecocokan Akun Superadmin Lokal vs Online (BARU,
+                            permintaan user 2026-10-14) - BERBEDA dari tabel
+                            di atas (yang membandingkan Eloquent vs Database
+                            DALAM 1 instalasi yang sama): kartu ini
+                            membandingkan akun Superadmin ANTARA instalasi
+                            Lokal & Online lewat API Sinkronisasi (lihat
+                            App\Livewire\CekDatabaseAplikasi\Index::
+                            cekUlangSuperadmin()). HANYA aktif di sisi LOKAL
+                            (sama seperti tombol aksi menu Sinkronisasi) &
+                            HANYA dijalankan saat tombol "Cek Ulang" diklik
+                            manual (jawaban AskUserQuestion).
+                        --}}
+                        <div class="mt-8 border-t border-slate-200 pt-6">
+                            <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
+                                <h3 class="text-base font-bold text-slate-800">Kecocokan Akun Superadmin (Lokal vs Online)</h3>
+
+                                @if (config('sync.peran') === 'lokal')
+                                    <x-secondary-button type="button" wire:click="cekUlangSuperadmin" wire:loading.attr="disabled" wire:target="cekUlangSuperadmin" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                                        <span wire:loading.remove wire:target="cekUlangSuperadmin">Cek Ulang</span>
+                                        <span wire:loading wire:target="cekUlangSuperadmin">Memeriksa...</span>
+                                    </x-secondary-button>
+                                @endif
+                            </div>
+
+                            @if (config('sync.peran') !== 'lokal')
+                                <p class="text-xs text-slate-500">Nonaktif di sisi Online - jalankan "Cek Ulang" dari Aplikasi Lokal (menu Sinkronisasi dan Tarik Data di sisi Lokal yang mengatur URL & Token API-nya).</p>
+                            @else
+                                <p class="text-xs text-slate-500 mb-3">Membandingkan akun Superadmin (username, email, status disetujui) antara instalasi ini (Lokal) dengan Online, lewat URL & Token API yang sama dengan menu Sinkronisasi dan Tarik Data. Klik "Cek Ulang" untuk memeriksa/memperbarui.</p>
+
+                                @if ($kecocokanSuperadminError)
+                                    <div class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs mb-3">{{ $kecocokanSuperadminError }}</div>
+                                @endif
+
+                                @if ($kecocokanSuperadmin !== null)
+                                    <p class="text-xs text-slate-400 mb-2">Terakhir diperiksa: {{ $kecocokanSuperadminDiperiksaPada }}</p>
+                                    <div class="overflow-auto scrollbar-modern border border-slate-200 rounded-lg">
+                                        <table class="min-w-full divide-y divide-slate-200 text-sm">
+                                            <thead class="bg-slate-50">
+                                                <tr class="text-left text-slate-500">
+                                                    <th class="px-3 py-2">Email</th>
+                                                    <th class="px-3 py-2">Username di Lokal</th>
+                                                    <th class="px-3 py-2">Username di Online</th>
+                                                    <th class="px-3 py-2">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-slate-100 bg-white">
+                                                @forelse ($kecocokanSuperadmin as $akun)
+                                                    <tr>
+                                                        <td class="px-3 py-2 font-medium text-slate-700 whitespace-nowrap">{{ $akun['email'] }}</td>
+                                                        <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $akun['lokal']['username'] ?? '(tidak ada di Lokal)' }}</td>
+                                                        <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $akun['online']['username'] ?? '(tidak ada di Online)' }}</td>
+                                                        <td class="px-3 py-2 whitespace-nowrap">
+                                                            @if ($akun['cocok'])
+                                                                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700">Cocok</span>
+                                                            @else
+                                                                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">Tidak Cocok</span>
+                                                            @endif
+                                                        </td>
+                                                    </tr>
+                                                @empty
+                                                    <tr>
+                                                        <td colspan="4" class="px-3 py-6 text-center text-slate-400">Tidak ada akun Superadmin ditemukan di kedua sisi.</td>
+                                                    </tr>
+                                                @endforelse
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                @else
+                                    <p class="text-xs text-slate-400">Belum pernah diperiksa - klik "Cek Ulang" di atas.</p>
+                                @endif
+                            @endif
+                        </div>
                     @endif
                 </div>
             </div>
