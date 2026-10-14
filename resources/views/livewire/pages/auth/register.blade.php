@@ -4,9 +4,9 @@ use App\Models\PendataanBosp;
 use App\Models\PendataanOps;
 use App\Models\ProfilSekolah;
 use App\Models\User;
+use App\Support\PasswordPolicy;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -52,9 +52,10 @@ new #[Layout('layouts.guest')] class extends Component
                 Rule::unique('users', 'username'),
             ],
             'no_whatsapp' => ['required', 'regex:/^[0-9]{1,12}$/'],
-            'password' => ['required', 'string', Password::defaults(), 'confirmed'],
+            'password' => ['required', 'string', PasswordPolicy::rule(), 'confirmed'],
         ], [
             'no_whatsapp.regex' => 'No Whatsapp harus berupa angka, maksimal 12 digit.',
+            ...PasswordPolicy::messages('password'),
         ]);
 
         $sudahAda = User::where('profil_sekolah_id', $validated['profil_sekolah_id'])

@@ -5,22 +5,24 @@ namespace App\Support;
 use Illuminate\Validation\Rules\Password;
 
 /**
- * Aturan kekuatan password untuk form-form GANTI PASSWORD milik akun
- * sendiri ("Update Password" di halaman Profil & "Ganti Password Wajib"
- * setelah Pemulihan Akun): minimal 6 karakter, wajib kombinasi huruf
- * besar, huruf kecil, angka, dan simbol.
+ * Aturan kekuatan password TUNGGAL untuk SEMUA form yang melibatkan
+ * password akun di aplikasi ini: minimal 8 karakter, wajib kombinasi
+ * huruf besar, huruf kecil, angka, dan simbol.
  *
- * Sengaja dibuat terpisah dari `Password::defaults()` bawaan Laravel
- * (yang TIDAK diubah di sini, dan masih dipakai apa adanya oleh form
- * Registrasi Admin OPS/BOSP serta form Kelola Pengguna Superadmin) -
- * supaya aturan baru ini HANYA berlaku di 2 form ganti password yang
- * diminta, tidak ikut mengubah perilaku form lain yang tidak diminta.
+ * Audit keamanan 2026-10-14: sebelumnya aturan ini (minimal 6 karakter)
+ * HANYA dipakai di 2 form ganti password milik sendiri ("Update
+ * Password" & "Ganti Password Wajib"), sedangkan form Registrasi Admin
+ * OPS/BOSP dan form Kelola Pengguna (Superadmin membuat/reset password
+ * akun lain) masih memakai `Password::defaults()` bawaan Laravel (hanya
+ * minimal 8 karakter, tanpa wajib kombinasi) - sekarang DISAMAKAN, aturan
+ * ini dipakai di SEMUA form tsb supaya tidak ada jalur dengan kekuatan
+ * password yang lebih lemah.
  */
 class PasswordPolicy
 {
     public static function rule(): Password
     {
-        return Password::min(6)->mixedCase()->numbers()->symbols();
+        return Password::min(8)->mixedCase()->numbers()->symbols();
     }
 
     /**
@@ -38,7 +40,7 @@ class PasswordPolicy
         // Indonesia - daripada menampilkan beberapa baris error terpisah
         // berbahasa Inggris untuk tiap kriteria yang belum terpenuhi.
         return [
-            "{$field}.*" => 'Password minimal 6 karakter dan wajib kombinasi huruf besar, huruf kecil, angka, dan simbol. Silakan ketik ulang.',
+            "{$field}.*" => 'Password minimal 8 karakter dan wajib kombinasi huruf besar, huruf kecil, angka, dan simbol. Silakan ketik ulang.',
         ];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Forms;
 
+use App\Mail\NotifikasiPemulihanAkunDigunakan;
 use App\Models\FailedLoginAttempt;
 use App\Models\LoginHistory;
 use App\Models\User;
@@ -9,11 +10,14 @@ use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Validate;
 use Livewire\Form;
+use Throwable;
 
 class LoginForm extends Form
 {
@@ -82,26 +86,6 @@ class LoginForm extends Form
      * error di halaman Login).
      */
     public bool $tidakSesuaiEmailTerverifikasi = false;
-
-    /**
-     * Kata sandi pemulihan (default) per level akses.
-     *
-     * SENGAJA HANYA Superadmin (2026-09-05) - jalur pemulihan mandiri
-     * untuk Admin OPS/Admin BOSP dinonaktifkan TOTAL (bukan cuma
-     * disembunyikan dari tampilan login): satu-satunya cara akun kedua
-     * level ini reset password sekarang lewat Superadmin (menu Kelola
-     * Pengguna, tombol "Reset Password" - lihat Pengguna\Index). Kalau
-     * dulu ada yang tahu kata sandi pemulihan default lama ('adminops'/
-     * 'adminbosp'), sekarang sudah tidak bisa dipakai sama sekali lagi.
-     *
-     * @return array<string, string>
-     */
-    public static function kataSandiPemulihan(): array
-    {
-        return [
-            User::LEVEL_SUPERADMIN => 'superadmin',
-        ];
-    }
 
     /**
      * Attempt to authenticate the request's credentials.
@@ -321,18 +305,34 @@ class LoginForm extends Form
     }
 
     /**
-     * Login menggunakan kata sandi pemulihan (default) sesuai level akses
-     * akun dengan username yang diketik, lalu wajibkan ganti password.
+     * Login menggunakan kata sandi pemulihan akun dengan username yang
+     * diketik, lalu wajibkan ganti password.
      *
      * HANYA untuk Superadmin (2026-09-05) - Admin OPS/Admin BOSP yang
      * mencoba jalur ini (mis. lewat request langsung, bukan dari tombol
      * di UI yang memang sudah disembunyikan untuk mereka) akan selalu
      * ditolak dengan pesan yang mengarahkan ke Superadmin.
      *
+     * Audit keamanan 2026-10-04 (lanjutan 2026-10-14): sebelumnya kata
+     * sandi pemulihan adalah 1 nilai TETAP yang sama untuk semua akun
+     * Superadmin, tertulis langsung di kode - siapa pun yang pernah
+     * membaca source code tahu nilainya SELAMANYA & tidak bisa dirotasi
+     * lewat aplikasi. Sekarang: kata sandi pemulihan ACAK PER-AKUN,
+     * disimpan ter-hash di kolom `kata_sandi_pemulihan_hash` (lihat
+     * App\Models\User::adaKataSandiPemulihan(), dibuat/dibuat-ulang lewat
+     * menu Profil atau menu Kelola Pengguna), dan SEKALI PAKAI - begitu
+     * berhasil dipakai untuk login di sini, hash-nya langsung dikosongkan
+     * lagi (lihat forceFill() di bawah) supaya Superadmin WAJIB membuat
+     * yang baru lagi sebelum bisa dipakai lagi. Setiap pemakaian yang
+     * berhasil juga mengirim email pemberitahuan ke akun tsb, supaya
+     * Superadmin asli tahu kalau jalur ini baru saja dipakai.
+     *
      * @throws ValidationException
      */
     public function pemulihan(): void
     {
+        $this->ensureIsNotRateLimited();
+
         $this->validate([
             'username' => ['required', 'string'],
             'password' => ['required', 'string'],
@@ -346,13 +346,14 @@ class LoginForm extends Form
             ]);
         }
 
-        $kataSandi = $user ? (static::kataSandiPemulihan()[$user->level_akses] ?? null) : null;
+        if (! $user || ! $user->adaKataSandiPemulihan() || ! Hash::check($this->password, $user->kata_sandi_pemulihan_hash)) {
+            RateLimiter::hit($this->throttleKey());
+            $this->percobaanGagal++;
 
-        if (! $user || $kataSandi === null || ! hash_equals($kataSandi, $this->password)) {
             FailedLoginAttempt::catat($this->username, request()->ip(), request()->userAgent(), $this->latitude, $this->longitude);
 
             throw ValidationException::withMessages([
-                'form.username' => 'Akun tidak ditemukan atau kata sandi pemulihan tidak sesuai.',
+                'form.username' => 'Akun tidak ditemukan, kata sandi pemulihan belum diatur, atau tidak sesuai.',
             ]);
         }
 
@@ -380,12 +381,27 @@ class LoginForm extends Form
         // kehilangan HP tidak terkunci total menunggu email/Superadmin lain
         // yang tidak ada. Ini hanya berlaku utk Superadmin (satu-satunya
         // level yang punya jalur pemulihan mandiri, lihat validasi di atas).
+        // Audit keamanan 2026-10-14: kata_sandi_pemulihan_hash JUGA
+        // dikosongkan di sini (sekali pakai) - lihat docblock method ini.
         $user->forceFill([
             'must_change_password' => true,
             'google2fa_secret' => null,
             'google2fa_aktif_at' => null,
             'google2fa_reset_diminta_at' => null,
+            'kata_sandi_pemulihan_hash' => null,
+            'kata_sandi_pemulihan_dibuat_at' => null,
         ])->save();
+
+        // Pemberitahuan email (audit keamanan 2026-10-14) - dibungkus
+        // try/catch seperti pola pengiriman email lain di aplikasi ini
+        // (lihat Pengguna\Index::resetPassword()): login lewat Pemulihan
+        // Akun SUDAH TERLANJUR berhasil di atas & HARUS tetap begitu,
+        // kegagalan kirim email tidak boleh ikut menggagalkan login.
+        try {
+            Mail::to($user->email)->send(new NotifikasiPemulihanAkunDigunakan($user, request()->ip(), now()));
+        } catch (Throwable $e) {
+            Log::error('Gagal mengirim email pemberitahuan Pemulihan Akun ke '.$user->email.': '.$e->getMessage());
+        }
 
         RateLimiter::clear($this->throttleKey());
         $this->percobaanGagal = 0;

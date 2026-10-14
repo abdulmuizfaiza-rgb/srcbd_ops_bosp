@@ -10,8 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['username', 'email', 'password', 'level_akses', 'nama_sekolah', 'profil_sekolah_id', 'jabatan', 'must_change_password', 'is_approved', 'google2fa_secret', 'google2fa_aktif_at', 'google2fa_reset_diminta_at'])]
-#[Hidden(['password', 'remember_token'])]
+#[Fillable(['username', 'email', 'password', 'level_akses', 'nama_sekolah', 'profil_sekolah_id', 'jabatan', 'must_change_password', 'is_approved', 'google2fa_secret', 'google2fa_aktif_at', 'google2fa_reset_diminta_at', 'kata_sandi_pemulihan_hash', 'kata_sandi_pemulihan_dibuat_at'])]
+#[Hidden(['password', 'remember_token', 'kata_sandi_pemulihan_hash'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -51,7 +51,22 @@ class User extends Authenticatable
             'google2fa_secret' => 'encrypted',
             'google2fa_aktif_at' => 'datetime',
             'google2fa_reset_diminta_at' => 'datetime',
+            'kata_sandi_pemulihan_hash' => 'hashed',
+            'kata_sandi_pemulihan_dibuat_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Audit keamanan 2026-10-14: apakah akun ini sudah punya kata sandi
+     * pemulihan (acak, per-akun) yang bisa dipakai di jalur "Pemulihan
+     * Akun" - lihat App\Livewire\Forms\LoginForm::pemulihan(). False
+     * berarti jalur itu tidak akan berhasil sampai dibuat dulu lewat menu
+     * Profil (akun sendiri) atau menu Kelola Pengguna (oleh Superadmin
+     * lain, khusus akun Superadmin lain).
+     */
+    public function adaKataSandiPemulihan(): bool
+    {
+        return ! empty($this->kata_sandi_pemulihan_hash);
     }
 
     public function isSuperadmin(): bool

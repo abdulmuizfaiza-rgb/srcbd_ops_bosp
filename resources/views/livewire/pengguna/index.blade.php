@@ -300,6 +300,9 @@
                                             @endif
                                             <button wire:click="konfirmasiSamakanAuthenticator({{ $item->id }})" class="text-blue-600 hover:underline">Samakan Kunci</button>
                                             <button wire:click="konfirmasiResetAuthenticator({{ $item->id }})" class="text-amber-600 hover:underline">Reset Authenticator</button>
+                                            @if ($item->level_akses === \App\Models\User::LEVEL_SUPERADMIN)
+                                                <button wire:click="konfirmasiBuatUlangKataSandiPemulihan({{ $item->id }})" class="text-amber-600 hover:underline">Buat Ulang Kata Sandi Pemulihan</button>
+                                            @endif
                                             @if ($item->id !== auth()->id())
                                                 <button wire:click="konfirmasiHapus({{ $item->id }})" class="text-red-600 hover:underline">Hapus</button>
                                             @endif
@@ -436,6 +439,49 @@
             <div class="mt-6 flex justify-end gap-3">
                 <x-secondary-button wire:click="batalResetAuthenticator">Batal</x-secondary-button>
                 <x-primary-button wire:click="resetAuthenticator" class="!bg-amber-600 hover:!bg-amber-700">Reset & Kirim Barcode Baru</x-primary-button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- Audit keamanan 2026-10-14: Modal Konfirmasi "Buat Ulang Kata Sandi
+    Pemulihan" (akun Superadmin lain) --}}
+    <x-modal name="pengguna-buat-ulang-kata-sandi-pemulihan" :show="$confirmingBuatUlangKataSandiPemulihanId !== null" maxWidth="md">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900">Buat ulang kata sandi pemulihan akun ini?</h2>
+            <p class="mt-1 text-sm text-slate-600">
+                Kata sandi pemulihan LAMA milik
+                <span class="font-medium text-slate-800">{{ $penggunaBuatUlangKataSandiPemulihan?->username }}</span>
+                (kalau ada) akan langsung tidak berlaku lagi, diganti nilai acak baru. Nilai baru akan ditampilkan SEKALI ke Anda - sampaikan ke pemilik akun lewat jalur yang aman (JANGAN lewat email akun itu sendiri).
+            </p>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-secondary-button wire:click="batalBuatUlangKataSandiPemulihan">Batal</x-secondary-button>
+                <x-primary-button wire:click="buatUlangKataSandiPemulihan" class="!bg-amber-600 hover:!bg-amber-700">Buat Ulang</x-primary-button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- Audit keamanan 2026-10-14: Modal tampil SEKALI nilai kata sandi
+    pemulihan yang baru dibuat --}}
+    <x-modal name="pengguna-kata-sandi-pemulihan-baru" :show="$kataSandiPemulihanBaru !== null" maxWidth="md">
+        <div class="p-6" x-data="{ disalin: false }">
+            <h2 class="text-lg font-medium text-slate-900">Kata Sandi Pemulihan Baru</h2>
+            <p class="mt-1 text-sm text-slate-600">
+                Nilai ini hanya ditampilkan SEKALI ini saja. Catat/salin sekarang, lalu sampaikan ke pemilik akun lewat jalur yang aman:
+            </p>
+
+            <div class="mt-3 flex items-center gap-2">
+                <code class="flex-1 select-all break-all rounded bg-slate-50 px-3 py-2 text-sm font-mono text-slate-800 ring-1 ring-slate-200">{{ $kataSandiPemulihanBaru }}</code>
+                <button type="button"
+                    @click="navigator.clipboard.writeText('{{ $kataSandiPemulihanBaru }}'); disalin = true; setTimeout(() => disalin = false, 2000)"
+                    class="rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition">
+                    <span x-show="!disalin">Salin</span>
+                    <span x-show="disalin" x-cloak>Tersalin!</span>
+                </button>
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <x-primary-button wire:click="tutupKataSandiPemulihanBaru">Tutup (saya sudah menyimpannya)</x-primary-button>
             </div>
         </div>
     </x-modal>

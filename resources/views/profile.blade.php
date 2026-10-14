@@ -27,6 +27,18 @@
                     <livewire:profile.update-password-form />
                 </div>
             </div>
+
+            {{-- Audit keamanan 2026-10-14: hanya Superadmin yang punya jalur
+                "Pemulihan Akun" mandiri di halaman login (lihat
+                LoginForm::pemulihan()), jadi menu kelola kata sandi
+                pemulihan ini juga HANYA ditampilkan untuk Superadmin. --}}
+            @if (auth()->user()->level_akses === \App\Models\User::LEVEL_SUPERADMIN)
+                <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
+                    <div class="max-w-xl">
+                        <livewire:profile.kata-sandi-pemulihan-form />
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 </x-app-layout>

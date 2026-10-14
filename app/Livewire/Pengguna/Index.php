@@ -9,9 +9,11 @@ use App\Models\LoginHistory;
 use App\Models\ProfilSekolah;
 use App\Models\User;
 use App\Services\GoogleAuthenticatorService;
+use App\Support\PasswordPolicy;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Throwable;
 use Livewire\Attributes\Layout;
@@ -58,6 +60,17 @@ class Index extends Component
     public int $perPageAuthenticator = 10;
 
     public ?int $confirmingResetAuthenticatorId = null;
+
+    /**
+     * Audit keamanan 2026-10-14: state modal "Buat Ulang Kata Sandi
+     * Pemulihan" - HANYA untuk akun Superadmin LAIN (lihat tombol di
+     * tab Superadmin), karena Admin OPS/Admin BOSP tidak punya jalur
+     * Pemulihan Akun sama sekali. Pemilik akun sendiri membuat ulang
+     * kata sandi pemulihannya lewat menu Profil (bukan dari sini).
+     */
+    public ?int $confirmingBuatUlangKataSandiPemulihanId = null;
+
+    public ?string $kataSandiPemulihanBaru = null;
 
     /**
      * State modal "Samakan Kunci Authenticator" (permintaan user
@@ -264,11 +277,16 @@ class Index extends Component
             ],
         ];
 
+        // Audit keamanan 2026-10-14: disamakan dgn PasswordPolicy yang
+        // sebelumnya hanya dipakai di form "Ganti Password" milik sendiri -
+        // supaya password yang DIBUAT/DI-SET LANGSUNG oleh Superadmin lewat
+        // menu ini juga tidak lebih lemah dari password yang dibuat sendiri
+        // oleh pemilik akun.
         $rules['password'] = $this->editingId
-            ? ['nullable', 'string', 'min:6']
-            : ['required', 'string', 'min:6'];
+            ? ['nullable', 'string', PasswordPolicy::rule()]
+            : ['required', 'string', PasswordPolicy::rule()];
 
-        $validated = $this->validate($rules);
+        $validated = $this->validate($rules, PasswordPolicy::messages('password'));
 
         // Aturan: satu sekolah hanya boleh punya 1 Admin OPS dan 1 Admin BOSP.
         if ($butuhSekolah) {
@@ -502,6 +520,58 @@ class Index extends Component
         } else {
             session()->flash('status', "Authenticator {$user->username} berhasil di-reset, TAPI email barcode baru GAGAL terkirim ke {$alamatEmail} (kemungkinan SMTP di server belum/salah dikonfigurasi). Kunci manual: {$secretBaru} - sampaikan secara manual ke yang bersangkutan untuk dimasukkan di aplikasi Authenticator.");
         }
+    }
+
+    /**
+     * Audit keamanan 2026-10-14: tampilkan modal konfirmasi "Buat Ulang
+     * Kata Sandi Pemulihan" untuk akun Superadmin LAIN - dipakai kalau
+     * pemilik akun lupa/hilang kata sandi pemulihannya sendiri dan tidak
+     * bisa membuatnya sendiri lewat menu Profil (mis. karena juga lupa
+     * password biasa & belum sempat login sama sekali).
+     */
+    public function konfirmasiBuatUlangKataSandiPemulihan(int $id): void
+    {
+        $this->confirmingBuatUlangKataSandiPemulihanId = $id;
+        $this->dispatch('open-modal', 'pengguna-buat-ulang-kata-sandi-pemulihan');
+    }
+
+    public function batalBuatUlangKataSandiPemulihan(): void
+    {
+        $this->confirmingBuatUlangKataSandiPemulihanId = null;
+        $this->dispatch('close-modal', 'pengguna-buat-ulang-kata-sandi-pemulihan');
+    }
+
+    /**
+     * Buat kata sandi pemulihan acak baru untuk akun Superadmin terpilih,
+     * simpan ter-hash (nilai lama otomatis tidak berlaku lagi), lalu
+     * tampilkan nilainya SEKALI ke Superadmin yang melakukan aksi ini
+     * (BUKAN dikirim lewat email - sengaja, supaya nilainya tidak ikut
+     * tersimpan di kotak masuk email akun yang bersangkutan, lihat audit
+     * keamanan 2026-10-14). Harus disampaikan secara manual ke pemilik
+     * akun lewat jalur yang aman (bukan email akun itu sendiri).
+     */
+    public function buatUlangKataSandiPemulihan(): void
+    {
+        $user = User::findOrFail($this->confirmingBuatUlangKataSandiPemulihanId);
+        abort_unless($user->isSuperadmin(), 403);
+
+        $nilaiBaru = Str::password(20);
+
+        $user->forceFill([
+            'kata_sandi_pemulihan_hash' => Hash::make($nilaiBaru),
+            'kata_sandi_pemulihan_dibuat_at' => now(),
+        ])->save();
+
+        $this->confirmingBuatUlangKataSandiPemulihanId = null;
+        $this->kataSandiPemulihanBaru = $nilaiBaru;
+        $this->dispatch('close-modal', 'pengguna-buat-ulang-kata-sandi-pemulihan');
+        $this->dispatch('open-modal', 'pengguna-kata-sandi-pemulihan-baru');
+    }
+
+    public function tutupKataSandiPemulihanBaru(): void
+    {
+        $this->kataSandiPemulihanBaru = null;
+        $this->dispatch('close-modal', 'pengguna-kata-sandi-pemulihan-baru');
     }
 
     /**
@@ -778,6 +848,7 @@ class Index extends Component
             ],
             'penggunaDireset' => $this->confirmingResetId ? User::find($this->confirmingResetId) : null,
             'penggunaDiresetAuthenticator' => $this->confirmingResetAuthenticatorId ? User::find($this->confirmingResetAuthenticatorId) : null,
+            'penggunaBuatUlangKataSandiPemulihan' => $this->confirmingBuatUlangKataSandiPemulihanId ? User::find($this->confirmingBuatUlangKataSandiPemulihanId) : null,
             'penggunaDisamakanAuthenticator' => $this->confirmingSamakanAuthenticatorId ? User::find($this->confirmingSamakanAuthenticatorId) : null,
             'penggunaTerpilihMassal' => $this->terpilihUntukSamakan
                 ? User::whereIn('id', $this->terpilihUntukSamakan)->orderBy('username')->get()
