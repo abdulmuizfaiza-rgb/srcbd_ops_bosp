@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\Syncable;
 
 /**
  * Tab "BMD" - Daftar Belanja Modal (permintaan user 2026-09-22, gambar
@@ -81,6 +82,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class RincianBelanjaModalBmd extends Model
 {
+    use Syncable;
+
     /** @use HasFactory<RincianBelanjaModalBmdFactory> */
     use HasFactory;
 

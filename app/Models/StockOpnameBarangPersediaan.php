@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\Syncable;
 
 /**
  * Stock Opname (Rincian Barang Persediaan BOSP) - Tab 2 pada menu
@@ -67,6 +68,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class StockOpnameBarangPersediaan extends Model
 {
+    use Syncable;
+
     /** @use HasFactory<StockOpnameBarangPersediaanFactory> */
     use HasFactory;
 

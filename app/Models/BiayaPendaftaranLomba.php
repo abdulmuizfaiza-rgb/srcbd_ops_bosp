@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\Syncable;
 
 /**
  * Biaya Pendaftaran Lomba/Bimtek/Workshop - data biaya pendaftaran
@@ -35,6 +36,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class BiayaPendaftaranLomba extends Model
 {
+    use Syncable;
+
     /** @use HasFactory<BiayaPendaftaranLombaFactory> */
     use HasFactory;
 

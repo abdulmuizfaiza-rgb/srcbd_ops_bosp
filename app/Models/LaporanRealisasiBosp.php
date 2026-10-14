@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\Syncable;
 
 /**
  * Laporan Realisasi BOSP (Form BPK) - 1 baris per sekolah, per tahun,
@@ -44,6 +45,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class LaporanRealisasiBosp extends Model
 {
+    use Syncable;
+
     /** @use HasFactory<LaporanRealisasiBospFactory> */
     use HasFactory;
 

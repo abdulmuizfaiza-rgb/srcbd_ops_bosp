@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\Syncable;
 
 /**
  * Langganan Daya dan Jasa - data langganan/tagihan (listrik, air,
@@ -37,6 +38,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class LanggananDayaJasa extends Model
 {
+    use Syncable;
+
     /** @use HasFactory<LanggananDayaJasaFactory> */
     use HasFactory;
 

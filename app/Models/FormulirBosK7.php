@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\Syncable;
 
 /**
  * Formulir BOS K7b & K7c - satu baris = 1 sekolah + 1 tahun + 1 bulan
@@ -52,6 +53,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class FormulirBosK7 extends Model
 {
+    use Syncable;
+
     /** @use HasFactory<FormulirBosK7Factory> */
     use HasFactory;
 

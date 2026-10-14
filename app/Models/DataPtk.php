@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\Syncable;
 
 /**
  * Data PTK (biodata lengkap Pendidik & Tenaga Kependidikan per sekolah) -
@@ -44,6 +45,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class DataPtk extends Model
 {
+    use Syncable;
+
     /** @use HasFactory<DataPtkFactory> */
     use HasFactory;
 

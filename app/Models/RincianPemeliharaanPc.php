@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\Syncable;
 
 /**
  * Rincian Pemeliharaan PC Komputer-Laptop-Printer dll - data belanja
@@ -51,6 +52,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class RincianPemeliharaanPc extends Model
 {
+    use Syncable;
+
     /** @use HasFactory<RincianPemeliharaanPcFactory> */
     use HasFactory;
 

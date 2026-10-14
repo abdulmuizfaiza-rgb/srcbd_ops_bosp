@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\Syncable;
 
 /**
  * Penerimaan Honor PTK - data honor yang diterima PTK (Pendidik dan
@@ -37,6 +38,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class PenerimaanHonorPtk extends Model
 {
+    use Syncable;
+
     /** @use HasFactory<PenerimaanHonorPtkFactory> */
     use HasFactory;
 

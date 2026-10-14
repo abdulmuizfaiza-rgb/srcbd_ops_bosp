@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\Syncable;
 
 /**
  * Rincian Belanja Modal - data belanja modal per sekolah, per tahun, per
@@ -49,6 +50,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class RincianBelanjaModal extends Model
 {
+    use Syncable;
+
     /** @use HasFactory<RincianBelanjaModalFactory> */
     use HasFactory;
 

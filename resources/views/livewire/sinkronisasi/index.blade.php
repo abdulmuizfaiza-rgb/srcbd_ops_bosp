@@ -1,0 +1,204 @@
+<x-slot name="header">
+    <h2 class="font-semibold text-xl text-slate-800 leading-tight">
+        {{ __('Sinkronisasi dan Tarik Data') }}
+    </h2>
+</x-slot>
+
+<div>
+    <div class="py-12">
+        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-6">
+
+            @if (session('sinkronisasi_success'))
+                <div class="p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm whitespace-pre-line">
+                    {{ session('sinkronisasi_success') }}
+                </div>
+            @endif
+
+            @if (session('sinkronisasi_error'))
+                <div class="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm whitespace-pre-line">
+                    {{ session('sinkronisasi_error') }}
+                </div>
+            @endif
+
+            {{-- Permintaan user 2026-10-14 poin 3: menu ini tampil di LOGIN
+                 SUPERADMIN baik di Lokal maupun Online, tapi tombol aksi
+                 hanya aktif di Lokal (lihat App\Livewire\Sinkronisasi\Index
+                 ::isLokal(), dari config('sync.peran')). --}}
+            <div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-4 text-sm">
+                Instalasi ini berperan sebagai:
+                <span class="font-bold">{{ $this->isLokal() ? 'LOKAL (bisa mengirim & menarik data)' : 'ONLINE (hanya melayani & menampilkan riwayat)' }}</span>.
+                @unless ($this->isLokal())
+                    Tombol Sinkronisasi &amp; Tarik Data HANYA bisa dijalankan dari Aplikasi Lokal - sisi Online ini tidak bisa memulai koneksi balik ke Lokal.
+                @endunless
+            </div>
+
+            @if ($this->isLokal())
+                {{-- ================= SISI LOKAL ================= --}}
+                <div class="bg-white shadow sm:rounded-lg p-4 sm:p-8 space-y-4">
+                    <h3 class="text-base font-bold text-slate-800">Pengaturan Koneksi ke Online</h3>
+                    <p class="text-sm text-slate-600">
+                        Isi alamat (URL) Aplikasi Online dan Token API yang dibuat lewat menu ini di sisi Online, lalu disalin ke sini.
+                    </p>
+
+                    <div>
+                        <x-input-label for="urlOnline" value="URL Aplikasi Online" />
+                        <x-text-input wire:model="urlOnline" id="urlOnline" class="block mt-1 w-full" type="url" placeholder="https://srcibadak.my.id" autocomplete="off" />
+                        <x-input-error :messages="$errors->get('urlOnline')" class="mt-2" />
+                    </div>
+                    <x-secondary-button wire:click="simpanUrlOnline" wire:loading.attr="disabled">Simpan URL</x-secondary-button>
+
+                    <div class="pt-4 border-t border-slate-200">
+                        <x-input-label for="tokenOnlineBaru" value="Token API Online (ganti/isi baru)" />
+                        <x-text-input wire:model="tokenOnlineBaru" id="tokenOnlineBaru" class="block mt-1 w-full" type="password" autocomplete="off" placeholder="Tempel Token API dari menu Sinkronisasi sisi Online" />
+                        <x-input-error :messages="$errors->get('tokenOnlineBaru')" class="mt-2" />
+                        <p class="mt-1 text-xs text-slate-500">
+                            Token saat ini: <span class="font-mono">{{ $pengaturan->token_online_samar ?? '(belum diisi)' }}</span>
+                        </p>
+                    </div>
+                    <x-secondary-button wire:click="simpanTokenOnline" wire:loading.attr="disabled">Simpan Token</x-secondary-button>
+
+                    <div class="pt-4 border-t border-slate-200 flex items-center gap-4">
+                        <x-secondary-button wire:click="tesKoneksi" wire:loading.attr="disabled" wire:target="tesKoneksi">
+                            <span wire:loading.remove wire:target="tesKoneksi">Tes Koneksi</span>
+                            <span wire:loading wire:target="tesKoneksi">Menguji koneksi...</span>
+                        </x-secondary-button>
+                        @if ($pengaturan->terakhir_tes_koneksi_pada)
+                            <span class="text-xs text-slate-500">
+                                Tes terakhir {{ $pengaturan->terakhir_tes_koneksi_pada->diffForHumans() }}:
+                                <span class="font-semibold {{ $pengaturan->terakhir_tes_koneksi_berhasil ? 'text-green-700' : 'text-red-700' }}">
+                                    {{ $pengaturan->terakhir_tes_koneksi_berhasil ? 'Berhasil' : 'Gagal' }}
+                                </span>
+                            </span>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="bg-white shadow sm:rounded-lg p-4 sm:p-8 space-y-4">
+                    <h3 class="text-base font-bold text-slate-800">Jalankan Sinkronisasi / Tarik Data</h3>
+                    <p class="text-sm text-slate-600">
+                        <span class="font-semibold">Sinkronisasi</span> = kirim data dari Lokal ini ke Online.
+                        <span class="font-semibold">Tarik Data</span> = ambil data dari Online ke Lokal ini.
+                        Kedua proses membandingkan waktu update tiap baris data (data lebih baru menang) dan membuat 1 backup pengaman otomatis dulu di sisi penerima sebelum menerapkan apa pun.
+                    </p>
+                    <div class="flex flex-wrap gap-3">
+                        <x-primary-button wire:click="konfirmasiSinkronisasi">Sinkronisasi (Kirim ke Online)</x-primary-button>
+                        <x-primary-button wire:click="konfirmasiTarikData">Tarik Data (Ambil dari Online)</x-primary-button>
+                    </div>
+                </div>
+            @else
+                {{-- ================= SISI ONLINE ================= --}}
+                <div class="bg-white shadow sm:rounded-lg p-4 sm:p-8 space-y-4">
+                    <h3 class="text-base font-bold text-slate-800">Token API untuk Sinkronisasi</h3>
+                    <p class="text-sm text-slate-600">
+                        Buat/ganti Token API di sini, lalu salin ke pengaturan menu Sinkronisasi di sisi Lokal.
+                        Membuat token baru akan MENCABUT token lama (hanya 1 token yang aktif pada satu waktu).
+                    </p>
+
+                    @if ($tokenBaruDitampilkan)
+                        <div class="p-4 bg-amber-50 border border-amber-300 rounded-lg">
+                            <p class="text-sm font-bold text-amber-800">Catat token ini SEKARANG - tidak akan ditampilkan lagi setelah halaman ini dimuat ulang:</p>
+                            <p class="mt-2 font-mono text-sm break-all bg-white border border-amber-200 rounded p-2">{{ $tokenBaruDitampilkan }}</p>
+                        </div>
+                    @endif
+
+                    <p class="text-sm text-slate-500">
+                        Status token saat ini:
+                        <span class="font-semibold {{ $tokenAktif ? 'text-green-700' : 'text-red-700' }}">
+                            {{ $tokenAktif ? 'Ada token aktif (dibuat '.$tokenAktif->created_at->diffForHumans().')' : 'Belum ada token aktif' }}
+                        </span>
+                    </p>
+
+                    <x-secondary-button wire:click="buatTokenBaru" wire:loading.attr="disabled">
+                        {{ $tokenAktif ? 'Ganti Token (cabut yang lama)' : 'Buat Token Baru' }}
+                    </x-secondary-button>
+                </div>
+
+                <div class="bg-white shadow sm:rounded-lg p-4 sm:p-8 space-y-3 opacity-60">
+                    <h3 class="text-base font-bold text-slate-800">Jalankan Sinkronisasi / Tarik Data</h3>
+                    <div class="flex flex-wrap gap-3">
+                        <x-primary-button disabled>Sinkronisasi (Kirim ke Online)</x-primary-button>
+                        <x-primary-button disabled>Tarik Data (Ambil dari Online)</x-primary-button>
+                    </div>
+                    <p class="text-xs text-slate-500">Nonaktif di sisi Online - jalankan dari Aplikasi Lokal.</p>
+                </div>
+            @endif
+
+            <div class="bg-white shadow sm:rounded-lg overflow-hidden">
+                <div class="px-4 sm:px-8 py-4 border-b border-slate-200">
+                    <h3 class="text-base font-bold text-slate-800">Riwayat Sinkronisasi Terakhir</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200 text-sm">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left font-semibold text-slate-600">Waktu</th>
+                                <th class="px-4 py-2 text-left font-semibold text-slate-600">Arah</th>
+                                <th class="px-4 py-2 text-left font-semibold text-slate-600">Status</th>
+                                <th class="px-4 py-2 text-left font-semibold text-slate-600">Dilakukan Oleh</th>
+                                <th class="px-4 py-2 text-left font-semibold text-slate-600">Keterangan</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @forelse ($riwayat as $log)
+                                <tr>
+                                    <td class="px-4 py-2 whitespace-nowrap text-slate-600">{{ $log->created_at->format('d/m/Y H:i') }}</td>
+                                    <td class="px-4 py-2 whitespace-nowrap text-slate-800">{{ \App\Models\SyncLog::labelArah($log->arah) }}</td>
+                                    <td class="px-4 py-2 whitespace-nowrap">
+                                        <span class="font-semibold {{ $log->status === 'berhasil' ? 'text-green-700' : 'text-red-700' }}">
+                                            {{ ucfirst($log->status) }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-2 whitespace-nowrap text-slate-600">{{ $log->dilakukanOleh?->display_name ?? '-' }}</td>
+                                    <td class="px-4 py-2 text-slate-500 text-xs">
+                                        @if ($log->status === 'gagal')
+                                            {{ $log->pesan_error }}
+                                        @elseif ($log->ringkasan)
+                                            {{ collect($log->ringkasan)->map(fn ($v, $k) => is_array($v) ? $k.': +'.($v['ditambah'] ?? 0).' ~'.($v['diupdate'] ?? 0) : null)->filter()->implode(', ') }}
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="px-4 py-6 text-center text-slate-400">Belum ada riwayat sinkronisasi.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <x-modal name="sinkronisasi-konfirmasi-kirim" :show="$confirmingSinkronisasi" maxWidth="md">
+        <div class="p-6">
+            <h2 class="text-lg font-bold text-red-700">Yakin ingin menjalankan Sinkronisasi?</h2>
+            <p class="mt-2 text-sm text-slate-600">
+                Seluruh data Pendataan OPS/BOSP, Data PTK, dan Profil Sekolah dari Lokal ini akan dikirim ke Online dan DIGABUNGKAN (data yang lebih baru menang). Online akan membuat 1 backup pengaman otomatis dulu sebelum menerapkannya.
+            </p>
+            <div class="mt-6 flex justify-end gap-3">
+                <x-secondary-button wire:click="batalSinkronisasi" wire:loading.attr="disabled" wire:target="jalankanSinkronisasi">Batal</x-secondary-button>
+                <x-primary-button wire:click="jalankanSinkronisasi" wire:loading.attr="disabled" wire:target="jalankanSinkronisasi" class="!bg-red-600 hover:!bg-red-700">
+                    <span wire:loading.remove wire:target="jalankanSinkronisasi">Ya, Sinkronisasi Sekarang</span>
+                    <span wire:loading wire:target="jalankanSinkronisasi">Sedang mengirim, mohon jangan tutup halaman ini...</span>
+                </x-primary-button>
+            </div>
+        </div>
+    </x-modal>
+
+    <x-modal name="sinkronisasi-konfirmasi-tarik" :show="$confirmingTarikData" maxWidth="md">
+        <div class="p-6">
+            <h2 class="text-lg font-bold text-red-700">Yakin ingin menjalankan Tarik Data?</h2>
+            <p class="mt-2 text-sm text-slate-600">
+                Seluruh data dari Online akan diambil dan DIGABUNGKAN ke database Lokal ini (data yang lebih baru menang). Lokal akan membuat 1 backup pengaman otomatis dulu sebelum menerapkannya.
+            </p>
+            <div class="mt-6 flex justify-end gap-3">
+                <x-secondary-button wire:click="batalTarikData" wire:loading.attr="disabled" wire:target="jalankanTarikData">Batal</x-secondary-button>
+                <x-primary-button wire:click="jalankanTarikData" wire:loading.attr="disabled" wire:target="jalankanTarikData" class="!bg-red-600 hover:!bg-red-700">
+                    <span wire:loading.remove wire:target="jalankanTarikData">Ya, Tarik Data Sekarang</span>
+                    <span wire:loading wire:target="jalankanTarikData">Sedang menarik data, mohon jangan tutup halaman ini...</span>
+                </x-primary-button>
+            </div>
+        </div>
+    </x-modal>
+</div>

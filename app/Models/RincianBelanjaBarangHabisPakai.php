@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Models\Concerns\Syncable;
 
 /**
  * Rincian Belanja Barang Habis Pakai - data belanja barang habis pakai
@@ -71,6 +72,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 ])]
 class RincianBelanjaBarangHabisPakai extends Model
 {
+    use Syncable;
+
     /** @use HasFactory<RincianBelanjaBarangHabisPakaiFactory> */
     use HasFactory;
 

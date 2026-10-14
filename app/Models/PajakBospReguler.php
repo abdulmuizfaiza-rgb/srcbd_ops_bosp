@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\Syncable;
 
 /**
  * Pajak BOSP Reguler - data pajak reguler & pajak daerah per sekolah, per
@@ -57,6 +58,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class PajakBospReguler extends Model
 {
+    use Syncable;
+
     /** @use HasFactory<PajakBospRegulerFactory> */
     use HasFactory;
 

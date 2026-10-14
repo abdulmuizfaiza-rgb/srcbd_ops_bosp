@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\Syncable;
 
 /**
  * Lampiran 2b - keterangan/TMT per PTK, per sekolah, per triwulan (1-4).
@@ -31,6 +32,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class Lampiran2b extends Model
 {
+    use Syncable;
+
     /** @use HasFactory<Lampiran2bFactory> */
     use HasFactory;
 

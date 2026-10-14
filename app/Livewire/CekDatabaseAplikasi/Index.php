@@ -30,6 +30,7 @@ use App\Models\StockOpnameBarangPersediaan;
 use App\Models\SuratTpg;
 use App\Models\User;
 use App\Models\VervalRealisasiBosp;
+use App\Support\RegistriModulSekolah;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -124,31 +125,7 @@ class Index extends Component
      */
     private function modulTerikatSekolah(): array
     {
-        return [
-            'Lampiran 2A' => Lampiran2a::class,
-            'Lampiran 2B' => Lampiran2b::class,
-            'Lampiran 2C' => Lampiran2c::class,
-            'Surat TPG' => SuratTpg::class,
-            'Rekap RKAS' => RekapRkas::class,
-            'Dana BOSP Tahap' => DanaBospTahap::class,
-            'Penerimaan Honor PTK' => PenerimaanHonorPtk::class,
-            'Langganan Daya dan Jasa' => LanggananDayaJasa::class,
-            'Belanja Pemeliharaan Bangunan' => RincianPemeliharaan::class,
-            'Belanja Pemeliharaan PC' => RincianPemeliharaanPc::class,
-            'Biaya Pendaftaran Lomba' => BiayaPendaftaranLomba::class,
-            'Belanja Honor Kegiatan' => BelanjaHonorKegiatan::class,
-            'Rincian Belanja Modal' => RincianBelanjaModal::class,
-            'Rincian Belanja Modal (BMD)' => RincianBelanjaModalBmd::class,
-            'Rincian Belanja Barang Habis Pakai' => RincianBelanjaBarangHabisPakai::class,
-            'Pajak BOSP Reguler' => PajakBospReguler::class,
-            'Laporan Realisasi BOSP' => LaporanRealisasiBosp::class,
-            'Stock Opname Barang Persediaan' => StockOpnameBarangPersediaan::class,
-            'Formulir BOS K7' => FormulirBosK7::class,
-            'Verval Realisasi BOSP' => VervalRealisasiBosp::class,
-            'Pendataan OPS (Identitas)' => PendataanOps::class,
-            'Pendataan BOSP (Identitas)' => PendataanBosp::class,
-            'Data PTK' => DataPtk::class,
-        ];
+        return RegistriModulSekolah::semua();
     }
 
     /**
@@ -162,24 +139,7 @@ class Index extends Component
      */
     private function modulKunciUnik(): array
     {
-        return [
-            'Rekap RKAS' => [RekapRkas::class, ['profil_sekolah_id', 'tahun']],
-            'Dana BOSP Tahap' => [DanaBospTahap::class, ['profil_sekolah_id', 'tahun']],
-            'Penerimaan Honor PTK' => [PenerimaanHonorPtk::class, ['profil_sekolah_id', 'tahun', 'triwulan', 'nuptk']],
-            'Pajak BOSP Reguler' => [PajakBospReguler::class, ['profil_sekolah_id', 'tahun', 'bulan']],
-            'Laporan Realisasi BOSP' => [LaporanRealisasiBosp::class, ['profil_sekolah_id', 'tahun', 'triwulan']],
-            'Formulir BOS K7' => [FormulirBosK7::class, ['profil_sekolah_id', 'tahun', 'bulan']],
-            'Verval Realisasi BOSP' => [VervalRealisasiBosp::class, ['profil_sekolah_id', 'tahun', 'triwulan']],
-            'Surat TPG' => [SuratTpg::class, ['profil_sekolah_id', 'tahun', 'triwulan', 'jenis']],
-            'Pendataan OPS (Identitas)' => [PendataanOps::class, ['profil_sekolah_id']],
-            'Pendataan BOSP (Identitas)' => [PendataanBosp::class, ['profil_sekolah_id']],
-            // Kunci uniknya HANYA 'nik' (bukan dikombinasikan dengan
-            // profil_sekolah_id seperti modul lain di atas) karena NIK
-            // wajib unik secara GLOBAL lintas sekolah (lihat unique
-            // constraint di migration create_data_ptk_table - 1 NIK = 1
-            // orang PTK, tidak boleh dipakai sekolah lain).
-            'Data PTK' => [DataPtk::class, ['nik']],
-        ];
+        return RegistriModulSekolah::kunciUnik();
     }
 
     /**

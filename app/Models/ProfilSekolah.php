@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Concerns\Syncable;
 
 #[Fillable([
     'npsn',
@@ -32,6 +33,8 @@ use Illuminate\Support\Facades\Storage;
 ])]
 class ProfilSekolah extends Model
 {
+    use Syncable;
+
     /** @use HasFactory<ProfilSekolahFactory> */
     use HasFactory;
 

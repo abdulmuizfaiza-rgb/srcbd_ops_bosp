@@ -8,6 +8,11 @@ use Illuminate\Http\Request;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        // routes/api.php ditambahkan khusus untuk fitur "Sinkronisasi dan
+        // Tarik Data" (permintaan user 2026-10-14 poin 3) - lihat
+        // App\Http\Middleware\EnsureSyncTokenValid untuk autentikasinya
+        // (token API, BUKAN sesi login seperti routes/web.php).
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -22,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
+            'sync.token' => \App\Http\Middleware\EnsureSyncTokenValid::class,
         ]);
 
         $middleware->web(append: [

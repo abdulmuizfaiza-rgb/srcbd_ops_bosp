@@ -10,6 +10,7 @@ use App\Http\Controllers\SuratTpgCetakController;
 use App\Http\Controllers\SuratTpgCetakSemuaController;
 use App\Http\Controllers\TampilanBackgroundController;
 use App\Livewire\Backup\Index as BackupIndex;
+use App\Livewire\Sinkronisasi\Index as SinkronisasiIndex;
 use App\Livewire\CekDatabaseAplikasi\Index as CekDatabaseAplikasiIndex;
 use App\Livewire\Beranda\Index as BerandaIndex;
 use App\Livewire\Dashboard\Index as DashboardIndex;
@@ -147,6 +148,13 @@ Route::middleware(['auth', 'can:akses-panduan-aplikasi'])->group(function () {
 Route::middleware(['auth', 'can:akses-backup'])->group(function () {
     Route::get('backup', BackupIndex::class)->name('backup.index');
     Route::get('backup/{backup}/unduh', [BackupFileController::class, 'unduh'])->name('backup.unduh');
+});
+
+// Menu "Sinkronisasi dan Tarik Data" (BARU, permintaan user 2026-10-14
+// poin 3) - khusus Superadmin (Gate 'akses-sinkronisasi', lihat
+// App\Providers\AppServiceProvider).
+Route::middleware(['auth', 'can:akses-sinkronisasi'])->group(function () {
+    Route::get('sinkronisasi', SinkronisasiIndex::class)->name('sinkronisasi.index');
 });
 
 // Menu "Pengumuman" (BARU, 2026-09-26, permintaan user - running text di

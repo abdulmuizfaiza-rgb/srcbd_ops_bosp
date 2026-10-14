@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\Syncable;
 
 /**
  * Rekap RKAS Awal-Perubahan - 1 baris per sekolah PER TAHUN (beda dengan
@@ -70,6 +71,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class RekapRkas extends Model
 {
+    use Syncable;
+
     /** @use HasFactory<RekapRkasFactory> */
     use HasFactory;
 

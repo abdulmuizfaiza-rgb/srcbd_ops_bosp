@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Collection;
+use App\Models\Concerns\Syncable;
 
 // Catatan: BelanjaHonorKegiatan, BiayaPendaftaranLomba, FormulirBosK7,
 // LanggananDayaJasa, PajakBospReguler, PenerimaanHonorPtk,
@@ -32,6 +33,8 @@ use Illuminate\Support\Collection;
 ])]
 class VervalRealisasiBosp extends Model
 {
+    use Syncable;
+
     protected $table = 'verval_realisasi_bosp';
 
     public const STATUS_SESUAI = 'sesuai';

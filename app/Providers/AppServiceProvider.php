@@ -130,5 +130,12 @@ class AppServiceProvider extends ServiceProvider
         // 2026-09-27) - kontrol integritas data & keamanan akses, khusus
         // Superadmin, sama seperti pola gate-gate lain di atas.
         Gate::define('akses-cek-database-aplikasi', fn (User $user) => $user->isSuperadmin());
+
+        // Menu "Sinkronisasi dan Tarik Data" (BARU, permintaan user
+        // 2026-10-14 poin 3) - khusus Superadmin (jawaban AskUserQuestion
+        // sebelumnya: "hanya superadmin yang bisa melakukan nya dan
+        // muncul di login superadmin"), sama seperti pola gate-gate lain
+        // di atas.
+        Gate::define('akses-sinkronisasi', fn (User $user) => $user->isSuperadmin());
     }
 }

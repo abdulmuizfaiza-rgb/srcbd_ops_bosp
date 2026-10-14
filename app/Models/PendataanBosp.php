@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\Syncable;
 
 /**
  * Identitas Admin BOSP (satu data per sekolah, dikelola oleh Admin BOSP
@@ -29,6 +30,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class PendataanBosp extends Model
 {
+    use Syncable;
+
     /** @use HasFactory<PendataanBospFactory> */
     use HasFactory;
 

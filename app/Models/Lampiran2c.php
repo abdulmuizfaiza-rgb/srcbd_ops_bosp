@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\Syncable;
 
 /**
  * Lampiran 2c - Daftar Penyesuaian Gaji Pokok PTK, per sekolah, per
@@ -38,6 +39,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class Lampiran2c extends Model
 {
+    use Syncable;
+
     /** @use HasFactory<Lampiran2cFactory> */
     use HasFactory;
 
