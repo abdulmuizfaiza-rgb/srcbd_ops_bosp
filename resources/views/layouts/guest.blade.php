@@ -58,6 +58,16 @@
                 </a>
             </div>
 
+            {{-- Permintaan user 2026-10-14: kotak form dibuat LEBIH transparan
+                 (bg-white/70 -> bg-white/25) supaya latar belakang halaman
+                 (gradasi/gambar yang diatur Superadmin lewat menu Tampilan)
+                 lebih terlihat jelas menembus kotak form - berlaku untuk
+                 SEMUA halaman auth yang memakai layout ini (Login,
+                 Registrasi, Verifikasi Akses, Verifikasi Authenticator,
+                 Aktivasi Authenticator). Blur (backdrop-blur-2xl) & teks
+                 tebal (.teks-tebal-akses, lihat resources/css/app.css)
+                 DIPERTAHANKAN supaya tulisan & kotak input tetap mudah
+                 dibaca walau kotaknya lebih transparan. --}}
             <div
                 x-data="{
                     rotateX: 0,
@@ -88,7 +98,7 @@
                     attribute yang sama.
                 --}}
                 :style="{ transform: 'perspective(1200px) rotateX(' + rotateX + 'deg) rotateY(' + rotateY + 'deg)' }"
-                class="teks-tebal-akses relative z-10 w-full sm:max-w-md mt-6 px-6 py-6 bg-white/70 backdrop-blur-2xl shadow-2xl ring-1 ring-white/30 overflow-hidden sm:rounded-2xl transition-transform duration-200 ease-out will-change-transform animate-fade-in-up"
+                class="teks-tebal-akses relative z-10 w-full sm:max-w-md mt-6 px-6 py-6 bg-white/25 backdrop-blur-2xl shadow-2xl ring-1 ring-white/30 overflow-hidden sm:rounded-2xl transition-transform duration-200 ease-out will-change-transform animate-fade-in-up"
                 @if ($tampilanHalaman->background_login_url)
                     style="background-image: url('{{ $tampilanHalaman->background_login_url }}'); background-size: cover; background-position: center;"
                 @endif
