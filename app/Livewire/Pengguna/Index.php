@@ -73,6 +73,22 @@ class Index extends Component
 
     public string $kodeSamaValid = '';
 
+    /**
+     * State pemilihan massal utk "Samakan Kunci Massal" (permintaan user
+     * 2026-10-13 lanjutan) - daftar ID pengguna yang dicentang, SENGAJA
+     * TIDAK direset saat pindah tab/halaman (lihat pindahTab()), supaya bisa
+     * pilih dari beberapa tab/halaman sebelum diproses sekaligus.
+     */
+    public array $terpilihUntukSamakan = [];
+
+    public bool $showModalSamakanMassal = false;
+
+    /** @var array<int, string> */
+    public array $kunciMassal = [];
+
+    /** @var array<int, string> */
+    public array $kodeMassal = [];
+
     // State form modal
     public bool $showForm = false;
 
@@ -560,6 +576,123 @@ class Index extends Component
     }
 
     /**
+     * Centang/batal-centang SEMUA baris yang sedang tampil di halaman ini
+     * (lintas tab - Authenticator / Superadmin / Admin OPS / Admin BOSP)
+     * sekaligus, dipanggil dari checkbox "pilih semua di halaman ini" lewat
+     * Alpine ($wire) dengan daftar ID baris yg sedang tampil (permintaan
+     * user 2026-10-13 lanjutan: "pilih sekolah semuanya, tidak perlu
+     * klik satu-satu").
+     */
+    public function pilihSemuaDiHalamanIni(bool $centang, array $ids): void
+    {
+        if ($centang) {
+            $this->terpilihUntukSamakan = array_values(array_unique([...$this->terpilihUntukSamakan, ...$ids]));
+        } else {
+            $this->terpilihUntukSamakan = array_values(array_diff($this->terpilihUntukSamakan, $ids));
+        }
+    }
+
+    public function bersihkanPilihanSamakan(): void
+    {
+        $this->terpilihUntukSamakan = [];
+    }
+
+    /**
+     * Tampilkan modal "Samakan Kunci Massal" - SETIAP akun yang dicentang
+     * tetap pakai KUNCI & KODE-nya MASING-MASING sendiri (TIDAK dibuatkan 1
+     * kunci yang sama utk banyak akun - itu tidak aman karena tiap akun
+     * biasanya dipegang HP/orang berbeda). Fitur ini cuma menghemat
+     * navigasi: isi semuanya dalam 1 layar, bukan buka-tutup modal
+     * satu-satu per akun (dikonfirmasi user lewat AskUserQuestion
+     * 2026-10-13).
+     */
+    public function bukaSamakanMassal(): void
+    {
+        if (empty($this->terpilihUntukSamakan)) {
+            return;
+        }
+
+        $this->kunciMassal = [];
+        $this->kodeMassal = [];
+        $this->showModalSamakanMassal = true;
+        $this->dispatch('open-modal', 'pengguna-samakan-massal');
+    }
+
+    public function tutupSamakanMassal(): void
+    {
+        $this->showModalSamakanMassal = false;
+        $this->dispatch('close-modal', 'pengguna-samakan-massal');
+    }
+
+    /**
+     * Proses semua akun terpilih SATU PER SATU - kunci & kode tiap akun
+     * divalidasi cocok sendiri-sendiri sebelum disimpan (pola yang sama
+     * persis dgn samakanAuthenticator() single di atas, cuma diulang per
+     * baris). Akun yang kunci/kode-nya dikosongkan dilewati diam-diam
+     * (dianggap belum siap/batal); akun yang diisi tapi TIDAK cocok
+     * dilaporkan gagal di pesan akhir supaya bisa diulang satu-satu lewat
+     * tombol "Samakan Kunci" biasa.
+     */
+    public function samakanKunciMassal(GoogleAuthenticatorService $layanan): void
+    {
+        $berhasil = [];
+        $gagal = [];
+
+        foreach ($this->terpilihUntukSamakan as $id) {
+            $kunci = trim($this->kunciMassal[$id] ?? '');
+            $kode = trim($this->kodeMassal[$id] ?? '');
+
+            if ($kunci === '' && $kode === '') {
+                continue;
+            }
+
+            $user = User::find($id);
+
+            if (! $user) {
+                continue;
+            }
+
+            if ($kunci === '' || ! preg_match('/^\d{6}$/', $kode)) {
+                $gagal[] = "{$user->username} (kunci/kode belum lengkap)";
+
+                continue;
+            }
+
+            $kunciRapi = $layanan->rapikanKunciManual($kunci);
+
+            if (! $layanan->kodeValid($kunciRapi, $kode)) {
+                $gagal[] = "{$user->username} (kunci/kode tidak cocok)";
+
+                continue;
+            }
+
+            $user->forceFill([
+                'google2fa_secret' => $kunciRapi,
+                'google2fa_aktif_at' => now(),
+                'google2fa_reset_diminta_at' => null,
+            ])->save();
+
+            $berhasil[] = $user->username;
+        }
+
+        $this->showModalSamakanMassal = false;
+        $this->kunciMassal = [];
+        $this->kodeMassal = [];
+        $this->terpilihUntukSamakan = [];
+        $this->dispatch('close-modal', 'pengguna-samakan-massal');
+
+        $pesan = $berhasil
+            ? 'Kunci Authenticator berhasil disamakan untuk: '.implode(', ', $berhasil).'.'
+            : 'Tidak ada akun yang berhasil disamakan (cek lagi kunci/kode yang diisi).';
+
+        if ($gagal) {
+            $pesan .= ' GAGAL, silakan ulangi satu-satu lewat tombol "Samakan Kunci": '.implode(', ', $gagal).'.';
+        }
+
+        session()->flash('status', $pesan);
+    }
+
+    /**
      * Password sementara 6 karakter, kombinasi huruf & angka (dijamin
      * mengandung minimal 1 huruf DAN 1 angka, bukan cuma acak murni yang
      * bisa saja kebetulan semua huruf/semua angka). Karakter yang mirip
@@ -646,6 +779,9 @@ class Index extends Component
             'penggunaDireset' => $this->confirmingResetId ? User::find($this->confirmingResetId) : null,
             'penggunaDiresetAuthenticator' => $this->confirmingResetAuthenticatorId ? User::find($this->confirmingResetAuthenticatorId) : null,
             'penggunaDisamakanAuthenticator' => $this->confirmingSamakanAuthenticatorId ? User::find($this->confirmingSamakanAuthenticatorId) : null,
+            'penggunaTerpilihMassal' => $this->terpilihUntukSamakan
+                ? User::whereIn('id', $this->terpilihUntukSamakan)->orderBy('username')->get()
+                : collect(),
         ]);
     }
 }

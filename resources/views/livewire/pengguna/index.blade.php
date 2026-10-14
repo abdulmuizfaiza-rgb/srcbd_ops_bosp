@@ -155,10 +155,26 @@
                             <x-zoom-controls :zoom="$zoomPercent" />
                         </div>
 
+                        @if (count($terpilihUntukSamakan))
+                            <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                                <p class="text-sm text-blue-800">{{ count($terpilihUntukSamakan) }} akun dipilih untuk disamakan kuncinya (boleh lintas tab).</p>
+                                <div class="flex items-center gap-3">
+                                    <button wire:click="bersihkanPilihanSamakan" class="text-sm text-slate-500 hover:underline">Batal pilih</button>
+                                    <x-primary-button wire:click="bukaSamakanMassal">Samakan Kunci Terpilih</x-primary-button>
+                                </div>
+                            </div>
+                        @endif
+
                         <div class="overflow-auto scrollbar-modern border border-slate-200 rounded-lg" style="max-height: 28rem; zoom: {{ $zoomPercent }}%;">
                             <table class="min-w-full divide-y divide-slate-200 text-sm">
                                 <thead class="sticky top-0 bg-slate-50">
                                     <tr class="text-left text-slate-500">
+                                        <th class="px-3 py-2 w-8">
+                                            <input type="checkbox"
+                                                class="rounded border-slate-300"
+                                                @checked($penggunaAuthenticator->count() > 0 && count(array_intersect($penggunaAuthenticator->pluck('id')->toArray(), $terpilihUntukSamakan)) === $penggunaAuthenticator->count())
+                                                @change="$wire.pilihSemuaDiHalamanIni($event.target.checked, @js($penggunaAuthenticator->pluck('id')))">
+                                        </th>
                                         <th class="px-3 py-2">Username</th>
                                         <th class="px-3 py-2">Nama Sekolah</th>
                                         <th class="px-3 py-2">Level Akses</th>
@@ -169,6 +185,9 @@
                                 <tbody class="divide-y divide-slate-100 bg-white">
                                     @forelse ($penggunaAuthenticator as $item)
                                         <tr class="@if ($item->google2fa_reset_diminta_at) bg-amber-50 @endif">
+                                            <td class="px-3 py-2">
+                                                <input type="checkbox" wire:model.live="terpilihUntukSamakan" value="{{ $item->id }}" class="rounded border-slate-300">
+                                            </td>
                                             <td class="px-3 py-2 font-medium text-slate-800 whitespace-nowrap">{{ $item->username }}</td>
                                             <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->nama_sekolah ?: '-' }}</td>
                                             <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->level_akses_label }}</td>
@@ -189,7 +208,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="5" class="px-3 py-6 text-center text-slate-400">Belum ada data pengguna.</td>
+                                            <td colspan="6" class="px-3 py-6 text-center text-slate-400">Belum ada data pengguna.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -220,6 +239,16 @@
                         <x-primary-button wire:click="tambah">+ Tambah {{ $levelOptions[$tab] }}</x-primary-button>
                     </div>
 
+                    @if (count($terpilihUntukSamakan))
+                        <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                            <p class="text-sm text-blue-800">{{ count($terpilihUntukSamakan) }} akun dipilih untuk disamakan kuncinya (boleh lintas tab).</p>
+                            <div class="flex items-center gap-3">
+                                <button wire:click="bersihkanPilihanSamakan" class="text-sm text-slate-500 hover:underline">Batal pilih</button>
+                                <x-primary-button wire:click="bukaSamakanMassal">Samakan Kunci Terpilih</x-primary-button>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="flex justify-end mb-3">
                         <x-zoom-controls :zoom="$zoomPercent" />
                     </div>
@@ -228,6 +257,12 @@
                         <table class="min-w-full divide-y divide-slate-200 text-sm">
                             <thead>
                                 <tr class="text-left text-slate-500">
+                                    <th class="px-3 py-2 w-8">
+                                        <input type="checkbox"
+                                            class="rounded border-slate-300"
+                                            @checked($pengguna->count() > 0 && count(array_intersect($pengguna->pluck('id')->toArray(), $terpilihUntukSamakan)) === $pengguna->count())
+                                            @change="$wire.pilihSemuaDiHalamanIni($event.target.checked, @js($pengguna->pluck('id')))">
+                                    </th>
                                     <th class="px-3 py-2">Username</th>
                                     @if ($tab !== 'superadmin')
                                         <th class="px-3 py-2">Nama Sekolah</th>
@@ -240,6 +275,9 @@
                             <tbody class="divide-y divide-slate-100">
                                 @forelse ($pengguna as $item)
                                     <tr>
+                                        <td class="px-3 py-2">
+                                            <input type="checkbox" wire:model.live="terpilihUntukSamakan" value="{{ $item->id }}" class="rounded border-slate-300">
+                                        </td>
                                         <td class="px-3 py-2 font-medium text-slate-800">{{ $item->username }}</td>
                                         @if ($tab !== 'superadmin')
                                             <td class="px-3 py-2 text-slate-600">{{ $item->nama_sekolah ?: '-' }}</td>
@@ -252,7 +290,7 @@
                                                 <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">Menunggu Persetujuan</span>
                                             @endif
                                         </td>
-                                        <td class="px-3 py-2 text-right space-x-2">
+                                        <td class="px-3 py-2 text-right space-x-2 whitespace-nowrap">
                                             @unless ($item->is_approved)
                                                 <button wire:click="setujui({{ $item->id }})" class="text-emerald-600 hover:underline">Setujui</button>
                                             @endunless
@@ -260,6 +298,8 @@
                                             @if ($item->level_akses !== \App\Models\User::LEVEL_SUPERADMIN)
                                                 <button wire:click="konfirmasiReset({{ $item->id }})" class="text-amber-600 hover:underline">Reset Password</button>
                                             @endif
+                                            <button wire:click="konfirmasiSamakanAuthenticator({{ $item->id }})" class="text-blue-600 hover:underline">Samakan Kunci</button>
+                                            <button wire:click="konfirmasiResetAuthenticator({{ $item->id }})" class="text-amber-600 hover:underline">Reset Authenticator</button>
                                             @if ($item->id !== auth()->id())
                                                 <button wire:click="konfirmasiHapus({{ $item->id }})" class="text-red-600 hover:underline">Hapus</button>
                                             @endif
@@ -267,7 +307,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="5" class="px-3 py-6 text-center text-slate-400">Belum ada data pengguna di tab ini.</td>
+                                        <td colspan="6" class="px-3 py-6 text-center text-slate-400">Belum ada data pengguna di tab ini.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -433,6 +473,45 @@
                 <div class="flex justify-end gap-3">
                     <x-secondary-button type="button" wire:click="batalSamakanAuthenticator">Batal</x-secondary-button>
                     <x-primary-button type="submit">Samakan Kunci</x-primary-button>
+                </div>
+            </form>
+        </div>
+    </x-modal>
+
+    {{-- Modal Samakan Kunci Massal (permintaan user 2026-10-13 lanjutan) -
+    isi kunci & kode MASING-MASING akun terpilih dalam 1 layar, supaya tidak
+    perlu buka-tutup modal satu-satu. Tiap akun tetap pakai kunci sendiri -
+    TIDAK ada 1 kunci yang dipakai bersama utk banyak akun. --}}
+    <x-modal name="pengguna-samakan-massal" :show="$showModalSamakanMassal" maxWidth="2xl">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900">Samakan Kunci Authenticator - {{ count($terpilihUntukSamakan) }} Akun Terpilih</h2>
+            <p class="mt-1 text-sm text-slate-600">
+                Isi kunci manual & kode 6 digit tiap akun di bawah (dapatkan dari aplikasi lokal/online satunya, sama seperti cara "Samakan Kunci" satu-satu - lihat penjelasan di modal itu). Akun yang dikosongkan (tidak diisi sama sekali) akan DILEWATI, tidak diubah.
+            </p>
+
+            <form wire:submit="samakanKunciMassal" class="mt-4 space-y-3 max-h-[28rem] overflow-y-auto pr-1">
+                @foreach ($penggunaTerpilihMassal as $item)
+                    <div class="border border-slate-200 rounded-lg p-3">
+                        <p class="text-sm font-medium text-slate-800">
+                            {{ $item->username }}
+                            <span class="font-normal text-slate-500">({{ $item->level_akses_label }}{{ $item->nama_sekolah ? ' - '.$item->nama_sekolah : '' }})</span>
+                        </p>
+                        <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <x-input-label :for="'kunciMassal-'.$item->id" value="Kunci Manual" class="text-xs" />
+                                <x-text-input wire:model="kunciMassal.{{ $item->id }}" id="kunciMassal-{{ $item->id }}" class="block mt-1 w-full font-mono text-sm" type="text" autocomplete="off" />
+                            </div>
+                            <div>
+                                <x-input-label :for="'kodeMassal-'.$item->id" value="Kode 6 Digit" class="text-xs" />
+                                <x-text-input wire:model="kodeMassal.{{ $item->id }}" id="kodeMassal-{{ $item->id }}" class="block mt-1 w-full text-center tracking-widest" type="text" inputmode="numeric" maxlength="6" autocomplete="off" />
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <x-secondary-button type="button" wire:click="tutupSamakanMassal">Batal</x-secondary-button>
+                    <x-primary-button type="submit">Samakan Semua</x-primary-button>
                 </div>
             </form>
         </div>
