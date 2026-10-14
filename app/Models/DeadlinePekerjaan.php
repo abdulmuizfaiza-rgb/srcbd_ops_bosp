@@ -21,7 +21,7 @@ use Illuminate\Support\Carbon;
  * triwulan) - jawaban AskUserQuestion "Cakupan triwulan": "Semua 16
  * tahap kerja (Recommended)".
  */
-#[Fillable(['tahun', 'kunci_menu', 'triwulan', 'tanggal_deadline', 'diatur_oleh'])]
+#[Fillable(['tahun', 'kunci_menu', 'triwulan', 'tanggal_mulai', 'tanggal_deadline', 'diatur_oleh'])]
 class DeadlinePekerjaan extends Model
 {
     protected $table = 'deadline_pekerjaan';
@@ -31,7 +31,8 @@ class DeadlinePekerjaan extends Model
         return [
             'tahun' => 'integer',
             'triwulan' => 'integer',
-            'tanggal_deadline' => 'date',
+            'tanggal_mulai' => 'datetime',
+            'tanggal_deadline' => 'datetime',
         ];
     }
 
@@ -106,7 +107,7 @@ class DeadlinePekerjaan extends Model
     {
         $deadline = self::untuk($kunciMenu, $tahun, $triwulan);
 
-        return $deadline !== null && $deadline->tanggal_deadline->lt(Carbon::today());
+        return $deadline !== null && $deadline->tanggal_deadline->lt(Carbon::now());
     }
 
     /**
@@ -114,11 +115,11 @@ class DeadlinePekerjaan extends Model
      * HANYA boleh dipanggil oleh Superadmin (guard peran ada di
      * App\Livewire\TimelinePekerjaan\Index::simpanDeadline()).
      */
-    public static function aturDeadline(string $kunciMenu, int $tahun, int $triwulan, string $tanggal, ?int $diaturOleh): self
+    public static function aturDeadline(string $kunciMenu, int $tahun, int $triwulan, ?string $tanggalMulai, string $tanggalAkhir, ?int $diaturOleh): self
     {
         return self::updateOrCreate(
             ['kunci_menu' => $kunciMenu, 'tahun' => $tahun, 'triwulan' => $triwulan],
-            ['tanggal_deadline' => $tanggal, 'diatur_oleh' => $diaturOleh]
+            ['tanggal_mulai' => $tanggalMulai, 'tanggal_deadline' => $tanggalAkhir, 'diatur_oleh' => $diaturOleh]
         );
     }
 
@@ -181,7 +182,7 @@ class DeadlinePekerjaan extends Model
         $terlambat = self::query()
             ->whereIn('kunci_menu', $kunciKategoriIni)
             ->where('tahun', now()->year)
-            ->whereDate('tanggal_deadline', '<', Carbon::today())
+            ->where('tanggal_deadline', '<', Carbon::now())
             ->orderBy('tanggal_deadline')
             ->get();
 
@@ -196,7 +197,7 @@ class DeadlinePekerjaan extends Model
             'jumlah' => $terlambat->count(),
             'labelPalingMendesak' => $labelPalingMendesak,
             'triwulanPalingMendesak' => $palingMendesak->triwulan,
-            'tanggalPalingMendesak' => $palingMendesak->tanggal_deadline->translatedFormat('d F Y'),
+            'tanggalPalingMendesak' => $palingMendesak->tanggal_deadline->translatedFormat('d F Y, H:i'),
         ];
     }
 

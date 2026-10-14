@@ -94,6 +94,20 @@ class Index extends Component
     public array $tanggal = [];
 
     /**
+     * Tanggal+jam MULAI pekerjaan (opsional, murni informasi - TIDAK
+     * ikut memblokir input) - round ketiga belas bagian B (permintaan
+     * user 2026-10-14 poin 4: "tambahkan tanggal awal dimulai
+     * pekerjaan ... disertai dengan waktunya"). Key array & format sama
+     * seperti $tanggal (lihat docblocknya) - HANYA diisi lewat tombol
+     * Simpan per baris (bersamaan dengan $tanggal/tanggal akhir), TIDAK
+     * ikut pada tombol "Terapkan ke Semua" (yang tetap hanya menyentuh
+     * tanggal akhir/deadline, sesuai perilaku lama yang sudah ada).
+     *
+     * @var array<string, string|null>
+     */
+    public array $tanggalMulai = [];
+
+    /**
      * Tanggal yang dipilih pada kotak "Terapkan ke Semua" - round
      * kesembilan bagian B: TIDAK auto-save seperti kotak per baris,
      * HANYA disimpan begitu tombol "Terapkan ke Semua" kategori terkait
@@ -150,9 +164,11 @@ class Index extends Component
             ->keyBy('kunci_menu');
 
         $this->tanggal = [];
+        $this->tanggalMulai = [];
         foreach (DeadlinePekerjaan::daftarTahapKerja() as $kunciMenu => $info) {
             $baris = $existing[$kunciMenu] ?? null;
-            $this->tanggal[self::kunciAman($kunciMenu)] = $baris?->tanggal_deadline?->format('Y-m-d');
+            $this->tanggal[self::kunciAman($kunciMenu)] = $baris?->tanggal_deadline?->format('Y-m-d\TH:i');
+            $this->tanggalMulai[self::kunciAman($kunciMenu)] = $baris?->tanggal_mulai?->format('Y-m-d\TH:i');
         }
 
         $this->tanggalTerapkanSemua = ['ops' => '', 'bosp' => ''];
@@ -174,9 +190,13 @@ class Index extends Component
 
         $this->validate([
             "tanggal.{$kunciAman}" => ['date'],
+            "tanggalMulai.{$kunciAman}" => ['nullable', 'date'],
         ]);
 
-        DeadlinePekerjaan::aturDeadline($kunciMenu, $this->tahun, $this->triwulan, $nilai, auth()->id());
+        $nilaiMulai = $this->tanggalMulai[$kunciAman] ?? null;
+        $nilaiMulai = blank($nilaiMulai) ? null : $nilaiMulai;
+
+        DeadlinePekerjaan::aturDeadline($kunciMenu, $this->tahun, $this->triwulan, $nilaiMulai, $nilai, auth()->id());
 
         session()->flash('status', 'Deadline "'.DeadlinePekerjaan::daftarTahapKerja()[$kunciMenu]['label'].'" Triwulan '.$this->triwulan.' berhasil disimpan.');
     }
@@ -188,6 +208,7 @@ class Index extends Component
 
         DeadlinePekerjaan::hapusDeadline($kunciMenu, $this->tahun, $this->triwulan);
         $this->tanggal[self::kunciAman($kunciMenu)] = null;
+        $this->tanggalMulai[self::kunciAman($kunciMenu)] = null;
 
         session()->flash('status', 'Deadline "'.DeadlinePekerjaan::daftarTahapKerja()[$kunciMenu]['label'].'" Triwulan '.$this->triwulan.' berhasil dikosongkan/direset.');
     }
@@ -237,7 +258,8 @@ class Index extends Component
                 continue;
             }
 
-            DeadlinePekerjaan::aturDeadline($kunciMenu, $this->tahun, $this->triwulan, $tanggal, auth()->id());
+            $mulaiTetap = $this->tanggalMulai[self::kunciAman($kunciMenu)] ?? null;
+            DeadlinePekerjaan::aturDeadline($kunciMenu, $this->tahun, $this->triwulan, $mulaiTetap, $tanggal, auth()->id());
             $this->tanggal[self::kunciAman($kunciMenu)] = $tanggal;
             $jumlah++;
         }
@@ -271,6 +293,7 @@ class Index extends Component
 
             DeadlinePekerjaan::hapusDeadline($kunciMenu, $this->tahun, $this->triwulan);
             $this->tanggal[self::kunciAman($kunciMenu)] = null;
+            $this->tanggalMulai[self::kunciAman($kunciMenu)] = null;
         }
 
         session()->flash('status', 'Semua deadline '.self::labelKategori($kategori).' untuk Triwulan '.$this->triwulan.' berhasil dikosongkan/direset.');
@@ -280,7 +303,7 @@ class Index extends Component
     {
         $tahunOptions = array_reverse(range(now()->year - 2, now()->year + 1));
 
-        $hariIni = Carbon::today();
+        $sekarang = Carbon::now();
 
         // Status per tahap kerja untuk ditampilkan sebagai badge - dihitung
         // di sini (bukan lewat DeadlinePekerjaan::sudahLewat() berulang)
@@ -302,7 +325,7 @@ class Index extends Component
             // isinya bukan tanggal valid, badge cukup dianggap "berjalan"
             // sementara (bukan krusial, murni tampilan badge status).
             try {
-                $terlambat = Carbon::parse($tanggal)->lt($hariIni);
+                $terlambat = Carbon::parse($tanggal)->lt($sekarang);
             } catch (\Throwable) {
                 $terlambat = false;
             }

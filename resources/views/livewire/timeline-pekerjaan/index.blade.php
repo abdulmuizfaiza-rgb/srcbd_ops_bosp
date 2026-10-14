@@ -16,9 +16,10 @@
         <div class="bg-white shadow sm:rounded-lg p-4 sm:p-8">
             <p class="text-sm text-slate-500 mb-2">
                 @if ($bolehKelola)
-                    Atur batas waktu (deadline) pengerjaan tiap tahap kerja Pendataan OPS &amp; Pendataan BOSP
-                    untuk tahun &amp; triwulan yang dipilih. Deadline berlaku untuk SEMUA sekolah sekaligus (bukan
-                    per sekolah). Kosongkan tanggal untuk membatalkan/mereset deadline suatu tahap kerja.
+                    Atur tanggal+jam mulai (opsional) &amp; batas waktu (deadline) pengerjaan tiap tahap kerja
+                    Pendataan OPS &amp; Pendataan BOSP untuk tahun &amp; triwulan yang dipilih. Deadline berlaku
+                    untuk SEMUA sekolah sekaligus (bukan per sekolah). Kosongkan tanggal deadline untuk
+                    membatalkan/mereset tahap kerja tersebut (tanggal mulai ikut terhapus).
                 @else
                     Halaman ini menampilkan batas waktu (deadline) pengerjaan tiap tahap kerja Pendataan OPS
                     &amp; Pendataan BOSP untuk tahun &amp; triwulan yang dipilih, beserta status terlambat/tidaknya.
@@ -70,7 +71,7 @@
                                     Terapkan 1 tanggal ke SEMUA tahap kerja {{ $labelKategori }} (Triwulan {{ $triwulan }} saja)
                                 </label>
                                 <input
-                                    type="date"
+                                    type="datetime-local"
                                     wire:model="tanggalTerapkanSemua.{{ $kategori }}"
                                     id="tanggalTerapkanSemua-{{ $kategori }}"
                                     class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm"
@@ -107,7 +108,8 @@
                             <thead class="bg-slate-50">
                                 <tr>
                                     <th class="px-4 py-2.5 text-left font-semibold text-slate-600">Tahap Kerja (Menu)</th>
-                                    <th class="px-4 py-2.5 text-left font-semibold text-slate-600 w-52">Tanggal Deadline</th>
+                                    <th class="px-4 py-2.5 text-left font-semibold text-slate-600 w-52">Tanggal &amp; Jam Mulai</th>
+                                    <th class="px-4 py-2.5 text-left font-semibold text-slate-600 w-52">Tanggal &amp; Jam Deadline</th>
                                     <th class="px-4 py-2.5 text-left font-semibold text-slate-600 w-36">Status</th>
                                     @if ($bolehKelola)
                                         <th class="px-4 py-2.5 text-left font-semibold text-slate-600 w-24">Aksi</th>
@@ -127,7 +129,24 @@
                                         <td class="px-4 py-2.5">
                                             @if ($bolehKelola)
                                                 <input
-                                                    type="date"
+                                                    type="datetime-local"
+                                                    wire:model="tanggalMulai.{{ $kunciAman }}"
+                                                    wire:change="simpanDeadline('{{ $kunciMenu }}')"
+                                                    class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm w-full"
+                                                />
+                                                @error("tanggalMulai.{$kunciAman}")
+                                                    <span class="text-xs text-red-600">{{ $message }}</span>
+                                                @enderror
+                                            @else
+                                                <span class="text-slate-600">
+                                                    {{ $tanggalMulai[$kunciAman] ? \Illuminate\Support\Carbon::parse($tanggalMulai[$kunciAman])->translatedFormat('d F Y, H:i') : '-' }}
+                                                </span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-2.5">
+                                            @if ($bolehKelola)
+                                                <input
+                                                    type="datetime-local"
                                                     wire:model="tanggal.{{ $kunciAman }}"
                                                     wire:change="simpanDeadline('{{ $kunciMenu }}')"
                                                     class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm w-full"
@@ -137,7 +156,7 @@
                                                 @enderror
                                             @else
                                                 <span class="text-slate-600">
-                                                    {{ $tanggal[$kunciAman] ? \Illuminate\Support\Carbon::parse($tanggal[$kunciAman])->translatedFormat('d F Y') : '-' }}
+                                                    {{ $tanggal[$kunciAman] ? \Illuminate\Support\Carbon::parse($tanggal[$kunciAman])->translatedFormat('d F Y, H:i') : '-' }}
                                                 </span>
                                             @endif
                                         </td>
