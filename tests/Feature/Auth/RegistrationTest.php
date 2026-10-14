@@ -77,8 +77,8 @@ class RegistrationTest extends TestCase
             ->set('profil_sekolah_id', $sekolah->id)
             ->set('email', 'ops.cibadak@contoh.sch.id')
             ->set('no_whatsapp', '081234567890')
-            ->set('password', 'rahasia123')
-            ->set('password_confirmation', 'rahasia123')
+            ->set('password', 'Rahasia123!')
+            ->set('password_confirmation', 'Rahasia123!')
             ->call('daftar')
             ->assertHasNoErrors();
 
@@ -108,8 +108,8 @@ class RegistrationTest extends TestCase
             ->set('profil_sekolah_id', $sekolah->id)
             ->set('email', 'ops.baru@contoh.sch.id')
             ->set('no_whatsapp', '081234567890')
-            ->set('password', 'rahasia123')
-            ->set('password_confirmation', 'rahasia123')
+            ->set('password', 'Rahasia123!')
+            ->set('password_confirmation', 'Rahasia123!')
             ->call('daftar')
             ->assertHasErrors(['profil_sekolah_id']);
     }
@@ -119,7 +119,7 @@ class RegistrationTest extends TestCase
         $user = User::factory()->create([
             'username' => 'ops.belum@contoh.sch.id',
             'level_akses' => User::LEVEL_ADMIN_OPS,
-            'password' => bcrypt('rahasia123'),
+            'password' => bcrypt('Rahasia123!'),
             'is_approved' => false,
         ]);
 
@@ -129,7 +129,7 @@ class RegistrationTest extends TestCase
 
         Volt::test('pages.auth.login')
             ->set('form.username', 'ops.belum@contoh.sch.id')
-            ->set('form.password', 'rahasia123')
+            ->set('form.password', 'Rahasia123!')
             ->call('login')
             ->assertHasErrors(['form.username']);
 
@@ -141,7 +141,7 @@ class RegistrationTest extends TestCase
         $user = User::factory()->create([
             'username' => 'ops.sudah@contoh.sch.id',
             'level_akses' => User::LEVEL_ADMIN_OPS,
-            'password' => bcrypt('rahasia123'),
+            'password' => bcrypt('Rahasia123!'),
             'is_approved' => true,
         ]);
 
@@ -153,7 +153,7 @@ class RegistrationTest extends TestCase
 
         Volt::test('pages.auth.login')
             ->set('form.username', 'ops.sudah@contoh.sch.id')
-            ->set('form.password', 'rahasia123')
+            ->set('form.password', 'Rahasia123!')
             ->call('login')
             ->assertHasNoErrors();
 

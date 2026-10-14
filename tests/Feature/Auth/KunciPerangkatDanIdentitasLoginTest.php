@@ -7,6 +7,7 @@ use App\Models\LoginHistory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Volt\Volt;
 use Tests\TestCase;
 
@@ -241,12 +242,23 @@ class KunciPerangkatDanIdentitasLoginTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
+    /**
+     * Audit keamanan 2026-10-14: kata sandi pemulihan sekarang per-akun &
+     * ter-hash (kata_sandi_pemulihan_hash), bukan 1 nilai tetap lagi -
+     * test ini diperbarui supaya kata sandi pemulihan yang dikirim BENAR
+     * (lolos pengecekan Hash::check()), sehingga yang sebenarnya diuji di
+     * sini murni gerbang verifikasi email-nya (tujuan asli test ini),
+     * bukan ikut gagal di pengecekan kata sandi pemulihan.
+     */
     public function test_pemulihan_ditolak_jika_akun_tidak_sesuai_email_yang_diverifikasi(): void
     {
         $akunDiverifikasi = User::factory()->create();
+        $kataSandiPemulihan = 'PemulihanUji123!';
         $superadmin = User::factory()->create([
             'username' => 'superadmin',
             'level_akses' => User::LEVEL_SUPERADMIN,
+            'kata_sandi_pemulihan_hash' => Hash::make($kataSandiPemulihan),
+            'kata_sandi_pemulihan_dibuat_at' => now(),
         ]);
 
         // Lolos gerbang verifikasi untuk akun lain, tapi coba Pemulihan
@@ -255,11 +267,12 @@ class KunciPerangkatDanIdentitasLoginTest extends TestCase
 
         Volt::test('pages.auth.login')
             ->set('form.username', 'superadmin')
-            ->set('form.password', 'superadmin')
+            ->set('form.password', $kataSandiPemulihan)
             ->call('pemulihan')
             ->assertSet('form.tidakSesuaiEmailTerverifikasi', true);
 
         $this->assertGuest();
         $this->assertFalse($superadmin->fresh()->must_change_password);
+        $this->assertNotNull($superadmin->fresh()->kata_sandi_pemulihan_hash, 'Pemulihan ditolak karena gerbang email - kata sandi pemulihan TIDAK boleh ikut terpakai/terhapus.');
     }
 }

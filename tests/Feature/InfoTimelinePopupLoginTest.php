@@ -55,6 +55,7 @@ class InfoTimelinePopupLoginTest extends TestCase
             $kunciMenu,
             now()->year,
             $triwulan,
+            null,
             now()->subDays($hariLalu)->toDateString(),
             null,
         );
@@ -66,6 +67,7 @@ class InfoTimelinePopupLoginTest extends TestCase
             $kunciMenu,
             now()->year,
             $triwulan,
+            null,
             now()->addDays($hariLagi)->toDateString(),
             null,
         );

@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
 use Livewire\Volt\Volt;
 use Tests\TestCase;
@@ -33,9 +34,27 @@ class PemulihanAkunTest extends TestCase
         $this->assertSame(2, $component->get('form.percobaanGagal'));
     }
 
-    public function test_pemulihan_superadmin_berhasil_dengan_kata_sandi_default(): void
+    /**
+     * Audit keamanan 2026-10-14: jalur Pemulihan Akun diubah dari 1 kata
+     * sandi tetap ("default") jadi per-akun & ter-hash
+     * (kata_sandi_pemulihan_hash, lihat
+     * resources/views/livewire/profile/kata-sandi-pemulihan-form.blade.php) -
+     * test ini diperbarui mengikuti mekanisme baru: Superadmin HARUS
+     * sudah membuat kata sandi pemulihannya sendiri dulu (disimulasikan
+     * lewat forceFill di bawah), baru jalur pemulihan bisa berhasil.
+     * Nilai lama ini juga WAJIB kosong lagi (sekali pakai) setelah
+     * berhasil dipakai sekali.
+     */
+    public function test_pemulihan_superadmin_berhasil_dengan_kata_sandi_pemulihan_yang_benar(): void
     {
-        $user = User::factory()->create(['username' => 'superadmin', 'level_akses' => User::LEVEL_SUPERADMIN]);
+        $kataSandiPemulihan = 'PemulihanUji123!';
+
+        $user = User::factory()->create([
+            'username' => 'superadmin',
+            'level_akses' => User::LEVEL_SUPERADMIN,
+            'kata_sandi_pemulihan_hash' => Hash::make($kataSandiPemulihan),
+            'kata_sandi_pemulihan_dibuat_at' => now(),
+        ]);
 
         // Permintaan user 2026-10-04: jalur Pemulihan Akun sekarang juga
         // wajib lewat gerbang verifikasi email + token OTP untuk akun
@@ -49,12 +68,13 @@ class PemulihanAkunTest extends TestCase
             ->call('login')
             ->set('form.password', 'salah-lagi')
             ->call('login')
-            ->set('form.password', 'superadmin')
+            ->set('form.password', $kataSandiPemulihan)
             ->call('pemulihan')
             ->assertHasNoErrors();
 
         $this->assertAuthenticatedAs($user->fresh());
         $this->assertTrue($user->fresh()->must_change_password);
+        $this->assertNull($user->fresh()->kata_sandi_pemulihan_hash, 'Kata sandi pemulihan wajib sekali pakai - harus kosong lagi setelah berhasil dipakai.');
     }
 
     public function test_pemulihan_admin_ops_gagal_jika_kata_sandi_tidak_sesuai(): void

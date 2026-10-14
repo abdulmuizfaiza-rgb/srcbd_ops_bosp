@@ -101,30 +101,49 @@ class TimelinePekerjaanTest extends TestCase
         $this->assertFalse(DeadlinePekerjaan::sudahLewat('pendataan-bosp.rekap-rkas', 2026, self::TRIWULAN_UJI));
     }
 
-    public function test_deadline_hari_ini_belum_dianggap_lewat(): void
+    public function test_deadline_yang_jamnya_belum_lewat_hari_ini_belum_dianggap_lewat(): void
     {
-        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', 2026, self::TRIWULAN_UJI, now()->toDateString(), null);
+        // Deadline sekarang bersifat JAM-PERSIS, bukan lagi "berlaku
+        // sampai akhir hari" - lihat kolom "Tanggal & Jam Deadline"
+        // (input datetime-local) di resources/views/livewire/
+        // timeline-pekerjaan/index.blade.php (round ketiga belas bagian
+        // B, permintaan user 2026-10-14 poin 4: "tambahkan tanggal awal
+        // dimulai pekerjaan ... disertai dengan waktunya" - jam juga
+        // ditambahkan ke kolom deadline yang sudah ada, bukan cuma ke
+        // tanggal mulai yang baru). Dikonfirmasi ulang lewat
+        // AskUserQuestion 2026-10-14 ("Aturan Deadline") -> "Pakai
+        // jam-persis (Direkomendasikan)" - TIDAK ADA lagi toleransi
+        // "sampai akhir hari" seperti komentar/test lama (round
+        // kedelapan) yang ditulis sebelum jam ditambahkan ke deadline.
+        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', 2026, self::TRIWULAN_UJI, null, now()->addHour()->format('Y-m-d H:i:s'), null);
 
         $this->assertFalse(DeadlinePekerjaan::sudahLewat('pendataan-bosp.rekap-rkas', 2026, self::TRIWULAN_UJI));
     }
 
+    public function test_deadline_yang_jamnya_sudah_lewat_hari_ini_dianggap_sudah_lewat(): void
+    {
+        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', 2026, self::TRIWULAN_UJI, null, now()->subHour()->format('Y-m-d H:i:s'), null);
+
+        $this->assertTrue(DeadlinePekerjaan::sudahLewat('pendataan-bosp.rekap-rkas', 2026, self::TRIWULAN_UJI));
+    }
+
     public function test_deadline_kemarin_dianggap_sudah_lewat(): void
     {
-        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', 2026, self::TRIWULAN_UJI, now()->subDay()->toDateString(), null);
+        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', 2026, self::TRIWULAN_UJI, null, now()->subDay()->toDateString(), null);
 
         $this->assertTrue(DeadlinePekerjaan::sudahLewat('pendataan-bosp.rekap-rkas', 2026, self::TRIWULAN_UJI));
     }
 
     public function test_deadline_besok_belum_dianggap_lewat(): void
     {
-        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', 2026, self::TRIWULAN_UJI, now()->addDay()->toDateString(), null);
+        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', 2026, self::TRIWULAN_UJI, null, now()->addDay()->toDateString(), null);
 
         $this->assertFalse(DeadlinePekerjaan::sudahLewat('pendataan-bosp.rekap-rkas', 2026, self::TRIWULAN_UJI));
     }
 
     public function test_hapus_deadline_membuat_sudah_lewat_kembali_false(): void
     {
-        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', 2026, self::TRIWULAN_UJI, now()->subDay()->toDateString(), null);
+        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', 2026, self::TRIWULAN_UJI, null, now()->subDay()->toDateString(), null);
         $this->assertTrue(DeadlinePekerjaan::sudahLewat('pendataan-bosp.rekap-rkas', 2026, self::TRIWULAN_UJI));
 
         DeadlinePekerjaan::hapusDeadline('pendataan-bosp.rekap-rkas', 2026, self::TRIWULAN_UJI);
@@ -134,7 +153,7 @@ class TimelinePekerjaanTest extends TestCase
 
     public function test_deadline_terikat_ke_tahun_tertentu_tidak_ikut_ke_tahun_lain(): void
     {
-        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', 2025, self::TRIWULAN_UJI, now()->subDay()->toDateString(), null);
+        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', 2025, self::TRIWULAN_UJI, null, now()->subDay()->toDateString(), null);
 
         $this->assertTrue(DeadlinePekerjaan::sudahLewat('pendataan-bosp.rekap-rkas', 2025, self::TRIWULAN_UJI));
         $this->assertFalse(DeadlinePekerjaan::sudahLewat('pendataan-bosp.rekap-rkas', 2026, self::TRIWULAN_UJI));
@@ -142,7 +161,7 @@ class TimelinePekerjaanTest extends TestCase
 
     public function test_deadline_terikat_ke_triwulan_tertentu_tidak_ikut_ke_triwulan_lain(): void
     {
-        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', 2026, 1, now()->subDay()->toDateString(), null);
+        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', 2026, 1, null, now()->subDay()->toDateString(), null);
 
         $this->assertTrue(DeadlinePekerjaan::sudahLewat('pendataan-bosp.rekap-rkas', 2026, 1));
         $this->assertFalse(DeadlinePekerjaan::sudahLewat('pendataan-bosp.rekap-rkas', 2026, 2));
@@ -153,7 +172,7 @@ class TimelinePekerjaanTest extends TestCase
     public function test_menu_yang_sama_bisa_punya_4_deadline_berbeda_untuk_4_triwulan(): void
     {
         foreach ([1, 2, 3, 4] as $triwulan) {
-            DeadlinePekerjaan::aturDeadline('pendataan-ops.lampiran-2a', 2026, $triwulan, "2026-0{$triwulan}-15", null);
+            DeadlinePekerjaan::aturDeadline('pendataan-ops.lampiran-2a', 2026, $triwulan, null, "2026-0{$triwulan}-15", null);
         }
 
         $this->assertSame(4, DeadlinePekerjaan::where('kunci_menu', 'pendataan-ops.lampiran-2a')->where('tahun', 2026)->count());
@@ -286,16 +305,16 @@ class TimelinePekerjaanTest extends TestCase
     public function test_pindah_triwulan_memuat_ulang_tanggal_triwulan_itu_tidak_tercampur(): void
     {
         $tahun = now()->year;
-        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', $tahun, 1, '2026-01-31', null);
-        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', $tahun, 2, '2026-04-30', null);
+        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', $tahun, 1, null, '2026-01-31', null);
+        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', $tahun, 2, null, '2026-04-30', null);
 
         $component = Livewire::actingAs($this->superadmin())
             ->test(Index::class)
             ->set('triwulan', 1)
-            ->assertSet('tanggal.pendataan-bosp__rekap-rkas', '2026-01-31');
+            ->assertSet('tanggal.pendataan-bosp__rekap-rkas', '2026-01-31T00:00');
 
         $component->set('triwulan', 2)
-            ->assertSet('tanggal.pendataan-bosp__rekap-rkas', '2026-04-30');
+            ->assertSet('tanggal.pendataan-bosp__rekap-rkas', '2026-04-30T00:00');
 
         $component->set('triwulan', 3)
             ->assertSet('tanggal.pendataan-bosp__rekap-rkas', null);
@@ -325,7 +344,7 @@ class TimelinePekerjaanTest extends TestCase
     public function test_mengosongkan_tanggal_menghapus_baris_deadline(): void
     {
         $superadmin = $this->superadmin();
-        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', now()->year, self::TRIWULAN_UJI, '2026-12-31', $superadmin->id);
+        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', now()->year, self::TRIWULAN_UJI, null, '2026-12-31', $superadmin->id);
 
         Livewire::actingAs($superadmin)
             ->test(Index::class)
@@ -339,7 +358,7 @@ class TimelinePekerjaanTest extends TestCase
     public function test_tombol_reset_menghapus_baris_deadline(): void
     {
         $superadmin = $this->superadmin();
-        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', now()->year, self::TRIWULAN_UJI, now()->subDay()->toDateString(), $superadmin->id);
+        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', now()->year, self::TRIWULAN_UJI, null, now()->subDay()->toDateString(), $superadmin->id);
 
         Livewire::actingAs($superadmin)
             ->test(Index::class)
@@ -449,7 +468,7 @@ class TimelinePekerjaanTest extends TestCase
     public function test_terapkan_semua_menimpa_tanggal_yang_sudah_ada_sebelumnya(): void
     {
         $superadmin = $this->superadmin();
-        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', now()->year, self::TRIWULAN_UJI, '2026-01-01', null);
+        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', now()->year, self::TRIWULAN_UJI, null, '2026-01-01', null);
 
         Livewire::actingAs($superadmin)
             ->test(Index::class)
@@ -505,7 +524,7 @@ class TimelinePekerjaanTest extends TestCase
     {
         $superadmin = $this->superadmin();
         foreach (array_keys(DeadlinePekerjaan::daftarTahapKerja()) as $kunciMenu) {
-            DeadlinePekerjaan::aturDeadline($kunciMenu, now()->year, self::TRIWULAN_UJI, '2026-05-05', $superadmin->id);
+            DeadlinePekerjaan::aturDeadline($kunciMenu, now()->year, self::TRIWULAN_UJI, null, '2026-05-05', $superadmin->id);
         }
 
         Livewire::actingAs($superadmin)
@@ -525,7 +544,7 @@ class TimelinePekerjaanTest extends TestCase
     {
         $superadmin = $this->superadmin();
         foreach (array_keys(DeadlinePekerjaan::daftarTahapKerja()) as $kunciMenu) {
-            DeadlinePekerjaan::aturDeadline($kunciMenu, now()->year, self::TRIWULAN_UJI, '2026-05-05', $superadmin->id);
+            DeadlinePekerjaan::aturDeadline($kunciMenu, now()->year, self::TRIWULAN_UJI, null, '2026-05-05', $superadmin->id);
         }
 
         Livewire::actingAs($superadmin)
@@ -542,8 +561,8 @@ class TimelinePekerjaanTest extends TestCase
     public function test_reset_semua_hanya_mempengaruhi_triwulan_yang_aktif(): void
     {
         $superadmin = $this->superadmin();
-        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', now()->year, 1, '2026-05-05', $superadmin->id);
-        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', now()->year, 2, '2026-05-05', $superadmin->id);
+        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', now()->year, 1, null, '2026-05-05', $superadmin->id);
+        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', now()->year, 2, null, '2026-05-05', $superadmin->id);
 
         Livewire::actingAs($superadmin)
             ->test(Index::class)
@@ -560,7 +579,7 @@ class TimelinePekerjaanTest extends TestCase
         // tanggal apa pun, jadi tidak boleh gagal validasi kalau kotak
         // tanggalTerapkanSemua kosong.
         $superadmin = $this->superadmin();
-        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', now()->year, self::TRIWULAN_UJI, '2026-05-05', $superadmin->id);
+        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', now()->year, self::TRIWULAN_UJI, null, '2026-05-05', $superadmin->id);
 
         Livewire::actingAs($superadmin)
             ->test(Index::class)
@@ -659,7 +678,7 @@ class TimelinePekerjaanTest extends TestCase
         // lewat PajakBospReguler) karena mount() sekarang SELALU default
         // ke TW-1 (round kedua belas).
         $tahun = now()->year;
-        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', $tahun, 1, now()->addWeek()->toDateString(), null);
+        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', $tahun, 1, null, now()->addWeek()->toDateString(), null);
 
         Livewire::actingAs($this->superadmin())
             ->test(Index::class)
@@ -669,7 +688,7 @@ class TimelinePekerjaanTest extends TestCase
     public function test_status_terlambat_saat_deadline_sudah_lewat(): void
     {
         $tahun = now()->year;
-        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', $tahun, 1, now()->subWeek()->toDateString(), null);
+        DeadlinePekerjaan::aturDeadline('pendataan-bosp.rekap-rkas', $tahun, 1, null, now()->subWeek()->toDateString(), null);
 
         Livewire::actingAs($this->superadmin())
             ->test(Index::class)

@@ -22,7 +22,7 @@ class PenggunaTest extends TestCase
             ->set('level_akses', User::LEVEL_ADMIN_OPS)
             ->set('profil_sekolah_id', $sekolah->id)
             ->set('username', 'ops.sekolah@contoh.sch.id')
-            ->set('password', 'rahasia123')
+            ->set('password', 'Rahasia123!')
             ->call('simpan')
             ->assertHasNoErrors();
 
@@ -46,7 +46,7 @@ class PenggunaTest extends TestCase
             ->set('level_akses', User::LEVEL_ADMIN_OPS)
             ->set('profil_sekolah_id', $sekolah->id)
             ->set('username', 'bukan-email')
-            ->set('password', 'rahasia123')
+            ->set('password', 'Rahasia123!')
             ->call('simpan')
             ->assertHasErrors(['username']);
     }
@@ -62,7 +62,7 @@ class PenggunaTest extends TestCase
             ->set('level_akses', User::LEVEL_ADMIN_OPS)
             ->set('profil_sekolah_id', $sekolah->id)
             ->set('username', 'dipakai@contoh.sch.id')
-            ->set('password', 'rahasia123')
+            ->set('password', 'Rahasia123!')
             ->call('simpan')
             ->assertHasErrors(['username']);
     }
@@ -81,7 +81,7 @@ class PenggunaTest extends TestCase
             ->set('level_akses', User::LEVEL_ADMIN_OPS)
             ->set('profil_sekolah_id', $sekolah->id)
             ->set('username', 'ops.kedua@contoh.sch.id')
-            ->set('password', 'rahasia123')
+            ->set('password', 'Rahasia123!')
             ->call('simpan')
             ->assertHasErrors(['profil_sekolah_id']);
     }
@@ -100,7 +100,7 @@ class PenggunaTest extends TestCase
             ->set('level_akses', User::LEVEL_ADMIN_BOSP)
             ->set('profil_sekolah_id', $sekolah->id)
             ->set('username', 'bosp.sekolah@contoh.sch.id')
-            ->set('password', 'rahasia123')
+            ->set('password', 'Rahasia123!')
             ->call('simpan')
             ->assertHasNoErrors();
     }

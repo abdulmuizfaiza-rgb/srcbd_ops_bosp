@@ -92,12 +92,15 @@ class DeadlinePekerjaan extends Model
 
     /**
      * TRUE kalau tahap kerja+triwulan ini punya deadline TERATUR untuk
-     * tahun ini DAN tanggalnya sudah lewat (sebelum hari ini - deadline
-     * HARI INI SENDIRI belum dianggap lewat, masih boleh dikerjakan
-     * sampai akhir hari). Belum diatur (tidak ada baris sama sekali) =
-     * TIDAK dianggap lewat/tidak memblokir apapun - blokir HANYA aktif
-     * kalau Superadmin memang mengatur deadline untuk
-     * tahap kerja+tahun+triwulan itu.
+     * tahun ini DAN jam saat ini sudah melewati tanggal+jam deadline-nya
+     * (perbandingan JAM-PERSIS, BUKAN "sampai akhir hari" - lihat kolom
+     * "Tanggal & Jam Deadline"/input datetime-local di
+     * resources/views/livewire/timeline-pekerjaan/index.blade.php, round
+     * ketiga belas bagian B, dikonfirmasi ulang lewat AskUserQuestion
+     * 2026-10-14 "Aturan Deadline" -> "Pakai jam-persis (Direkomendasikan)").
+     * Belum diatur (tidak ada baris sama sekali) = TIDAK dianggap
+     * lewat/tidak memblokir apapun - blokir HANYA aktif kalau Superadmin
+     * memang mengatur deadline untuk tahap kerja+tahun+triwulan itu.
      *
      * Dipakai sebagai guard penolakan input di 16 menu terkait (lihat
      * App\Livewire\Concerns\MenolakEditJikaLewatDeadline) MAUPUN untuk
