@@ -89,6 +89,20 @@ class Index extends Component
         $this->resetPage();
     }
 
+    /**
+     * Filter tanggal SPESIFIK (format Y-m-d, kosong = tidak difilter
+     * tanggal) utk tabel "Riwayat Backup" - permintaan user 2026-10-14
+     * "pencarian berdasarkan tanggal backup dan tanggal restore", jawaban
+     * AskUserQuestion "Pilih 1 tanggal spesifik (kalender) (Recommended)".
+     * Berlaku BERSAMA $filterTahun (kedua filter boleh aktif sekaligus).
+     */
+    public string $filterTanggalBackup = '';
+
+    public function updatedFilterTanggalBackup(): void
+    {
+        $this->resetPage();
+    }
+
     public int $perPage = 10;
 
     public function updatedPerPage(): void
@@ -104,6 +118,14 @@ class Index extends Component
         } catch (Throwable $e) {
             report($e);
             session()->flash('errorBackup', 'Gagal membuat backup: '.$e->getMessage());
+        } finally {
+            // Progress bar animasi (permintaan user 2026-10-14 "tambahkan
+            // progres bar yang bergaya animasi untuk memastikan file backup
+            // ... sukses terkirim") - event ini dipicu BERHASIL maupun
+            // GAGAL, supaya Alpine di index.blade.php (lihat x-on:...-selesai
+            // di <div> pembungkus utama) berhenti menghitung baik di jalur
+            // sukses maupun gagal.
+            $this->dispatch('backup-proses-selesai');
         }
     }
 
@@ -178,9 +200,16 @@ class Index extends Component
         }
 
         try {
+            // Nama file DIBERI NOMOR URUT juga di jalur "Kirim Sekarang"
+            // manual ini (konsisten dgn unggahan otomatis di
+            // App\Services\BackupService) - lihat docblock
+            // GoogleDriveService::namaBernomor().
+            $nomor = $pengaturan->ambilNomorUrutBerikutnya();
+            $namaDiDrive = $driveService->namaBernomor($nomor, $backupTerbaru->nama_file);
+
             $driveService->unggahFile(
                 Storage::disk('local')->path($backupTerbaru->path),
-                $backupTerbaru->nama_file,
+                $namaDiDrive,
                 $pengaturan->folder_id,
                 $pengaturan->refresh_token
             );
@@ -222,6 +251,55 @@ class Index extends Component
         ]);
 
         session()->flash('status', 'Koneksi Google Drive diputuskan.');
+    }
+
+    /**
+     * Tombol "Urutkan Ulang Nomor File di Drive" - permintaan EKSPLISIT
+     * user 2026-10-14 (jawaban AskUserQuestion "Beri nomor ulang ke SEMUA
+     * file yang sudah ada juga", BUKAN pilihan default/Recommended) utk
+     * memberi/menata ulang nomor urut pada file yang SUDAH ADA di Google
+     * Drive (termasuk file yang diunggah SEBELUM fitur penomoran ini ada).
+     * Mengurutkan berdasarkan waktu dibuat PALING LAMA -> PALING BARU,
+     * lalu menomori 0001, 0002, dst - IDEMPOTEN (aman diklik berkali-kali,
+     * lihat GoogleDriveService::stripNomorPrefix()). Counter
+     * nomor_urut_berikutnya ikut disamakan di akhir supaya unggahan
+     * BERIKUTNYA melanjutkan dari nomor yang benar.
+     */
+    public function urutkanUlangNomorDrive(GoogleDriveService $driveService): void
+    {
+        abort_unless(auth()->user()->isSuperadmin(), 403);
+
+        $pengaturan = GoogleDriveSetting::current();
+
+        if (! $pengaturan->sudahDikonfigurasi()) {
+            session()->flash('errorBackup', 'Hubungkan Google Drive & isi link folder terlebih dahulu sebelum mengurutkan ulang.');
+
+            return;
+        }
+
+        try {
+            $daftarFile = $driveService->daftarFileDiFolder($pengaturan->folder_id, $pengaturan->refresh_token);
+
+            $nomor = 1;
+
+            foreach ($daftarFile as $file) {
+                $namaBersih = $driveService->stripNomorPrefix($file['name']);
+                $namaBaru = $driveService->namaBernomor($nomor, $namaBersih);
+
+                if ($namaBaru !== $file['name']) {
+                    $driveService->gantiNamaFile($file['id'], $namaBaru, $pengaturan->refresh_token);
+                }
+
+                $nomor++;
+            }
+
+            $pengaturan->update(['nomor_urut_berikutnya' => $nomor]);
+
+            session()->flash('status', 'Berhasil mengurutkan ulang nomor '.count($daftarFile).' file di Google Drive.');
+        } catch (Throwable $e) {
+            report($e);
+            session()->flash('errorBackup', 'Gagal mengurutkan ulang nomor file di Google Drive: '.$e->getMessage());
+        }
     }
 
     /**
@@ -280,6 +358,12 @@ class Index extends Component
     /** Tahun yang dipilih di Tab Restore (daftar backup difilter berdasarkan ini) - independen dari $filterTahun milik Tab Backup. */
     public string $restoreTahun = '';
 
+    /** Filter tanggal SPESIFIK (Y-m-d, kosong = tidak difilter) utk daftar "Pilih Backup untuk Di-Restore" - independen dari $filterTanggalBackup milik Tab Backup. */
+    public string $restoreTanggalBackup = '';
+
+    /** Filter tanggal SPESIFIK (Y-m-d, kosong = tidak difilter) utk tabel "Riwayat Restore Terakhir" - berdasarkan tanggal RESTORE dilakukan, bukan tanggal backup-nya. */
+    public string $filterTanggalRestoreLog = '';
+
     /** ID backup yang SEDANG dikonfirmasi utk di-restore (modal konfirmasi terbuka) - null kalau tidak ada. */
     public ?int $confirmingRestoreId = null;
 
@@ -318,6 +402,7 @@ class Index extends Component
 
         if (trim($this->konfirmasiNamaFile) !== $backup->nama_file) {
             $this->addError('konfirmasiNamaFile', 'Nama file yang Anda ketik tidak sama persis dengan "'.$backup->nama_file.'". Ketik ulang dengan benar untuk melanjutkan.');
+            $this->dispatch('restore-proses-selesai');
 
             return;
         }
@@ -330,9 +415,16 @@ class Index extends Component
             $this->confirmingRestoreId = null;
             $this->konfirmasiNamaFile = '';
             $this->dispatch('close-modal', 'backup-konfirmasi-restore');
+            $this->dispatch('restore-proses-selesai');
 
             return;
         }
+
+        // Progress bar animasi (permintaan user 2026-10-14) - dipicu juga di
+        // jalur SUKSES ini meski redirect ke halaman login akan langsung
+        // menggantikan halaman ini; tetap dipicu demi konsistensi/keamanan
+        // kalau redirect gagal/lambat.
+        $this->dispatch('restore-proses-selesai');
 
         // PENTING: database (termasuk tabel sessions) baru saja diganti
         // TOTAL oleh restore di atas - sesi login yang sedang berjalan
@@ -353,17 +445,20 @@ class Index extends Component
         $backup = Backup::query()
             ->with('dibuatOleh')
             ->when($this->filterTahun !== '', fn ($q) => $q->where('tahun', $this->filterTahun))
+            ->when($this->filterTanggalBackup !== '', fn ($q) => $q->whereDate('created_at', $this->filterTanggalBackup))
             ->orderByDesc('created_at')
             ->paginate($this->perPage);
 
         $backupUntukRestore = Backup::query()
             ->with('dibuatOleh')
             ->when($this->restoreTahun !== '', fn ($q) => $q->where('tahun', $this->restoreTahun))
+            ->when($this->restoreTanggalBackup !== '', fn ($q) => $q->whereDate('created_at', $this->restoreTanggalBackup))
             ->orderByDesc('created_at')
             ->get();
 
         $riwayatRestore = RestoreLog::query()
             ->with(['backup', 'backupPengaman', 'dilakukanOleh'])
+            ->when($this->filterTanggalRestoreLog !== '', fn ($q) => $q->whereDate('created_at', $this->filterTanggalRestoreLog))
             ->latest()
             ->limit(10)
             ->get();

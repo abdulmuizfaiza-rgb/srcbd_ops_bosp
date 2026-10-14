@@ -4,9 +4,52 @@
     </h2>
 </x-slot>
 
-<div>
+<div
+    {{--
+        Zoom SELURUH halaman & progress bar animasi "Buat Backup Sekarang"
+        (permintaan user 2026-10-14: "tambahkan tombol zoom in-zoom out"
+        & "progres bar yang bergaya animasi untuk memastikan file backup
+        ... sukses terkirim"). zoomPersen dipersist lewat localStorage
+        POLOS (bukan plugin Alpine $persist, tidak menambah dependensi
+        baru) - CSS `zoom` dipilih krn paling sederhana utk memperbesar/
+        memperkecil TEKS & TAMPILAN seluruh halaman sekaligus (jawaban
+        AskUserQuestion "Perbesar/perkecil teks & tampilan SELURUH
+        halaman"), dibanding transform:scale (butuh penyesuaian layout)
+        atau ukuran font rem (tidak ikut memperbesar spacing/gambar).
+        Progress bar "Ya, Restore Sekarang" di modal bawah PUNYA x-data
+        SENDIRI (lokal per-modal), meniru pola persis Tab Sinkronisasi.
+    --}}
+    x-data="{
+        zoomPersen: 100,
+        backupBerjalan: false,
+        backupDetik: 0,
+        _backupInterval: null,
+        init() {
+            try {
+                const tersimpan = localStorage.getItem('srcbd_backup_zoom');
+                if (tersimpan) { this.zoomPersen = parseInt(tersimpan, 10); }
+            } catch (e) {}
+        },
+        perbesarZoom() { this.zoomPersen = Math.min(150, this.zoomPersen + 10); this.simpanZoom(); },
+        perkecilZoom() { this.zoomPersen = Math.max(70, this.zoomPersen - 10); this.simpanZoom(); },
+        resetZoom() { this.zoomPersen = 100; this.simpanZoom(); },
+        simpanZoom() {
+            try { localStorage.setItem('srcbd_backup_zoom', this.zoomPersen); } catch (e) {}
+        }
+    }"
+    x-on:backup-proses-selesai.window="backupBerjalan = false; clearInterval(_backupInterval)"
+    :style="'zoom: ' + zoomPersen + '%'"
+>
     <div class="py-12">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-6">
+
+            <div class="flex flex-wrap items-center justify-end gap-2 text-xs text-slate-500">
+                <span class="font-medium">Tampilan:</span>
+                <button type="button" x-on:click="perkecilZoom()" class="w-7 h-7 inline-flex items-center justify-center rounded-md border border-slate-300 bg-white hover:bg-slate-50 font-bold" title="Perkecil tampilan">&minus;</button>
+                <span class="w-12 text-center" x-text="zoomPersen + '%'"></span>
+                <button type="button" x-on:click="perbesarZoom()" class="w-7 h-7 inline-flex items-center justify-center rounded-md border border-slate-300 bg-white hover:bg-slate-50 font-bold" title="Perbesar tampilan">+</button>
+                <button type="button" x-on:click="resetZoom()" x-show="zoomPersen !== 100" x-cloak class="ml-1 text-indigo-600 hover:underline">Reset</button>
+            </div>
 
             @if (session('status'))
                 <div class="p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm whitespace-pre-line">
@@ -69,11 +112,22 @@
                                 wire:click="buatBackup"
                                 wire:loading.attr="disabled"
                                 wire:target="buatBackup"
+                                x-on:click="backupBerjalan = true; backupDetik = 0; clearInterval(_backupInterval); _backupInterval = setInterval(() => backupDetik++, 1000)"
                                 class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
                             >
                                 <span wire:loading.remove wire:target="buatBackup">Buat Backup Sekarang</span>
                                 <span wire:loading wire:target="buatBackup">Sedang membuat backup...</span>
                             </button>
+
+                            <div x-show="backupBerjalan" x-cloak class="mt-3 max-w-md">
+                                <div class="flex items-center justify-between text-xs text-slate-500 mb-1">
+                                    <span>Sedang membuat backup, mohon jangan tutup halaman ini...</span>
+                                    <span x-text="backupDetik + ' detik'"></span>
+                                </div>
+                                <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden relative">
+                                    <div class="absolute inset-y-0 w-1/3 bg-indigo-600 rounded-full animate-backup-progress"></div>
+                                </div>
+                            </div>
                         </div>
 
                         {{--
@@ -139,6 +193,27 @@
                                     <span wire:loading wire:target="kirimSekarangKeGoogleDrive">Mengirim...</span>
                                 </x-secondary-button>
 
+                                {{--
+                                    Tombol "Urutkan Ulang Nomor File di Drive"
+                                    (permintaan EKSPLISIT user 2026-10-14,
+                                    jawaban AskUserQuestion "Beri nomor ulang
+                                    ke SEMUA file yang sudah ada juga") - lihat
+                                    App\Livewire\Backup\Index::urutkanUlangNomorDrive().
+                                    Hanya muncul kalau sudah terhubung & folder
+                                    terisi (sama seperti "Kirim Sekarang").
+                                --}}
+                                @if ($pengaturanDrive->sudahDikonfigurasi())
+                                    <x-secondary-button
+                                        wire:click="urutkanUlangNomorDrive"
+                                        wire:loading.attr="disabled"
+                                        wire:target="urutkanUlangNomorDrive"
+                                        wire:confirm="Urutkan ulang nomor SEMUA file di folder Google Drive ini (file lama maupun baru)? Ini hanya mengganti NAMA file di Drive, isi file tidak berubah."
+                                    >
+                                        <span wire:loading.remove wire:target="urutkanUlangNomorDrive">Urutkan Ulang Nomor File di Drive</span>
+                                        <span wire:loading wire:target="urutkanUlangNomorDrive">Mengurutkan ulang...</span>
+                                    </x-secondary-button>
+                                @endif
+
                                 @if ($pengaturanDrive->terakhir_kirim_pada)
                                     <span class="text-xs text-slate-500">
                                         Terakhir dikirim {{ $pengaturanDrive->terakhir_kirim_pada->diffForHumans() }} -
@@ -165,6 +240,19 @@
                                             <option value="{{ $tahun }}">{{ $tahun }}</option>
                                         @endforeach
                                     </select>
+
+                                    {{--
+                                        Filter tanggal SPESIFIK (permintaan user
+                                        2026-10-14 "pencarian berdasarkan tanggal
+                                        backup") - BERLAKU BERSAMA filter Tahun di
+                                        atas, lihat App\Livewire\Backup\Index::
+                                        $filterTanggalBackup.
+                                    --}}
+                                    <x-input-label for="filterTanggalBackup" value="Tanggal" class="text-xs text-slate-500" />
+                                    <input type="date" wire:model.live="filterTanggalBackup" id="filterTanggalBackup" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm" />
+                                    @if ($filterTanggalBackup !== '')
+                                        <button type="button" wire:click="$set('filterTanggalBackup', '')" class="text-slate-400 hover:text-red-600" title="Hapus filter tanggal">&times;</button>
+                                    @endif
 
                                     {{--
                                         Tombol "Unduh Semua Sekaligus" (permintaan user
@@ -257,7 +345,7 @@
 
                         <div>
                             <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-                                <h3 class="text-lg font-bold text-indigo-900">Pilih Backup untuk Di-Restore (berdasarkan Tahun)</h3>
+                                <h3 class="text-lg font-bold text-indigo-900">Pilih Backup untuk Di-Restore (berdasarkan Tahun / Tanggal)</h3>
 
                                 <div class="flex items-center gap-2">
                                     <x-input-label for="restoreTahun" value="Tahun" class="text-xs text-slate-500" />
@@ -266,6 +354,12 @@
                                             <option value="{{ $tahun }}">{{ $tahun }}</option>
                                         @endforeach
                                     </select>
+
+                                    <x-input-label for="restoreTanggalBackup" value="Tanggal" class="text-xs text-slate-500" />
+                                    <input type="date" wire:model.live="restoreTanggalBackup" id="restoreTanggalBackup" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm" />
+                                    @if ($restoreTanggalBackup !== '')
+                                        <button type="button" wire:click="$set('restoreTanggalBackup', '')" class="text-slate-400 hover:text-red-600" title="Hapus filter tanggal">&times;</button>
+                                    @endif
                                 </div>
                             </div>
 
@@ -307,7 +401,17 @@
                         </div>
 
                         <div>
-                            <h3 class="text-lg font-bold text-indigo-900 mb-3">Riwayat Restore Terakhir</h3>
+                            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                                <h3 class="text-lg font-bold text-indigo-900">Riwayat Restore Terakhir</h3>
+
+                                <div class="flex items-center gap-2">
+                                    <x-input-label for="filterTanggalRestoreLog" value="Tanggal" class="text-xs text-slate-500" />
+                                    <input type="date" wire:model.live="filterTanggalRestoreLog" id="filterTanggalRestoreLog" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm" />
+                                    @if ($filterTanggalRestoreLog !== '')
+                                        <button type="button" wire:click="$set('filterTanggalRestoreLog', '')" class="text-slate-400 hover:text-red-600" title="Hapus filter tanggal">&times;</button>
+                                    @endif
+                                </div>
+                            </div>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                                     <thead>
@@ -350,9 +454,18 @@
         </div>
     </div>
 
-    {{-- Modal konfirmasi Restore (ketik ulang nama file) --}}
+    {{--
+        Modal konfirmasi Restore (ketik ulang nama file) - progress bar
+        animasi (permintaan user 2026-10-14) PUNYA x-data SENDIRI (lokal
+        di modal ini saja), meniru pola persis modal Sinkronisasi/Tarik
+        Data di resources/views/livewire/sinkronisasi/index.blade.php.
+    --}}
     <x-modal name="backup-konfirmasi-restore" :show="$confirmingRestoreId !== null" maxWidth="md">
-        <div class="p-6">
+        <div
+            class="p-6"
+            x-data="{ restoreBerjalan: false, restoreDetik: 0, _restoreInterval: null }"
+            x-on:restore-proses-selesai.window="restoreBerjalan = false; clearInterval(_restoreInterval)"
+        >
             <h2 class="text-lg font-bold text-red-700">Yakin ingin Restore dari file ini?</h2>
             <p class="mt-2 text-sm text-slate-600">
                 Database akan DIGANTI TOTAL dengan isi backup
@@ -367,12 +480,23 @@
                 <x-input-error :messages="$errors->get('konfirmasiNamaFile')" class="mt-2" />
             </div>
 
+            <div x-show="restoreBerjalan" x-cloak class="mt-4">
+                <div class="flex items-center justify-between text-xs text-slate-500 mb-1">
+                    <span>Sedang menjalankan Restore, mohon jangan tutup halaman ini...</span>
+                    <span x-text="restoreDetik + ' detik'"></span>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden relative">
+                    <div class="absolute inset-y-0 w-1/3 bg-red-600 rounded-full animate-backup-progress"></div>
+                </div>
+            </div>
+
             <div class="mt-6 flex justify-end gap-3">
                 <x-secondary-button wire:click="batalRestore" wire:loading.attr="disabled" wire:target="jalankanRestore">Batal</x-secondary-button>
                 <x-primary-button
                     wire:click="jalankanRestore"
                     wire:loading.attr="disabled"
                     wire:target="jalankanRestore"
+                    x-on:click="restoreBerjalan = true; restoreDetik = 0; clearInterval(_restoreInterval); _restoreInterval = setInterval(() => restoreDetik++, 1000)"
                     class="!bg-red-600 hover:!bg-red-700"
                 >
                     <span wire:loading.remove wire:target="jalankanRestore">Ya, Restore Sekarang</span>
@@ -403,4 +527,22 @@
             });
         });
     </script>
+
+    {{--
+        Animasi progress bar "Buat Backup Sekarang" & "Ya, Restore
+        Sekarang" (permintaan user 2026-10-14) - pola/nilai animasi SAMA
+        dengan Tab Sinkronisasi, tapi dgn nama keyframe/class SENDIRI
+        (backup-progress-slide / animate-backup-progress) supaya file
+        Blade ini tetap mandiri (tidak bergantung pada <style> di view
+        Livewire lain).
+    --}}
+    <style>
+        @keyframes backup-progress-slide {
+            0%   { left: -33%; }
+            100% { left: 100%; }
+        }
+        .animate-backup-progress {
+            animation: backup-progress-slide 1.1s ease-in-out infinite;
+        }
+    </style>
 </div>

@@ -137,7 +137,17 @@ class BackupService
         }
 
         try {
-            app(GoogleDriveService::class)->unggahFile($pathAbsolut, $backup->nama_file, $pengaturan->folder_id, $pengaturan->refresh_token);
+            $driveService = app(GoogleDriveService::class);
+
+            // Nama file DIBERI NOMOR URUT (permintaan user 2026-10-14 - "hasil
+            // file backup nya di google drive di urutkan pakai nomor") -
+            // nomor diambil ATOMIK & counter langsung naik lewat
+            // ambilNomorUrutBerikutnya(), nama ASLI file lokal TIDAK berubah,
+            // hanya nama yang dipakai DI GOOGLE DRIVE.
+            $nomor = $pengaturan->ambilNomorUrutBerikutnya();
+            $namaDiDrive = $driveService->namaBernomor($nomor, $backup->nama_file);
+
+            $driveService->unggahFile($pathAbsolut, $namaDiDrive, $pengaturan->folder_id, $pengaturan->refresh_token);
 
             $pengaturan->update([
                 'terakhir_kirim_pada' => now(),

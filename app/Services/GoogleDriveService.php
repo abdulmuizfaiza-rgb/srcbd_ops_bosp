@@ -60,6 +60,8 @@ class GoogleDriveService
 
     protected const UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files';
 
+    protected const FILES_URL = 'https://www.googleapis.com/drive/v3/files';
+
     /** client_id & client_secret OAuth sudah diisi di .env server ini? (dicek SEBELUM mulai alur "Hubungkan"). */
     public function terkonfigurasi(): bool
     {
@@ -168,6 +170,91 @@ class GoogleDriveService
         if ($respons->failed()) {
             throw new RuntimeException(
                 'Google Drive menolak unggahan (pastikan folder tujuan masih ada & koneksi akun Google masih aktif): '
+                .($respons->json('error.message') ?? ('HTTP '.$respons->status()))
+            );
+        }
+    }
+
+    /**
+     * Tempel nomor urut (4 digit, nol di depan) ke DEPAN nama file asli,
+     * mis. namaBernomor(7, 'backup-2026-...zip') => "0007 - backup-2026-...zip".
+     * Dipakai baik saat unggah file BARU maupun saat urutkanUlangSemuaFile()
+     * menata ulang file yang SUDAH ada di Drive (permintaan user 2026-10-14).
+     */
+    public function namaBernomor(int $nomor, string $namaAsli): string
+    {
+        return sprintf('%04d - %s', $nomor, $namaAsli);
+    }
+
+    /**
+     * Kebalikan dari namaBernomor() - buang prefix "0007 - " kalau ada,
+     * supaya urutkanUlangSemuaFile() IDEMPOTEN (aman dijalankan berkali-kali,
+     * tidak menumpuk prefix lama di depan prefix baru).
+     */
+    public function stripNomorPrefix(string $nama): string
+    {
+        return preg_replace('/^\d{4} - /', '', $nama);
+    }
+
+    /**
+     * Ambil daftar SEMUA file di dalam $folderId (tidak termasuk yang sudah
+     * dihapus/di-trash), diurutkan dari yang PALING LAMA dibuat - supaya
+     * urutkanUlangSemuaFile() menomori sesuai urutan waktu backup dibuat.
+     * Mengembalikan array of ['id' => ..., 'name' => ...].
+     */
+    public function daftarFileDiFolder(string $folderId, string $refreshToken): array
+    {
+        $token = $this->dapatkanAccessToken($refreshToken);
+
+        $daftar = [];
+        $pageToken = null;
+
+        do {
+            $query = [
+                'q' => sprintf("'%s' in parents and trashed = false", $folderId),
+                'orderBy' => 'createdTime',
+                'fields' => 'nextPageToken, files(id, name)',
+                'pageSize' => 1000,
+            ];
+
+            if ($pageToken) {
+                $query['pageToken'] = $pageToken;
+            }
+
+            $respons = Http::withToken($token)->timeout(60)->get(self::FILES_URL, $query);
+
+            if ($respons->failed()) {
+                throw new RuntimeException(
+                    'Gagal mengambil daftar file dari Google Drive: '
+                    .($respons->json('error.message') ?? ('HTTP '.$respons->status()))
+                );
+            }
+
+            foreach ((array) $respons->json('files', []) as $file) {
+                $daftar[] = ['id' => $file['id'], 'name' => $file['name']];
+            }
+
+            $pageToken = $respons->json('nextPageToken');
+        } while ($pageToken);
+
+        return $daftar;
+    }
+
+    /**
+     * Ganti nama SATU file di Google Drive (dipakai urutkanUlangSemuaFile()
+     * utk menata ulang nomor urut file yang sudah terunggah sebelumnya).
+     */
+    public function gantiNamaFile(string $fileId, string $namaBaru, string $refreshToken): void
+    {
+        $token = $this->dapatkanAccessToken($refreshToken);
+
+        $respons = Http::withToken($token)
+            ->timeout(30)
+            ->patch(self::FILES_URL.'/'.$fileId, ['name' => $namaBaru]);
+
+        if ($respons->failed()) {
+            throw new RuntimeException(
+                'Gagal mengganti nama file di Google Drive: '
                 .($respons->json('error.message') ?? ('HTTP '.$respons->status()))
             );
         }
