@@ -405,18 +405,28 @@ new #[Layout('layouts.guest')] class extends Component
                 pngtree.com (preview stok, bukan file berlisensi bebas
                 pakai) jadi TIDAK dipasang langsung, diganti ilustrasi SVG
                 orisinal bergaya serupa. Badge lingkaran diubah dari solid
-                gradient jadi transparan/glass (bg-white/10 + backdrop-blur)
-                dan diberi animasi melayang terus-menerus (class
-                "animate-float-logo" yang sudah ada, dipakai bareng logo
-                animasi lain di halaman ini) sesuai permintaan "transparan
-                melayang" - ping ring lama dihapus supaya tidak menabrak
-                efek melayang yang baru.
+                gradient jadi transparan/glass (awalnya bg-white/10 +
+                backdrop-blur) dan diberi animasi melayang terus-menerus
+                (class "animate-float-logo" yang sudah ada, dipakai bareng
+                logo animasi lain di halaman ini) sesuai permintaan
+                "transparan melayang" - ping ring lama dihapus supaya tidak
+                menabrak efek melayang yang baru.
+
+                UPDATE 2026-10-14 (lanjutan round penyempurnaan tata letak
+                Login/Verifikasi): bg-white/10 diganti jadi bg-{warna}-600/80
+                (tetap backdrop-blur-md, tetap "glass") - kalau tetap
+                bg-white/10, badge jadi nyaris tak terlihat sejak panel
+                form kanan diubah jadi latar TERANG (lihat guest.blade.php).
+                Dikonfirmasi lewat AskUserQuestion -> "Badge lingkaran
+                dibuat lebih pekat warnanya (Direkomendasikan)" - ikon tetap
+                sama persis, hanya kepekatan lingkaran di belakangnya yang
+                berubah supaya kontras terjaga di latar terang APA PUN.
             --}}
             {{-- Superadmin --}}
             <button type="button" @click="aksesTerpilih = 'Superadmin'; step = 'login'; ambilKoordinatLogin()"
                 class="group flex flex-col items-center gap-2 focus:outline-none">
                 <span class="relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center animate-float-logo">
-                    <span class="relative flex h-full w-full items-center justify-center rounded-full bg-white/10 backdrop-blur-md ring-2 ring-violet-300/70 shadow-lg shadow-indigo-900/30 transition-transform duration-300 group-hover:scale-110">
+                    <span class="relative flex h-full w-full items-center justify-center rounded-full bg-violet-600/80 backdrop-blur-md ring-2 ring-violet-300/70 shadow-lg shadow-indigo-900/30 transition-transform duration-300 group-hover:scale-110">
                         <svg class="h-8 w-8 sm:h-10 sm:w-10 text-violet-100 drop-shadow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M5 12a7 7 0 0 1 14 0" />
                             <rect x="3.3" y="11.3" width="2.8" height="4.4" rx="1.3" fill="currentColor" fill-opacity="0.9" stroke="none" />
@@ -436,7 +446,7 @@ new #[Layout('layouts.guest')] class extends Component
             <button type="button" @click="aksesTerpilih = 'Admin OPS'; step = 'login'; ambilKoordinatLogin()"
                 class="group flex flex-col items-center gap-2 focus:outline-none">
                 <span class="relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center animate-float-logo" style="animation-delay:.3s">
-                    <span class="relative flex h-full w-full items-center justify-center rounded-full bg-white/10 backdrop-blur-md ring-2 ring-sky-300/70 shadow-lg shadow-blue-900/30 transition-transform duration-300 group-hover:scale-110">
+                    <span class="relative flex h-full w-full items-center justify-center rounded-full bg-sky-600/80 backdrop-blur-md ring-2 ring-sky-300/70 shadow-lg shadow-blue-900/30 transition-transform duration-300 group-hover:scale-110">
                         <svg class="h-8 w-8 sm:h-10 sm:w-10 text-sky-100 drop-shadow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M4 13v-1a8 8 0 0 1 16 0v1" />
                             <rect x="2.4" y="12.5" width="3.2" height="5" rx="1.4" />
@@ -453,7 +463,7 @@ new #[Layout('layouts.guest')] class extends Component
             <button type="button" @click="aksesTerpilih = 'Admin BOSP'; step = 'login'; ambilKoordinatLogin()"
                 class="group flex flex-col items-center gap-2 focus:outline-none">
                 <span class="relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center animate-float-logo" style="animation-delay:.6s">
-                    <span class="relative flex h-full w-full items-center justify-center rounded-full bg-white/10 backdrop-blur-md ring-2 ring-emerald-300/70 shadow-lg shadow-emerald-900/30 transition-transform duration-300 group-hover:scale-110">
+                    <span class="relative flex h-full w-full items-center justify-center rounded-full bg-emerald-600/80 backdrop-blur-md ring-2 ring-emerald-300/70 shadow-lg shadow-emerald-900/30 transition-transform duration-300 group-hover:scale-110">
                         <svg class="h-8 w-8 sm:h-10 sm:w-10 text-emerald-100 drop-shadow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="8" r="3.6" />
                             <path d="M15.2 6.5c1.3 .4 1.6 2 .6 3.4" />
