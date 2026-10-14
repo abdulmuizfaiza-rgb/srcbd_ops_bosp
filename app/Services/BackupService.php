@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Backup;
+use App\Models\GoogleDriveSetting;
 use App\Services\Concerns\ResolvesExternalBinary;
 use Illuminate\Contracts\Process\ProcessResult;
 use Illuminate\Support\Facades\DB;
@@ -99,13 +100,59 @@ class BackupService
 
         $zip->close();
 
-        return Backup::create([
+        $backup = Backup::create([
             'tahun' => $tahun,
             'nama_file' => $namaFile,
             'path' => $pathRelatif,
             'ukuran' => filesize($pathAbsolut) ?: null,
             'dibuat_oleh_id' => $dibuatOlehId,
         ]);
+
+        $this->kirimKeGoogleDriveJikaAktif($backup, $pathAbsolut);
+
+        return $backup;
+    }
+
+    /**
+     * Unggah OTOMATIS backup yang baru saja dibuat ke Google Drive, KALAU
+     * Superadmin sudah mengisi link folder Drive di menu Backup & Restore
+     * (permintaan user 2026-10-14, jawaban AskUserQuestion "Otomatis
+     * setiap backup baru dibuat (Recommended)") - berlaku utk SEMUA jalur
+     * pembuatan backup (tombol manual DAN backup pengaman otomatis
+     * sebelum Restore/Sinkronisasi), karena hook-nya diletakkan di SINI
+     * (satu tempat), bukan diulang di tiap pemanggil.
+     *
+     * SENGAJA tidak melempar ulang (rethrow) exception apa pun - kegagalan
+     * mengunggah ke Drive (mis. internet terputus, folder belum di-share,
+     * kredensial belum terpasang) TIDAK BOLEH membatalkan/merusak backup
+     * LOKAL yang sudah berhasil dibuat; status terakhir dicatat di
+     * GoogleDriveSetting supaya terlihat di menu.
+     */
+    protected function kirimKeGoogleDriveJikaAktif(Backup $backup, string $pathAbsolut): void
+    {
+        $pengaturan = GoogleDriveSetting::current();
+
+        if (! $pengaturan->sudahDikonfigurasi()) {
+            return;
+        }
+
+        try {
+            app(GoogleDriveService::class)->unggahFile($pathAbsolut, $backup->nama_file, $pengaturan->folder_id, $pengaturan->refresh_token);
+
+            $pengaturan->update([
+                'terakhir_kirim_pada' => now(),
+                'terakhir_kirim_berhasil' => true,
+                'pesan_error_terakhir' => null,
+            ]);
+        } catch (\Throwable $e) {
+            report($e);
+
+            $pengaturan->update([
+                'terakhir_kirim_pada' => now(),
+                'terakhir_kirim_berhasil' => false,
+                'pesan_error_terakhir' => $e->getMessage(),
+            ]);
+        }
     }
 
     protected function finderKodeAplikasi(): Finder
@@ -115,7 +162,12 @@ class BackupService
             ->in(base_path())
             ->ignoreDotFiles(false)
             ->exclude(self::FOLDER_DIKECUALIKAN)
-            ->notName('/^\.env(\..+)?$/');
+            ->notName('/^\.env(\..+)?$/')
+            // Kredensial Service Account Google Drive (berisi private key)
+            // TIDAK BOLEH ikut ter-zip ke dalam backup yang bisa diunduh -
+            // sama alasannya dengan pengecualian .env di atas (permintaan
+            // user 2026-10-14, fitur unggah otomatis ke Google Drive).
+            ->notName('/^google-drive-service-account\.json$/');
 
         foreach (self::PATH_DIKECUALIKAN as $pola) {
             $finder->notPath($pola);

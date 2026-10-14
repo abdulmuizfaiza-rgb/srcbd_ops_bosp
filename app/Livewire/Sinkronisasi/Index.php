@@ -60,6 +60,8 @@ class Index extends Component
 
     public function simpanUrlOnline(): void
     {
+        $this->urlOnline = trim($this->urlOnline);
+
         $this->validate(['urlOnline' => ['required', 'url']]);
 
         SyncSetting::current()->update(['url_online' => rtrim($this->urlOnline, '/')]);
@@ -69,6 +71,13 @@ class Index extends Component
 
     public function simpanTokenOnline(): void
     {
+        // trim() - token yang ditempel dari clipboard seringkali ikut
+        // membawa spasi/baris-baru tak sengaja, yang membuat hash token
+        // tidak cocok saat dicek App\Models\SyncToken::cocok() di sisi
+        // Online meski token aslinya benar (ditemukan saat uji coba
+        // Tes Koneksi 2026-10-14).
+        $this->tokenOnlineBaru = trim($this->tokenOnlineBaru);
+
         $this->validate(['tokenOnlineBaru' => ['required', 'string', 'min:10']]);
 
         SyncSetting::current()->update(['token_online' => $this->tokenOnlineBaru]);
@@ -106,16 +115,19 @@ class Index extends Component
     public function konfirmasiSinkronisasi(): void
     {
         $this->confirmingSinkronisasi = true;
+        $this->dispatch('open-modal', 'sinkronisasi-konfirmasi-kirim');
     }
 
     public function batalSinkronisasi(): void
     {
         $this->confirmingSinkronisasi = false;
+        $this->dispatch('close-modal', 'sinkronisasi-konfirmasi-kirim');
     }
 
     public function jalankanSinkronisasi(SyncEngine $syncEngine, SyncClient $syncClient): void
     {
         $this->confirmingSinkronisasi = false;
+        $this->dispatch('close-modal', 'sinkronisasi-konfirmasi-kirim');
 
         if (function_exists('set_time_limit')) {
             @set_time_limit(0);
@@ -141,22 +153,31 @@ class Index extends Component
             ]);
 
             session()->flash('sinkronisasi_error', 'Sinkronisasi gagal: '.$e->getMessage());
+        } finally {
+            // Memberi tahu browser (lewat Alpine di Blade) bahwa proses
+            // sudah selesai (berhasil ATAU gagal), supaya progress bar +
+            // penghitung waktu berjalan di modal bisa berhenti - lihat
+            // resources/views/livewire/sinkronisasi/index.blade.php.
+            $this->dispatch('sinkronisasi-proses-selesai');
         }
     }
 
     public function konfirmasiTarikData(): void
     {
         $this->confirmingTarikData = true;
+        $this->dispatch('open-modal', 'sinkronisasi-konfirmasi-tarik');
     }
 
     public function batalTarikData(): void
     {
         $this->confirmingTarikData = false;
+        $this->dispatch('close-modal', 'sinkronisasi-konfirmasi-tarik');
     }
 
     public function jalankanTarikData(SyncEngine $syncEngine, SyncClient $syncClient): void
     {
         $this->confirmingTarikData = false;
+        $this->dispatch('close-modal', 'sinkronisasi-konfirmasi-tarik');
 
         if (function_exists('set_time_limit')) {
             @set_time_limit(0);
@@ -184,6 +205,8 @@ class Index extends Component
             ]);
 
             session()->flash('sinkronisasi_error', 'Tarik Data gagal: '.$e->getMessage());
+        } finally {
+            $this->dispatch('tarik-data-proses-selesai');
         }
     }
 

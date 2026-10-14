@@ -171,34 +171,86 @@
     </div>
 
     <x-modal name="sinkronisasi-konfirmasi-kirim" :show="$confirmingSinkronisasi" maxWidth="md">
-        <div class="p-6">
+        <div
+            class="p-6"
+            x-data="{ sedangBerjalan: false, detik: 0, _interval: null }"
+            x-on:sinkronisasi-proses-selesai.window="sedangBerjalan = false; clearInterval(_interval)"
+        >
             <h2 class="text-lg font-bold text-red-700">Yakin ingin menjalankan Sinkronisasi?</h2>
             <p class="mt-2 text-sm text-slate-600">
                 Seluruh data Pendataan OPS/BOSP, Data PTK, dan Profil Sekolah dari Lokal ini akan dikirim ke Online dan DIGABUNGKAN (data yang lebih baru menang). Online akan membuat 1 backup pengaman otomatis dulu sebelum menerapkannya.
             </p>
+
+            <div x-show="sedangBerjalan" x-cloak class="mt-4">
+                <div class="flex items-center justify-between text-xs text-slate-500 mb-1">
+                    <span>Sedang mengirim data ke Online, mohon jangan tutup halaman ini...</span>
+                    <span x-text="detik + ' detik'"></span>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden relative">
+                    <div class="absolute inset-y-0 w-1/3 bg-indigo-600 rounded-full animate-sinkron-progress"></div>
+                </div>
+            </div>
+
             <div class="mt-6 flex justify-end gap-3">
                 <x-secondary-button wire:click="batalSinkronisasi" wire:loading.attr="disabled" wire:target="jalankanSinkronisasi">Batal</x-secondary-button>
-                <x-primary-button wire:click="jalankanSinkronisasi" wire:loading.attr="disabled" wire:target="jalankanSinkronisasi" class="!bg-red-600 hover:!bg-red-700">
+                <x-primary-button
+                    wire:click="jalankanSinkronisasi"
+                    wire:loading.attr="disabled"
+                    wire:target="jalankanSinkronisasi"
+                    x-on:click="sedangBerjalan = true; detik = 0; clearInterval(_interval); _interval = setInterval(() => detik++, 1000)"
+                    class="!bg-red-600 hover:!bg-red-700"
+                >
                     <span wire:loading.remove wire:target="jalankanSinkronisasi">Ya, Sinkronisasi Sekarang</span>
-                    <span wire:loading wire:target="jalankanSinkronisasi">Sedang mengirim, mohon jangan tutup halaman ini...</span>
+                    <span wire:loading wire:target="jalankanSinkronisasi">Sedang mengirim...</span>
                 </x-primary-button>
             </div>
         </div>
     </x-modal>
 
     <x-modal name="sinkronisasi-konfirmasi-tarik" :show="$confirmingTarikData" maxWidth="md">
-        <div class="p-6">
+        <div
+            class="p-6"
+            x-data="{ sedangBerjalan: false, detik: 0, _interval: null }"
+            x-on:tarik-data-proses-selesai.window="sedangBerjalan = false; clearInterval(_interval)"
+        >
             <h2 class="text-lg font-bold text-red-700">Yakin ingin menjalankan Tarik Data?</h2>
             <p class="mt-2 text-sm text-slate-600">
                 Seluruh data dari Online akan diambil dan DIGABUNGKAN ke database Lokal ini (data yang lebih baru menang). Lokal akan membuat 1 backup pengaman otomatis dulu sebelum menerapkannya.
             </p>
+
+            <div x-show="sedangBerjalan" x-cloak class="mt-4">
+                <div class="flex items-center justify-between text-xs text-slate-500 mb-1">
+                    <span>Sedang menarik data dari Online, mohon jangan tutup halaman ini...</span>
+                    <span x-text="detik + ' detik'"></span>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden relative">
+                    <div class="absolute inset-y-0 w-1/3 bg-indigo-600 rounded-full animate-sinkron-progress"></div>
+                </div>
+            </div>
+
             <div class="mt-6 flex justify-end gap-3">
                 <x-secondary-button wire:click="batalTarikData" wire:loading.attr="disabled" wire:target="jalankanTarikData">Batal</x-secondary-button>
-                <x-primary-button wire:click="jalankanTarikData" wire:loading.attr="disabled" wire:target="jalankanTarikData" class="!bg-red-600 hover:!bg-red-700">
+                <x-primary-button
+                    wire:click="jalankanTarikData"
+                    wire:loading.attr="disabled"
+                    wire:target="jalankanTarikData"
+                    x-on:click="sedangBerjalan = true; detik = 0; clearInterval(_interval); _interval = setInterval(() => detik++, 1000)"
+                    class="!bg-red-600 hover:!bg-red-700"
+                >
                     <span wire:loading.remove wire:target="jalankanTarikData">Ya, Tarik Data Sekarang</span>
-                    <span wire:loading wire:target="jalankanTarikData">Sedang menarik data, mohon jangan tutup halaman ini...</span>
+                    <span wire:loading wire:target="jalankanTarikData">Sedang menarik...</span>
                 </x-primary-button>
             </div>
         </div>
     </x-modal>
+
+    <style>
+        @keyframes sinkron-progress-slide {
+            0%   { left: -33%; }
+            100% { left: 100%; }
+        }
+        .animate-sinkron-progress {
+            animation: sinkron-progress-slide 1.1s ease-in-out infinite;
+        }
+    </style>
 </div>

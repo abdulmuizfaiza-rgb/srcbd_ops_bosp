@@ -3,8 +3,10 @@
 namespace App\Livewire\Backup;
 
 use App\Models\Backup;
+use App\Models\GoogleDriveSetting;
 use App\Models\RestoreLog;
 use App\Services\BackupService;
+use App\Services\GoogleDriveService;
 use App\Services\RestoreService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -62,9 +64,12 @@ class Index extends Component
     #[Url(as: 'tab')]
     public string $tabUtama = self::TAB_BACKUP;
 
+    public string $linkDriveBaru = '';
+
     public function mount(): void
     {
         $this->restoreTahun = (string) ($this->daftarTahunOptions()[0] ?? '');
+        $this->linkDriveBaru = GoogleDriveSetting::current()->folder_url ?? '';
     }
 
     public function pindahTabUtama(string $tab): void
@@ -100,6 +105,123 @@ class Index extends Component
             report($e);
             session()->flash('errorBackup', 'Gagal membuat backup: '.$e->getMessage());
         }
+    }
+
+    // =========================================================================
+    // Pengaturan Google Drive (BARU, permintaan user 2026-10-14) - lihat
+    // App\Services\GoogleDriveService & App\Models\GoogleDriveSetting
+    // untuk keputusan bisnis/teknis lengkap. Unggah OTOMATIS ke Drive utk
+    // SETIAP backup baru sebenarnya terjadi di dalam BackupService (bukan
+    // di sini) - 2 method di bawah ini HANYA mengurus pengaturan link
+    // folder & tombol "Kirim Sekarang" (uji coba manual).
+    // =========================================================================
+
+    public function simpanLinkDrive(GoogleDriveService $driveService): void
+    {
+        abort_unless(auth()->user()->isSuperadmin(), 403);
+
+        $this->linkDriveBaru = trim($this->linkDriveBaru);
+
+        if ($this->linkDriveBaru === '') {
+            GoogleDriveSetting::current()->update(['folder_url' => null, 'folder_id' => null]);
+            session()->flash('status', 'Link Google Drive dikosongkan - unggah otomatis ke Drive dinonaktifkan.');
+
+            return;
+        }
+
+        $folderId = $driveService->ekstrakFolderId($this->linkDriveBaru);
+
+        if ($folderId === null) {
+            $this->addError('linkDriveBaru', 'Link folder Google Drive tidak dikenali. Tempel link folder (hasil klik "Bagikan" pada folder di Google Drive), contoh: https://drive.google.com/drive/folders/xxxxxxxxxxxxxxxxxxxx');
+
+            return;
+        }
+
+        GoogleDriveSetting::current()->update([
+            'folder_url' => $this->linkDriveBaru,
+            'folder_id' => $folderId,
+        ]);
+
+        session()->flash('status', 'Link Google Drive disimpan. Backup baru akan otomatis terunggah ke folder ini.');
+    }
+
+    /**
+     * Tombol "Kirim Sekarang" - uji coba manual mengunggah backup PALING
+     * BARU yang sudah ada ke Google Drive, tanpa perlu menunggu/membuat
+     * backup baru lagi. Berguna utk memastikan pengaturan (link folder +
+     * kredensial Service Account di server) sudah benar.
+     */
+    public function kirimSekarangKeGoogleDrive(GoogleDriveService $driveService): void
+    {
+        abort_unless(auth()->user()->isSuperadmin(), 403);
+
+        $pengaturan = GoogleDriveSetting::current();
+
+        if (! $pengaturan->sudahTerhubung()) {
+            session()->flash('errorBackup', 'Hubungkan Google Drive terlebih dahulu (klik tombol "Hubungkan Google Drive" di atas) sebelum mengirim.');
+
+            return;
+        }
+
+        if (empty($pengaturan->folder_id)) {
+            session()->flash('errorBackup', 'Isi & simpan link folder Google Drive terlebih dahulu sebelum mengirim.');
+
+            return;
+        }
+
+        $backupTerbaru = Backup::query()->orderByDesc('created_at')->first();
+
+        if (! $backupTerbaru) {
+            session()->flash('errorBackup', 'Belum ada file backup sama sekali - buat backup dulu lewat tombol "Buat Backup Sekarang" di atas.');
+
+            return;
+        }
+
+        try {
+            $driveService->unggahFile(
+                Storage::disk('local')->path($backupTerbaru->path),
+                $backupTerbaru->nama_file,
+                $pengaturan->folder_id,
+                $pengaturan->refresh_token
+            );
+
+            $pengaturan->update([
+                'terakhir_kirim_pada' => now(),
+                'terakhir_kirim_berhasil' => true,
+                'pesan_error_terakhir' => null,
+            ]);
+
+            session()->flash('status', 'Berhasil mengirim "'.$backupTerbaru->nama_file.'" ke Google Drive.');
+        } catch (Throwable $e) {
+            report($e);
+
+            $pengaturan->update([
+                'terakhir_kirim_pada' => now(),
+                'terakhir_kirim_berhasil' => false,
+                'pesan_error_terakhir' => $e->getMessage(),
+            ]);
+
+            session()->flash('errorBackup', 'Gagal mengirim ke Google Drive: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Tombol "Putuskan Koneksi" - menghapus refresh_token yang tersimpan
+     * (akun Google TIDAK diubah/dihapus apa pun di sisi Google, hanya
+     * aplikasi ini yang "lupa" koneksinya). Backup baru TIDAK akan
+     * terunggah otomatis lagi sampai "Hubungkan Google Drive" diulang.
+     */
+    public function putuskanKoneksiDrive(): void
+    {
+        abort_unless(auth()->user()->isSuperadmin(), 403);
+
+        GoogleDriveSetting::current()->update([
+            'refresh_token' => null,
+            'email_terhubung' => null,
+            'terhubung_pada' => null,
+        ]);
+
+        session()->flash('status', 'Koneksi Google Drive diputuskan.');
     }
 
     /**
@@ -252,6 +374,7 @@ class Index extends Component
             'backupUntukRestore' => $backupUntukRestore,
             'riwayatRestore' => $riwayatRestore,
             'backupDikonfirmasiRestore' => $this->confirmingRestoreId ? Backup::find($this->confirmingRestoreId) : null,
+            'pengaturanDrive' => GoogleDriveSetting::current(),
         ]);
     }
 }

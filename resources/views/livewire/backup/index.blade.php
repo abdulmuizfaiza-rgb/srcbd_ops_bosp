@@ -76,6 +76,83 @@
                             </button>
                         </div>
 
+                        {{--
+                            Pengaturan Google Drive (BARU, permintaan user
+                            2026-10-14) - link folder HANYA utk backup di
+                            INSTALASI INI (lihat docblock App\Models\
+                            GoogleDriveSetting). Setiap backup baru otomatis
+                            ikut terunggah setelah link ini disimpan - tombol
+                            "Kirim Sekarang" di bawah HANYA utk uji coba
+                            manual memastikan pengaturan sudah benar.
+                        --}}
+                        <div class="border-t border-slate-200 pt-6">
+                            <h3 class="text-lg font-bold text-indigo-900 mb-2">Pengaturan Google Drive</h3>
+                            <p class="text-sm text-slate-500 mb-4">
+                                Hubungkan akun Google Drive Anda, lalu tempel link folder tujuan (folder boleh folder apa saja milik akun yang terhubung). Setelah itu, SETIAP backup baru yang dibuat (manual maupun otomatis sebelum Restore/Sinkronisasi) langsung ikut terunggah ke folder ini.
+                            </p>
+
+                            {{--
+                                Status koneksi akun Google (OAuth, GANTI dari
+                                Service Account 2026-10-14 - lihat docblock
+                                App\Services\GoogleDriveService). Link
+                                "Hubungkan" SENGAJA berupa <a href> biasa
+                                (BUKAN wire:click) karena harus benar-benar
+                                berpindah halaman ke Google.
+                            --}}
+                            <div class="mb-4 flex flex-wrap items-center gap-3">
+                                @if ($pengaturanDrive->sudahTerhubung())
+                                    <span class="inline-flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-1.5">
+                                        Terhubung sebagai <span class="font-semibold">{{ $pengaturanDrive->email_terhubung ?? '-' }}</span>
+                                    </span>
+                                    <x-secondary-button
+                                        wire:click="putuskanKoneksiDrive"
+                                        wire:loading.attr="disabled"
+                                        wire:target="putuskanKoneksiDrive"
+                                        wire:confirm="Putuskan koneksi Google Drive? Backup baru TIDAK akan terunggah otomatis sampai Anda menghubungkan kembali."
+                                    >
+                                        Putuskan Koneksi
+                                    </x-secondary-button>
+                                @else
+                                    <a
+                                        href="{{ route('google-drive.hubungkan') }}"
+                                        class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition"
+                                    >
+                                        Hubungkan Google Drive
+                                    </a>
+                                    <span class="text-xs text-slate-500">Belum terhubung ke akun Google mana pun.</span>
+                                @endif
+                            </div>
+
+                            <form wire:submit="simpanLinkDrive" class="flex flex-col sm:flex-row gap-3 sm:items-start">
+                                <div class="flex-1 w-full">
+                                    <x-text-input wire:model="linkDriveBaru" type="text" class="w-full" placeholder="https://drive.google.com/drive/folders/..." />
+                                    <x-input-error :messages="$errors->get('linkDriveBaru')" class="mt-1" />
+                                </div>
+                                <x-primary-button type="submit" wire:loading.attr="disabled" wire:target="simpanLinkDrive">
+                                    Simpan
+                                </x-primary-button>
+                            </form>
+
+                            <div class="mt-3 flex flex-wrap items-center gap-3">
+                                <x-secondary-button wire:click="kirimSekarangKeGoogleDrive" wire:loading.attr="disabled" wire:target="kirimSekarangKeGoogleDrive">
+                                    <span wire:loading.remove wire:target="kirimSekarangKeGoogleDrive">Kirim Sekarang (uji coba)</span>
+                                    <span wire:loading wire:target="kirimSekarangKeGoogleDrive">Mengirim...</span>
+                                </x-secondary-button>
+
+                                @if ($pengaturanDrive->terakhir_kirim_pada)
+                                    <span class="text-xs text-slate-500">
+                                        Terakhir dikirim {{ $pengaturanDrive->terakhir_kirim_pada->diffForHumans() }} -
+                                        <span class="font-semibold {{ $pengaturanDrive->terakhir_kirim_berhasil ? 'text-green-700' : 'text-red-700' }}">
+                                            {{ $pengaturanDrive->terakhir_kirim_berhasil ? 'Berhasil' : 'Gagal' }}
+                                        </span>
+                                        @if (! $pengaturanDrive->terakhir_kirim_berhasil && $pengaturanDrive->pesan_error_terakhir)
+                                            ({{ $pengaturanDrive->pesan_error_terakhir }})
+                                        @endif
+                                    </span>
+                                @endif
+                            </div>
+                        </div>
+
                         <div>
                             <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                                 <h3 class="text-lg font-bold text-indigo-900">Riwayat Backup</h3>

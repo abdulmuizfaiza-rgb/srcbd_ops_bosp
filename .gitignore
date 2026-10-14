@@ -34,3 +34,6 @@ Thumbs.db
 *-backup.tar.gz
 /srcbd_backup.sql
 /storage-public-backup.tar.gz
+
+# Kredensial Service Account Google Drive (unggah otomatis backup, 2026-10-14) - JANGAN ikut tercommit.
+/storage/app/private/google-drive-service-account.json

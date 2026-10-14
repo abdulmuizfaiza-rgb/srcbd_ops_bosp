@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BackupFileController;
 use App\Http\Controllers\FormulirBosK7CetakController;
+use App\Http\Controllers\GoogleDriveOAuthController;
 use App\Http\Controllers\KopSuratFileController;
 use App\Http\Controllers\PanduanAplikasiFileController;
 use App\Http\Controllers\PanduanAplikasiUnduhSemuaController;
@@ -148,6 +149,14 @@ Route::middleware(['auth', 'can:akses-panduan-aplikasi'])->group(function () {
 Route::middleware(['auth', 'can:akses-backup'])->group(function () {
     Route::get('backup', BackupIndex::class)->name('backup.index');
     Route::get('backup/{backup}/unduh', [BackupFileController::class, 'unduh'])->name('backup.unduh');
+
+    // Alur "Hubungkan Google Drive" (OAuth 2.0, GANTI dari Service
+    // Account 2026-10-14 - lihat docblock App\Services\
+    // GoogleDriveService) - 2 route ini HARUS berupa route biasa (bukan
+    // method Livewire), karena browser benar-benar berpindah ke halaman
+    // Google lalu diarahkan balik ke sini.
+    Route::get('backup/google-drive/hubungkan', [GoogleDriveOAuthController::class, 'hubungkan'])->name('google-drive.hubungkan');
+    Route::get('backup/google-drive/callback', [GoogleDriveOAuthController::class, 'callback'])->name('google-drive.callback');
 });
 
 // Menu "Sinkronisasi dan Tarik Data" (BARU, permintaan user 2026-10-14

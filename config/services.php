@@ -35,4 +35,25 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Google Drive (unggah otomatis backup - permintaan user 2026-10-14)
+    |--------------------------------------------------------------------------
+    |
+    | GANTI ARSITEKTUR (2026-10-14, sore) dari Service Account (kolom
+    | 'credentials_path' lama, file JSON di server) menjadi OAuth 2.0
+    | "Login dengan Google" - lihat docblock lengkap App\Services\
+    | GoogleDriveService untuk alasan (Service Account tidak bisa dipakai
+    | utk akun Gmail pribadi) & panduan update utk cara membuat OAuth
+    | Client ID di Google Cloud Console. client_id boleh diketahui publik
+    | (tampil di URL login Google), client_secret tetap rahasia - KEDUANYA
+    | hanya disimpan di .env server (TIDAK ikut ter-commit / ter-zip ke
+    | backup).
+    |
+    */
+    'google_drive' => [
+        'oauth_client_id' => env('GOOGLE_DRIVE_OAUTH_CLIENT_ID'),
+        'oauth_client_secret' => env('GOOGLE_DRIVE_OAUTH_CLIENT_SECRET'),
+    ],
+
 ];
