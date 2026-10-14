@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * lihat docblock migration create_backups_table utk keputusan bisnis
  * lengkap (jawaban AskUserQuestion).
  */
-#[Fillable(['tahun', 'nama_file', 'path', 'ukuran', 'dibuat_oleh_id'])]
+#[Fillable(['tahun', 'nama_file', 'path', 'ukuran', 'dibuat_oleh_id', 'catatan'])]
 class Backup extends Model
 {
     /** @use HasFactory<BackupFactory> */
@@ -29,6 +29,16 @@ class Backup extends Model
     public function dibuatOleh(): BelongsTo
     {
         return $this->belongsTo(User::class, 'dibuat_oleh_id');
+    }
+
+    /**
+     * TRUE kalau baris ini adalah backup OTOMATIS (jaring pengaman) yang
+     * dibuat App\Services\RestoreService tepat SEBELUM proses Restore
+     * dijalankan - lihat migration `add_catatan_to_backups_table`.
+     */
+    public function otomatisSebelumRestore(): bool
+    {
+        return ! empty($this->catatan);
     }
 
     /** Ukuran paket backup ini dalam bentuk yang mudah dibaca manusia ("120.5 MB" dst). */

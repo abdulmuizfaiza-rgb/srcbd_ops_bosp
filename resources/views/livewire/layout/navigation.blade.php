@@ -236,7 +236,7 @@ new class extends Component
 
                 @can('akses-backup')
                     <x-sidebar-link :href="route('backup.index')" :active="request()->routeIs('backup.*')" wire:navigate.hover>
-                        {{ __('Backup') }}
+                        {{ __('Backup & Restore') }}
                     </x-sidebar-link>
                 @endcan
 
@@ -249,6 +249,12 @@ new class extends Component
                 @can('akses-cek-database-aplikasi')
                     <x-sidebar-link :href="route('cek-database-aplikasi.index')" :active="request()->routeIs('cek-database-aplikasi.*')" wire:navigate.hover>
                         {{ __('Cek Database dan Aplikasi') }}
+                    </x-sidebar-link>
+                @endcan
+
+                @can('akses-sinkronisasi')
+                    <x-sidebar-link :href="route('sinkronisasi.index')" :active="request()->routeIs('sinkronisasi.*')" wire:navigate.hover>
+                        {{ __('Sinkronisasi dan Tarik Data') }}
                     </x-sidebar-link>
                 @endcan
             </nav>
@@ -412,7 +418,7 @@ new class extends Component
 
             @can('akses-backup')
                 <x-sidebar-link :href="route('backup.index')" :active="request()->routeIs('backup.*')" wire:navigate.hover>
-                    {{ __('Backup') }}
+                    {{ __('Backup & Restore') }}
                 </x-sidebar-link>
             @endcan
 
@@ -425,6 +431,12 @@ new class extends Component
             @can('akses-cek-database-aplikasi')
                 <x-sidebar-link :href="route('cek-database-aplikasi.index')" :active="request()->routeIs('cek-database-aplikasi.*')" wire:navigate.hover>
                     {{ __('Cek Database dan Aplikasi') }}
+                </x-sidebar-link>
+            @endcan
+
+            @can('akses-sinkronisasi')
+                <x-sidebar-link :href="route('sinkronisasi.index')" :active="request()->routeIs('sinkronisasi.*')" wire:navigate.hover>
+                    {{ __('Sinkronisasi dan Tarik Data') }}
                 </x-sidebar-link>
             @endcan
         </nav>

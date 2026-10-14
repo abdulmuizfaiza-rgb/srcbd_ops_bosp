@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Backup;
+use App\Services\Concerns\ResolvesExternalBinary;
 use Illuminate\Contracts\Process\ProcessResult;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -56,6 +57,8 @@ use ZipArchive;
  */
 class BackupService
 {
+    use ResolvesExternalBinary;
+
     /** Nama folder yang DIKECUALIKAN sama sekali dari zip kode aplikasi (dicocokkan di level mana pun). */
     protected const FOLDER_DIKECUALIKAN = ['vendor', 'node_modules', '.git', 'bootstrap/cache'];
 
@@ -594,35 +597,6 @@ class BackupService
         }
 
         return $hasil->output();
-    }
-
-    /**
-     * Cari lokasi binary command-line (pg_dump/mysqldump) dgn urutan: (1) path
-     * yang dikonfigurasi user lewat .env kalau file-nya memang ada, (2) pola
-     * glob ke lokasi umum install di Windows (versi TERBARU yang ketemu
-     * dipakai kalau ada lebih dari satu), (3) fallback ke nama command polos
-     * spt sebelumnya (mengandalkan PATH sistem) - jadi server yang PATH-nya
-     * sudah benar berperilaku PERSIS seperti sebelum round ini.
-     *
-     * @param  string[]  $polaGlobFallback
-     */
-    protected function resolveBinary(string $namaBinary, ?string $pathTerkonfigurasi, array $polaGlobFallback = []): string
-    {
-        if ($pathTerkonfigurasi !== null && $pathTerkonfigurasi !== '' && is_file($pathTerkonfigurasi)) {
-            return $pathTerkonfigurasi;
-        }
-
-        foreach ($polaGlobFallback as $pola) {
-            $kandidat = glob($pola) ?: [];
-
-            if ($kandidat !== []) {
-                rsort($kandidat);
-
-                return $kandidat[0];
-            }
-        }
-
-        return $namaBinary;
     }
 
     /** Dump manual lewat PDO (tanpa binary eksternal) - juga dipakai utk database sqlite ":memory:" (lingkungan testing). */

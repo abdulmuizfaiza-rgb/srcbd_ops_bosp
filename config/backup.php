@@ -23,4 +23,11 @@
 return [
     'pg_dump_path' => env('BACKUP_PG_DUMP_PATH'),
     'mysqldump_path' => env('BACKUP_MYSQLDUMP_PATH'),
+
+    // Dipakai App\Services\RestoreService (fitur Restore, permintaan user
+    // 2026-10-14 poin 2) - HANYA dipakai di Linux (server online), lihat
+    // docblock RestoreService::restorePgsqlViaPsql() untuk alasan lengkap
+    // kenapa Windows (lokal) TIDAK memakai psql.exe sama sekali.
+    'psql_path' => env('BACKUP_PSQL_PATH'),
+    'mysql_path' => env('BACKUP_MYSQL_PATH'),
 ];
