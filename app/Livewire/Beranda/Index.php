@@ -6,6 +6,7 @@ use App\Models\Lampiran2a;
 use App\Models\Lampiran2b;
 use App\Models\Lampiran2c;
 use App\Models\ProfilSekolah;
+use App\Models\User;
 use App\Models\VervalRealisasiBosp;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
@@ -136,6 +137,40 @@ use Livewire\WithPagination;
  * user yang sudah login TETAP diarahkan ke /dashboard seperti
  * sebelumnya (tidak ada perubahan perilaku utk mereka), hanya
  * pengunjung yang BELUM login yang sekarang melihat halaman baru ini.
+ *
+ * ROUND KESEMBILAN BELAS (2026-10-16) - permintaan user (verbatim): "pada
+ * landingpage beranda tambahkan rekapan admin ops dan admin BOSP yang
+ * sudah dan belum registrasi ke aplikasi."
+ *
+ * Widget "Registrasi Admin OPS & Admin BOSP" ini SUDAH ADA sebelumnya di
+ * dashboard Superadmin (App\Livewire\Dashboard\Index, round keempat
+ * belas/2026-09-24, jawaban AskUserQuestion "Registrasi Akun" ->
+ * "Sudah disetujui Superadmin") - definisi "sudah registrasi" (1 sekolah
+ * dianggap "sudah registrasi" Admin OPS/BOSP HANYA kalau ADA user dgn
+ * level terkait DAN is_approved = true) DIPAKAI ULANG APA ADANYA di sini
+ * (konsisten dgn prinsip "Pakai definisi yang sudah ada" yang sudah
+ * berlaku utk widget Pendataan OPS/BOSP di halaman ini) - method
+ * idSekolahSudahRegistrasi() di bawah SENGAJA DIDUPLIKASI (bukan
+ * diekstrak ke helper bersama) dari
+ * App\Livewire\Dashboard\Index::idSekolahSudahRegistrasi(), dgn alasan
+ * yang SAMA dgn idSekolahSelesaiOps()/tahunOptions() di atas (jangan
+ * menyentuh kelas Dashboard yang sudah berjalan & teruji).
+ *
+ * Partial Blade yang dipakai utk daftar sekolahnya JUGA dipakai ulang
+ * APA ADANYA dari dashboard
+ * (resources/views/livewire/dashboard/partials/daftar-registrasi-admin.blade.php,
+ * 1 daftar gabungan dgn 2 badge status/sekolah - OPS & BOSP) - BUKAN
+ * mengikuti pola "2 daftar terpisah" yang dipakai widget Pendataan
+ * OPS/BOSP di halaman ini, karena widget Registrasi ini adalah
+ * TRANSPLANTASI LANGSUNG dari widget yang sudah ada & disetujui user
+ * apa adanya (bukan desain UI baru), jadi bentuk aslinya (1 daftar
+ * gabungan) dipertahankan apa adanya demi konsistensi dgn versi
+ * dashboard & menghindari membuat partial baru yang menduplikasi.
+ *
+ * Status "sudah registrasi" TIDAK bergantung Tahun/Triwulan (sama
+ * seperti di dashboard) - jadi TIDAK ikut berubah saat pengunjung
+ * mengganti selector Tahun/Triwulan di halaman ini (selector itu HANYA
+ * memengaruhi 2 widget Pendataan OPS/BOSP yang sudah ada).
  */
 #[Layout('layouts.beranda')]
 #[Title('Beranda')]
@@ -187,6 +222,23 @@ class Index extends Component
         $opsSudah = $idSekolahSelesaiOps->count();
         $bospSudah = $idSekolahSelesaiBosp->count();
 
+        // Round kesembilan belas: widget "Registrasi Admin OPS & Admin
+        // BOSP" - lihat docblock kelas di atas. TIDAK memakai $tahun/$triwulan
+        // (status registrasi tidak bergantung periode).
+        $idSekolahRegistrasiOps = $this->idSekolahSudahRegistrasi(User::LEVEL_ADMIN_OPS);
+        $idSekolahRegistrasiBosp = $this->idSekolahSudahRegistrasi(User::LEVEL_ADMIN_BOSP);
+
+        $registrasiOpsSudah = $idSekolahRegistrasiOps->count();
+        $registrasiBospSudah = $idSekolahRegistrasiBosp->count();
+
+        $halamanRegistrasi = ProfilSekolah::urutStandar()
+            ->paginate($perHalaman, ['*'], 'halamanRegistrasi')
+            ->through(fn (ProfilSekolah $s) => [
+                'sekolah' => $s,
+                'opsSudah' => $idSekolahRegistrasiOps->contains($s->id),
+                'bospSudah' => $idSekolahRegistrasiBosp->contains($s->id),
+            ]);
+
         return view('livewire.beranda.index', [
             'tahun' => $tahun,
             'tahunOptions' => $this->tahunOptions(),
@@ -201,6 +253,13 @@ class Index extends Component
             'bospBelum' => max($totalSekolah - $bospSudah, 0),
             'bospPersen' => $totalSekolah > 0 ? (int) round(($bospSudah / $totalSekolah) * 100) : 0,
             'halamanBosp' => $halamanBosp,
+            'registrasiOpsSudah' => $registrasiOpsSudah,
+            'registrasiOpsBelum' => max($totalSekolah - $registrasiOpsSudah, 0),
+            'registrasiOpsPersen' => $totalSekolah > 0 ? (int) round(($registrasiOpsSudah / $totalSekolah) * 100) : 0,
+            'registrasiBospSudah' => $registrasiBospSudah,
+            'registrasiBospBelum' => max($totalSekolah - $registrasiBospSudah, 0),
+            'registrasiBospPersen' => $totalSekolah > 0 ? (int) round(($registrasiBospSudah / $totalSekolah) * 100) : 0,
+            'halamanRegistrasi' => $halamanRegistrasi,
         ]);
     }
 
@@ -231,5 +290,23 @@ class Index extends Component
     private function tahunOptions(): array
     {
         return array_reverse(range(now()->year - 2, now()->year + 1));
+    }
+
+    /**
+     * Sama persis dgn
+     * App\Livewire\Dashboard\Index::idSekolahSudahRegistrasi() (definisi
+     * "sudah registrasi": akun ADA & is_approved = true) - SENGAJA
+     * diduplikasi, lihat docblock kelas di atas (round kesembilan belas).
+     *
+     * @return Collection<int, int>
+     */
+    private function idSekolahSudahRegistrasi(string $levelAkses): Collection
+    {
+        return User::query()
+            ->where('level_akses', $levelAkses)
+            ->where('is_approved', true)
+            ->whereNotNull('profil_sekolah_id')
+            ->distinct()
+            ->pluck('profil_sekolah_id');
     }
 }

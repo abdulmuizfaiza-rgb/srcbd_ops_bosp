@@ -157,4 +157,70 @@
             'jumlahBelum' => $bospBelum,
         ])
     </div>
+
+    {{--
+        ============ REKAP REGISTRASI ADMIN OPS & ADMIN BOSP ============
+        Round kesembilan belas (2026-10-16) - permintaan user "tambahkan
+        rekapan admin ops dan admin BOSP yang sudah dan belum registrasi
+        ke aplikasi." Lihat docblock App\Livewire\Beranda\Index utk
+        detail (definisi & partial daftar sekolahnya DIPAKAI ULANG APA
+        ADANYA dari widget yang sudah ada di dashboard Superadmin).
+        TIDAK bergantung selector Tahun/Triwulan di atas.
+    --}}
+    <div class="pt-2 animate-fade-in-up">
+        <h2 class="text-lg sm:text-xl font-bold text-white text-center sm:text-left">
+            Registrasi Admin OPS &amp; Admin BOSP
+        </h2>
+        <p class="text-sm text-blue-100/90 text-center sm:text-left mt-1">
+            Rekap sekolah yang sudah dan belum memiliki akun Admin OPS/Admin BOSP yang disetujui Superadmin.
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        {{-- Ringkasan Registrasi Admin OPS --}}
+        <div class="relative overflow-hidden rounded-2xl shadow-xl bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-600 animate-fade-in-up">
+            <div class="pointer-events-none absolute -top-10 -right-10 w-56 h-56 rounded-full bg-white/10 blur-2xl animate-blob-a"></div>
+            <div class="pointer-events-none absolute -bottom-16 -left-10 w-64 h-64 rounded-full bg-teal-300/20 blur-2xl animate-blob-b"></div>
+
+            <div class="relative p-6 sm:p-7 text-white">
+                <p class="text-xs font-semibold uppercase tracking-wider text-emerald-100">Registrasi Admin OPS</p>
+                <div class="mt-3 flex items-end justify-between gap-4">
+                    <div>
+                        <p class="text-4xl font-bold leading-none">{{ $registrasiOpsPersen }}%</p>
+                        <p class="text-xs text-emerald-100 mt-1">Sekolah sudah registrasi</p>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <p class="text-sm"><span class="font-bold">{{ $registrasiOpsSudah }}</span> Sudah</p>
+                        <p class="text-sm text-emerald-100"><span class="font-bold">{{ $registrasiOpsBelum }}</span> Belum</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Ringkasan Registrasi Admin BOSP --}}
+        <div class="relative overflow-hidden rounded-2xl shadow-xl bg-gradient-to-br from-amber-600 via-orange-600 to-rose-600 animate-fade-in-up" style="animation-delay:.15s">
+            <div class="pointer-events-none absolute -top-10 -right-10 w-56 h-56 rounded-full bg-white/10 blur-2xl animate-blob-a"></div>
+            <div class="pointer-events-none absolute -bottom-16 -left-10 w-64 h-64 rounded-full bg-orange-300/20 blur-2xl animate-blob-c"></div>
+
+            <div class="relative p-6 sm:p-7 text-white">
+                <p class="text-xs font-semibold uppercase tracking-wider text-amber-100">Registrasi Admin BOSP</p>
+                <div class="mt-3 flex items-end justify-between gap-4">
+                    <div>
+                        <p class="text-4xl font-bold leading-none">{{ $registrasiBospPersen }}%</p>
+                        <p class="text-xs text-amber-100 mt-1">Sekolah sudah registrasi</p>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <p class="text-sm"><span class="font-bold">{{ $registrasiBospSudah }}</span> Sudah</p>
+                        <p class="text-sm text-amber-100"><span class="font-bold">{{ $registrasiBospBelum }}</span> Belum</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="pb-4 animate-fade-in-up">
+        @include('livewire.dashboard.partials.daftar-registrasi-admin', [
+            'halamanRegistrasi' => $halamanRegistrasi,
+        ])
+    </div>
 </div>
