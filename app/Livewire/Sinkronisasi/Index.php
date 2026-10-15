@@ -29,6 +29,13 @@ use Throwable;
  *   Sinkronisasi/Tarik Data TAMPIL TAPI NONAKTIF dengan keterangan
  *   "jalankan dari Aplikasi Lokal".
  * - Riwayat Sinkronisasi (App\Models\SyncLog) tampil di KEDUA sisi.
+ *
+ * "Tarik Data Pengguna" (BARU 2026-10-16, permintaan user: "saya ingin
+ * bisa menarik data pengguna ... baik sebagai superadmin, admin ops,
+ * admin bosp") - tombol & modal konfirmasi TERPISAH dari "Tarik Data"
+ * di atas (dikonfirmasi AskUserQuestion), hanya menarik akun Pengguna
+ * dari Online (SATU ARAH, tidak ikut terkirim lewat "Sinkronisasi") -
+ * lihat poin 8 docblock App\Services\SyncEngine utk detail lengkap.
  */
 #[Layout('layouts.app')]
 #[Title('Sinkronisasi dan Tarik Data')]
@@ -45,6 +52,9 @@ class Index extends Component
     public bool $confirmingSinkronisasi = false;
 
     public bool $confirmingTarikData = false;
+
+    /** BARU 2026-10-16 - tombol "Tarik Data Pengguna", TERPISAH dari "Tarik Data" di atas (lihat docblock class). */
+    public bool $confirmingTarikDataPengguna = false;
 
     /** Filter tanggal SPESIFIK (Y-m-d, kosong = tidak difilter) utk "Riwayat Sinkronisasi Terakhir" - permintaan user 2026-10-14. */
     public string $filterTanggalRiwayat = '';
@@ -228,6 +238,62 @@ class Index extends Component
             session()->flash('sinkronisasi_error', 'Tarik Data gagal: '.$e->getMessage());
         } finally {
             $this->dispatch('tarik-data-proses-selesai');
+        }
+    }
+
+    public function konfirmasiTarikDataPengguna(): void
+    {
+        $this->confirmingTarikDataPengguna = true;
+        $this->dispatch('open-modal', 'sinkronisasi-konfirmasi-tarik-pengguna');
+    }
+
+    public function batalTarikDataPengguna(): void
+    {
+        $this->confirmingTarikDataPengguna = false;
+        $this->dispatch('close-modal', 'sinkronisasi-konfirmasi-tarik-pengguna');
+    }
+
+    /**
+     * "Tarik Data Pengguna" (BARU 2026-10-16) - TERPISAH dari
+     * jalankanTarikData() di atas (data sekolah): hanya menarik &
+     * menerapkan akun Pengguna (Superadmin/Admin OPS/Admin BOSP) dari
+     * Online, lewat App\Services\SyncClient::tarikPengguna() &
+     * App\Services\SyncEngine::terapkanPenggunaMasuk() - lihat poin 8
+     * docblock App\Services\SyncEngine.
+     */
+    public function jalankanTarikDataPengguna(SyncEngine $syncEngine, SyncClient $syncClient): void
+    {
+        $this->confirmingTarikDataPengguna = false;
+        $this->dispatch('close-modal', 'sinkronisasi-konfirmasi-tarik-pengguna');
+
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(0);
+        }
+
+        try {
+            $payload = $syncClient->tarikPengguna();
+            $hasil = $syncEngine->terapkanPenggunaMasuk($payload['pengguna'] ?? [], Auth::id(), 'Tarik Data Pengguna (mengambil dari Online)');
+
+            SyncLog::create([
+                'arah' => SyncLog::ARAH_TARIK_PENGGUNA,
+                'status' => SyncLog::STATUS_BERHASIL,
+                'ringkasan' => $hasil['ringkasan'],
+                'backup_pengaman_id' => $hasil['backup_pengaman_id'],
+                'dilakukan_oleh_id' => Auth::id(),
+            ]);
+
+            session()->flash('sinkronisasi_success', 'Tarik Data Pengguna berhasil diterapkan ke database Lokal ini.');
+        } catch (Throwable $e) {
+            SyncLog::create([
+                'arah' => SyncLog::ARAH_TARIK_PENGGUNA,
+                'status' => SyncLog::STATUS_GAGAL,
+                'pesan_error' => $e->getMessage(),
+                'dilakukan_oleh_id' => Auth::id(),
+            ]);
+
+            session()->flash('sinkronisasi_error', 'Tarik Data Pengguna gagal: '.$e->getMessage());
+        } finally {
+            $this->dispatch('tarik-data-pengguna-proses-selesai');
         }
     }
 

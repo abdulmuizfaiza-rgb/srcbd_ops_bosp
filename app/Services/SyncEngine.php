@@ -78,6 +78,21 @@ use Throwable;
  *    sama (aktifkan sinkronisasi waktu/NTP di kedua sisi) - seluruh
  *    logika "mana yang lebih baru" di sini membandingkan updated_at
  *    APA ADANYA, tanpa toleransi selisih jam.
+ *
+ * 8. "Tarik Data Pengguna" (BARU 2026-10-16, permintaan user: "saya
+ *    ingin bisa menarik data pengguna ... baik sebagai superadmin,
+ *    admin ops, admin bosp") adalah jalur TERPISAH dari 7 poin di atas
+ *    (kumpulkanPenggunaKeluar()/terapkanPenggunaMasuk()/
+ *    terapkanTabelPengguna() di bagian bawah file ini) - SATU ARAH
+ *    SAJA (Online -> Lokal, TIDAK ikut terkirim saat tombol
+ *    "Sinkronisasi" ditekan - dikonfirmasi AskUserQuestion), tabel
+ *    `users` SENGAJA TIDAK didaftarkan di App\Support\RegistriModulSekolah
+ *    supaya kumpulkanDataKeluar()/terapkanDataMasuk() generik di atas
+ *    (dipakai KEDUA arah) tidak pernah menyentuhnya. Kolom Google
+ *    Authenticator (terenkripsi per-instalasi) & remember_token SELALU
+ *    dibuang, kata sandi (hash bcrypt, bukan terenkripsi APP_KEY) BOLEH
+ *    ikut tertimpa - lihat docblock terapkanTabelPengguna() utk alasan
+ *    lengkap tiap keputusan.
  */
 class SyncEngine
 {
@@ -363,5 +378,159 @@ class SyncEngine
         }
 
         return Carbon::parse($updatedMasuk)->gt(Carbon::parse($updatedAda));
+    }
+
+    /**
+     * Kumpulkan SELURUH akun Pengguna (Superadmin/Admin OPS/Admin BOSP)
+     * dari instalasi ini, utk disajikan saat Lokal menekan "Tarik Data
+     * Pengguna" (BARU 2026-10-16) - lihat poin 8 docblock class.
+     * profil_sekolah_id diganti `_sekolah_npsn` (sama pola dgn
+     * kumpulkanDataKeluar(), null utk akun Superadmin yg tidak terikat
+     * sekolah manapun). Kolom Google Authenticator & remember_token
+     * SELALU dibuang - lihat docblock terapkanTabelPengguna().
+     */
+    public function kumpulkanPenggunaKeluar(): array
+    {
+        $baris = DB::table('users')
+            ->leftJoin('profil_sekolah', 'profil_sekolah.id', '=', 'users.profil_sekolah_id')
+            ->select('users.*', 'profil_sekolah.npsn as _sekolah_npsn')
+            ->get()
+            ->map(fn ($r) => (array) $r)
+            ->all();
+
+        $kolomDibuang = [
+            'id',
+            'profil_sekolah_id',
+            'remember_token',
+            'google2fa_secret',
+            'google2fa_aktif_at',
+            'google2fa_reset_diminta_at',
+        ];
+
+        return [
+            'pengguna' => array_map(function (array $satu) use ($kolomDibuang) {
+                foreach ($kolomDibuang as $kolom) {
+                    unset($satu[$kolom]);
+                }
+
+                return $satu;
+            }, $baris),
+        ];
+    }
+
+    /**
+     * Terapkan payload akun Pengguna yang ditarik dari Online ke
+     * database Lokal ini (BARU 2026-10-16) - selalu membuat backup
+     * pengaman dulu (pola sama dgn terapkanDataMasuk()), TAPI terpisah
+     * dari transaksi/ringkasan 24 tabel data sekolah (lihat poin 8
+     * docblock class: "Tarik Data Pengguna" adalah tombol & aksi
+     * TERSENDIRI, bukan bagian dari tombol "Tarik Data" yang sudah ada).
+     */
+    public function terapkanPenggunaMasuk(array $daftarPengguna, ?int $pelakuId, string $labelUntukBackup): array
+    {
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(0);
+        }
+
+        $backupPengaman = $this->backupService->buat($pelakuId);
+        $backupPengaman->forceFill([
+            'catatan' => 'Backup otomatis (jaring pengaman) sebelum '.$labelUntukBackup.'.',
+        ])->save();
+
+        $ringkasan = [];
+
+        try {
+            DB::transaction(function () use ($daftarPengguna, &$ringkasan) {
+                $ringkasan['users'] = $this->terapkanTabelPengguna($daftarPengguna, $this->pemetaanNpsnKeId());
+            });
+        } catch (Throwable $e) {
+            throw new RuntimeException('Gagal menerapkan data akun Pengguna: '.$e->getMessage(), previous: $e);
+        }
+
+        return ['ringkasan' => $ringkasan, 'backup_pengaman_id' => $backupPengaman->id];
+    }
+
+    /**
+     * Terapkan payload akun Pengguna (username/email/password/
+     * level_akses/dst) dari Online ke tabel `users` Lokal - method
+     * KHUSUS (bukan lewat terapkanTabelAnak() generik seperti 23 tabel
+     * RegistriModulSekolah lain), karena:
+     *
+     * - Dicocokkan lewat `username` (kolom unik & SELALU terisi utk
+     *   SEMUA jenis akun - Superadmin/Admin OPS/Admin BOSP - BUKAN
+     *   sync_uuid/kunci komposit spt tabel lain).
+     * - profil_sekolah_id BOLEH kosong (akun Superadmin tidak terikat
+     *   sekolah manapun) - terapkanTabelAnak() generik justru MELEWATI
+     *   baris yang NPSN-nya kosong, yang kalau dipakai apa adanya akan
+     *   membuang SEMUA akun Superadmin (bertentangan dgn permintaan
+     *   user: "baik sebagai superadmin, admin ops, admin bosp").
+     * - Kolom Google Authenticator (google2fa_secret dkk) & remember_token
+     *   SENGAJA TIDAK PERNAH ada di payload sama sekali (sudah dibuang
+     *   sejak kumpulkanPenggunaKeluar()) - dikonfirmasi AskUserQuestion
+     *   2026-10-16: "tiap instalasi atur 2FA sendiri-sendiri", krn
+     *   google2fa_secret dienkripsi pakai APP_KEY yang BEDA tiap
+     *   instalasi - kalau disalin mentah, status 2FA akun itu akan
+     *   GAGAL dibaca (exception) di sisi penerima.
+     *
+     * `password` & `kata_sandi_pemulihan_hash` BOLEH ikut tertimpa
+     * (dikonfirmasi AskUserQuestion 2026-10-16: "Timpa dengan data
+     * Online, data yg lebih baru menang") - AMAN krn kedua kolom itu
+     * di-hash pakai algoritma hashing bawaan Laravel (bcrypt, cast
+     * 'hashed' di App\Models\User), BUKAN dienkripsi pakai APP_KEY -
+     * hash-nya tetap valid dipakai login di instalasi manapun.
+     */
+    protected function terapkanTabelPengguna(array $daftarBaris, array $pemetaanNpsn): array
+    {
+        $ditambah = 0;
+        $diupdate = 0;
+        $dilewati = 0;
+
+        foreach ($daftarBaris as $baris) {
+            unset(
+                $baris['id'],
+                $baris['remember_token'],
+                $baris['google2fa_secret'],
+                $baris['google2fa_aktif_at'],
+                $baris['google2fa_reset_diminta_at'],
+            );
+
+            if (empty($baris['username'])) {
+                $dilewati++;
+
+                continue;
+            }
+
+            $npsn = $baris['_sekolah_npsn'] ?? null;
+            unset($baris['_sekolah_npsn']);
+
+            if ($npsn !== null) {
+                if (! isset($pemetaanNpsn[$npsn])) {
+                    // Sekolah akun ini tidak dikenal di sisi Lokal - lewati
+                    // demi keamanan, jangan menebak-nebak sekolah mana yang
+                    // dimaksud (sama pola dgn terapkanTabelAnak()).
+                    $dilewati++;
+
+                    continue;
+                }
+                $baris['profil_sekolah_id'] = $pemetaanNpsn[$npsn];
+            } else {
+                // Akun Superadmin (tidak terikat sekolah manapun).
+                $baris['profil_sekolah_id'] = null;
+            }
+
+            $existing = DB::table('users')->where('username', $baris['username'])->first();
+
+            if ($existing === null) {
+                DB::table('users')->insert($baris);
+                $ditambah++;
+            } elseif ($this->lebihBaru($baris, $existing)) {
+                DB::table('users')->where('username', $baris['username'])->update($baris);
+                $diupdate++;
+            } else {
+                $dilewati++;
+            }
+        }
+
+        return ['ditambah' => $ditambah, 'diupdate' => $diupdate, 'dilewati' => $dilewati];
     }
 }

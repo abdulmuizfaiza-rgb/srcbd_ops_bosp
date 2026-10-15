@@ -83,6 +83,32 @@ class SyncClient
     }
 
     /**
+     * Ambil (pull) akun Pengguna (Superadmin/Admin OPS/Admin BOSP) dari
+     * Online - dipanggil saat tombol "Tarik Data Pengguna" ditekan
+     * (BARU 2026-10-16, TERPISAH dari tombol "Tarik Data" data sekolah
+     * di atas - dikonfirmasi AskUserQuestion). Mengembalikan payload
+     * `['pengguna' => [...]]`, siap diterapkan lewat App\Services\
+     * SyncEngine::terapkanPenggunaMasuk().
+     */
+    public function tarikPengguna(): array
+    {
+        $pengaturan = SyncSetting::current();
+        $this->pastikanTerkonfigurasi($pengaturan);
+
+        $respons = Http::withToken($pengaturan->token_online)
+            ->timeout(config('sync.timeout_detik'))
+            ->get($this->urlApi($pengaturan, 'sync/pull-pengguna'));
+
+        if ($respons->failed()) {
+            throw new RuntimeException(
+                'Online menolak/gagal menyajikan data akun Pengguna untuk ditarik: '.($respons->json('message') ?? $respons->status())
+            );
+        }
+
+        return $respons->json() ?? [];
+    }
+
+    /**
      * Ambil daftar akun Superadmin dari sisi Online (permintaan user
      * 2026-10-14, lanjutan fitur "Cek Kecocokan Data" - tombol "Cek
      * Ulang" di App\Livewire\CekDatabaseAplikasi\Index::

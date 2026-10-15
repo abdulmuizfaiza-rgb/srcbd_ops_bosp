@@ -85,6 +85,25 @@
                         <x-primary-button wire:click="konfirmasiTarikData">Tarik Data (Ambil dari Online)</x-primary-button>
                     </div>
                 </div>
+
+                {{--
+                    "Tarik Data Pengguna" (BARU 2026-10-16, permintaan user)
+                    - TERPISAH dari "Tarik Data" di atas (dikonfirmasi
+                    AskUserQuestion): akun Pengguna lebih sensitif (kata
+                    sandi, level akses) daripada data sekolah, jadi
+                    aksi/konfirmasinya sengaja dipisah supaya Superadmin
+                    bisa menjalankan salah satunya saja.
+                --}}
+                <div class="bg-white shadow sm:rounded-lg p-4 sm:p-8 space-y-4">
+                    <h3 class="text-base font-bold text-slate-800">Tarik Data Pengguna</h3>
+                    <p class="text-sm text-slate-600">
+                        Menarik SELURUH akun Pengguna (Superadmin, Admin OPS, Admin BOSP) dari Online ke Lokal ini - username, email, kata sandi, level akses, jabatan, dan sekolah yang terhubung (dicocokkan lewat NPSN). Data lebih baru menang, 1 backup pengaman dibuat otomatis dulu.
+                        Google Authenticator (2FA) TIDAK ikut ditarik - tiap instalasi mengatur 2FA-nya sendiri, akun baru dari Online akan diminta aktivasi 2FA dari awal saat pertama login di Lokal.
+                    </p>
+                    <div class="flex flex-wrap gap-3">
+                        <x-primary-button wire:click="konfirmasiTarikDataPengguna">Tarik Data Pengguna (Ambil dari Online)</x-primary-button>
+                    </div>
+                </div>
             @else
                 {{-- ================= SISI ONLINE ================= --}}
                 <div class="bg-white shadow sm:rounded-lg p-4 sm:p-8 space-y-4">
@@ -118,6 +137,7 @@
                     <div class="flex flex-wrap gap-3">
                         <x-primary-button disabled>Sinkronisasi (Kirim ke Online)</x-primary-button>
                         <x-primary-button disabled>Tarik Data (Ambil dari Online)</x-primary-button>
+                        <x-primary-button disabled>Tarik Data Pengguna (Ambil dari Online)</x-primary-button>
                     </div>
                     <p class="text-xs text-slate-500">Nonaktif di sisi Online - jalankan dari Aplikasi Lokal.</p>
                 </div>
@@ -303,6 +323,44 @@
                 >
                     <span wire:loading.remove wire:target="jalankanTarikData">Ya, Tarik Data Sekarang</span>
                     <span wire:loading wire:target="jalankanTarikData">Sedang menarik...</span>
+                </x-primary-button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- "Tarik Data Pengguna" (BARU 2026-10-16) - pola modal SAMA PERSIS dgn "sinkronisasi-konfirmasi-tarik" di atas. --}}
+    <x-modal name="sinkronisasi-konfirmasi-tarik-pengguna" :show="$confirmingTarikDataPengguna" maxWidth="md">
+        <div
+            class="p-6"
+            x-data="{ sedangBerjalan: false, detik: 0, _interval: null }"
+            x-on:tarik-data-pengguna-proses-selesai.window="sedangBerjalan = false; clearInterval(_interval)"
+        >
+            <h2 class="text-lg font-bold text-red-700">Yakin ingin menjalankan Tarik Data Pengguna?</h2>
+            <p class="mt-2 text-sm text-slate-600">
+                Seluruh akun Pengguna (Superadmin, Admin OPS, Admin BOSP) dari Online akan diambil dan DIGABUNGKAN ke akun Lokal ini (data yang lebih baru menang, termasuk kata sandi). Lokal akan membuat 1 backup pengaman otomatis dulu sebelum menerapkannya. Google Authenticator (2FA) TIDAK ikut ditarik.
+            </p>
+
+            <div x-show="sedangBerjalan" x-cloak class="mt-4">
+                <div class="flex items-center justify-between text-xs text-slate-500 mb-1">
+                    <span>Sedang menarik data Pengguna dari Online, mohon jangan tutup halaman ini...</span>
+                    <span x-text="detik + ' detik'"></span>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden relative">
+                    <div class="absolute inset-y-0 w-1/3 bg-indigo-600 rounded-full animate-sinkron-progress"></div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-secondary-button wire:click="batalTarikDataPengguna" wire:loading.attr="disabled" wire:target="jalankanTarikDataPengguna">Batal</x-secondary-button>
+                <x-primary-button
+                    wire:click="jalankanTarikDataPengguna"
+                    wire:loading.attr="disabled"
+                    wire:target="jalankanTarikDataPengguna"
+                    x-on:click="sedangBerjalan = true; detik = 0; clearInterval(_interval); _interval = setInterval(() => detik++, 1000)"
+                    class="!bg-red-600 hover:!bg-red-700"
+                >
+                    <span wire:loading.remove wire:target="jalankanTarikDataPengguna">Ya, Tarik Data Pengguna Sekarang</span>
+                    <span wire:loading wire:target="jalankanTarikDataPengguna">Sedang menarik...</span>
                 </x-primary-button>
             </div>
         </div>

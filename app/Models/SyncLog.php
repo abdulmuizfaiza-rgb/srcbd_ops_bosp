@@ -19,6 +19,11 @@ class SyncLog extends Model
 
     public const ARAH_SAJIKAN = 'sajikan';
 
+    /** BARU 2026-10-16 - lihat poin 8 docblock App\Services\SyncEngine. */
+    public const ARAH_TARIK_PENGGUNA = 'tarik_pengguna';
+
+    public const ARAH_SAJIKAN_PENGGUNA = 'sajikan_pengguna';
+
     public const STATUS_BERHASIL = 'berhasil';
 
     public const STATUS_GAGAL = 'gagal';
@@ -47,6 +52,8 @@ class SyncLog extends Model
             self::ARAH_TERIMA => 'Terima dari Lokal (Sinkronisasi)',
             self::ARAH_TARIK => 'Tarik Data dari Online',
             self::ARAH_SAJIKAN => 'Melayani Tarikan dari Lokal',
+            self::ARAH_TARIK_PENGGUNA => 'Tarik Data Pengguna dari Online',
+            self::ARAH_SAJIKAN_PENGGUNA => 'Melayani Tarikan Pengguna dari Lokal',
             default => $arah,
         };
     }
