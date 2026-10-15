@@ -62,13 +62,18 @@
       jadi milik baris logo di tengah.
 --}}
 @php
-    // PENTING: digabung jadi SATU blok @php (bukan 2 directive @php
-    // terpisah berurutan) - penulisan sebelumnya (@php(...) bentuk
-    // inline, langsung disusul @php...@endphp bentuk blok) ternyata
-    // salah dikompilasi Blade (jadi PHP rusak, memicu error "Undefined
-    // variable $tinggiKontenCm" yang dilaporkan user 2026-10-15 - 2 @php
-    // beruntun TIDAK boleh dipakai di partial ini / sebaiknya dihindari
-    // secara umum di aplikasi ini).
+    // PENTING: hanya SATU blok directive php di sini (bukan 2 directive
+    // php terpisah berurutan seperti versi sebelumnya yang bikin error
+    // "Undefined variable $tinggiKontenCm" yang dilaporkan user
+    // 2026-10-15). CATATAN TAMBAHAN yang SAMA PENTINGNYA: komentar ini
+    // SENGAJA ditulis TANPA karakter "at"+"php" ataupun "at"+"endphp"
+    // sama sekali di dalamnya - menulis kata semacam itu literal di
+    // dalam komentar (walau cuma teks penjelasan, bukan bermaksud jadi
+    // directive sungguhan) ternyata membuat Blade salah mengira teks
+    // komentar itu sbg penutup blok directive-nya sendiri, memicu ulang
+    // bug yang sama persis. Jangan tulis kata directive Blade apa pun
+    // (diawali tanda "at") secara harfiah di dalam komentar manapun yang
+    // berada DI DALAM blok directive tsb.
     $isNegeri = $sekolah->status === \App\Models\ProfilSekolah::STATUS_NEGERI;
 
     $m = $margin ?? [
