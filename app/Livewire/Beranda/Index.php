@@ -171,6 +171,39 @@ use Livewire\WithPagination;
  * seperti di dashboard) - jadi TIDAK ikut berubah saat pengunjung
  * mengganti selector Tahun/Triwulan di halaman ini (selector itu HANYA
  * memengaruhi 2 widget Pendataan OPS/BOSP yang sudah ada).
+ *
+ * ROUND KEDUA PULUH (2026-10-16) - permintaan user (verbatim): "saya
+ * ingin ada pilihan kirim rekapan yang ada di beranda ke whatsapp."
+ *
+ * Keputusan bisnis via AskUserQuestion (3 pertanyaan, krn menyangkut
+ * bentuk & isi pesan yang dikirim keluar aplikasi - standing constraint
+ * "jangan menebak aturan bisnis"):
+ * - "Isi Pesan" -> "Semua 4 rekap jadi 1 pesan": 1 tombol "Kirim Rekap
+ *   ke WhatsApp" (BUKAN 4 tombol terpisah per kartu), isi pesan
+ *   menggabungkan ke-4 rekap (Pendataan OPS, Pendataan BOSP, Registrasi
+ *   Admin OPS, Registrasi Admin BOSP) sekaligus.
+ * - "Nomor Tujuan" -> "Pengunjung pilih sendiri kontak/grup tujuan":
+ *   tombol membuka WhatsApp (app di HP / WhatsApp Web di desktop) lewat
+ *   `https://api.whatsapp.com/send?text=...` (TANPA nomor tujuan di
+ *   URL) dengan teks pesan sudah terisi otomatis - pengunjung sendiri
+ *   yang memilih mau dikirim ke siapa/grup mana (pola "share" standar,
+ *   TIDAK butuh WhatsApp Business API berbayar/kredensial apa pun).
+ * - "Detail Pesan" -> user menjawab "no 1 dan no 2" = KEDUANYA: pesan
+ *   berisi ringkasan angka+persen DAN SEKALIGUS daftar nama sekolah
+ *   yang belum, utk tiap 1 dari ke-4 rekap.
+ *
+ * Keputusan TEKNIS (bukan aturan bisnis, jadi TIDAK lewat
+ * AskUserQuestion): daftar nama sekolah yang belum pada tiap rekap
+ * DIBATASI maksimal 10 nama (lihat `daftarNamaBelum()`) lalu ditutup
+ * "dan N sekolah lainnya" kalau lebih - supaya URL `wa.me`/
+ * `api.whatsapp.com` TIDAK terlalu panjang/berisiko terpotong oleh
+ * browser (terutama di HP) kalau jumlah sekolah yang belum banyak.
+ *
+ * Bagian Pendataan OPS/BOSP pada pesan mengikuti Tahun/Triwulan yang
+ * SEDANG DIPILIH pengunjung di selector (sama seperti 2 kartu & daftar
+ * Pendataan OPS/BOSP yang sudah ada) - bagian Registrasi Admin OPS/BOSP
+ * TIDAK bergantung Tahun/Triwulan (sama seperti kartu Registrasi di
+ * atas).
  */
 #[Layout('layouts.beranda')]
 #[Title('Beranda')]
@@ -220,7 +253,12 @@ class Index extends Component
             ]);
 
         $opsSudah = $idSekolahSelesaiOps->count();
+        $opsBelum = max($totalSekolah - $opsSudah, 0);
+        $opsPersen = $totalSekolah > 0 ? (int) round(($opsSudah / $totalSekolah) * 100) : 0;
+
         $bospSudah = $idSekolahSelesaiBosp->count();
+        $bospBelum = max($totalSekolah - $bospSudah, 0);
+        $bospPersen = $totalSekolah > 0 ? (int) round(($bospSudah / $totalSekolah) * 100) : 0;
 
         // Round kesembilan belas: widget "Registrasi Admin OPS & Admin
         // BOSP" - lihat docblock kelas di atas. TIDAK memakai $tahun/$triwulan
@@ -229,7 +267,12 @@ class Index extends Component
         $idSekolahRegistrasiBosp = $this->idSekolahSudahRegistrasi(User::LEVEL_ADMIN_BOSP);
 
         $registrasiOpsSudah = $idSekolahRegistrasiOps->count();
+        $registrasiOpsBelum = max($totalSekolah - $registrasiOpsSudah, 0);
+        $registrasiOpsPersen = $totalSekolah > 0 ? (int) round(($registrasiOpsSudah / $totalSekolah) * 100) : 0;
+
         $registrasiBospSudah = $idSekolahRegistrasiBosp->count();
+        $registrasiBospBelum = max($totalSekolah - $registrasiBospSudah, 0);
+        $registrasiBospPersen = $totalSekolah > 0 ? (int) round(($registrasiBospSudah / $totalSekolah) * 100) : 0;
 
         $halamanRegistrasi = ProfilSekolah::urutStandar()
             ->paginate($perHalaman, ['*'], 'halamanRegistrasi')
@@ -239,6 +282,20 @@ class Index extends Component
                 'bospSudah' => $idSekolahRegistrasiBosp->contains($s->id),
             ]);
 
+        // Round kedua puluh: tombol "Kirim Rekap ke WhatsApp" - lihat
+        // docblock kelas di atas utk detail keputusan bisnis.
+        $semuaSekolah = ProfilSekolah::urutStandar()->get(['id', 'nama_sekolah']);
+
+        $pesanWhatsapp = implode("\n\n", [
+            "*Rekap Pendataan & Registrasi SR CBD*\nTriwulan {$triwulan}, Tahun {$tahun}\nSumber: ".url('/'),
+            $this->barisRekapWhatsapp('Pendataan OPS', $opsSudah, $opsBelum, $opsPersen, $this->daftarNamaBelum($semuaSekolah, $idSekolahSelesaiOps)),
+            $this->barisRekapWhatsapp('Pendataan BOSP', $bospSudah, $bospBelum, $bospPersen, $this->daftarNamaBelum($semuaSekolah, $idSekolahSelesaiBosp)),
+            $this->barisRekapWhatsapp('Registrasi Admin OPS', $registrasiOpsSudah, $registrasiOpsBelum, $registrasiOpsPersen, $this->daftarNamaBelum($semuaSekolah, $idSekolahRegistrasiOps)),
+            $this->barisRekapWhatsapp('Registrasi Admin BOSP', $registrasiBospSudah, $registrasiBospBelum, $registrasiBospPersen, $this->daftarNamaBelum($semuaSekolah, $idSekolahRegistrasiBosp)),
+        ]);
+
+        $tautanWhatsapp = 'https://api.whatsapp.com/send?text='.rawurlencode($pesanWhatsapp);
+
         return view('livewire.beranda.index', [
             'tahun' => $tahun,
             'tahunOptions' => $this->tahunOptions(),
@@ -246,20 +303,21 @@ class Index extends Component
             'triwulanAktif' => $triwulan,
             'totalSekolah' => $totalSekolah,
             'opsSudah' => $opsSudah,
-            'opsBelum' => max($totalSekolah - $opsSudah, 0),
-            'opsPersen' => $totalSekolah > 0 ? (int) round(($opsSudah / $totalSekolah) * 100) : 0,
+            'opsBelum' => $opsBelum,
+            'opsPersen' => $opsPersen,
             'halamanOps' => $halamanOps,
             'bospSudah' => $bospSudah,
-            'bospBelum' => max($totalSekolah - $bospSudah, 0),
-            'bospPersen' => $totalSekolah > 0 ? (int) round(($bospSudah / $totalSekolah) * 100) : 0,
+            'bospBelum' => $bospBelum,
+            'bospPersen' => $bospPersen,
             'halamanBosp' => $halamanBosp,
             'registrasiOpsSudah' => $registrasiOpsSudah,
-            'registrasiOpsBelum' => max($totalSekolah - $registrasiOpsSudah, 0),
-            'registrasiOpsPersen' => $totalSekolah > 0 ? (int) round(($registrasiOpsSudah / $totalSekolah) * 100) : 0,
+            'registrasiOpsBelum' => $registrasiOpsBelum,
+            'registrasiOpsPersen' => $registrasiOpsPersen,
             'registrasiBospSudah' => $registrasiBospSudah,
-            'registrasiBospBelum' => max($totalSekolah - $registrasiBospSudah, 0),
-            'registrasiBospPersen' => $totalSekolah > 0 ? (int) round(($registrasiBospSudah / $totalSekolah) * 100) : 0,
+            'registrasiBospBelum' => $registrasiBospBelum,
+            'registrasiBospPersen' => $registrasiBospPersen,
             'halamanRegistrasi' => $halamanRegistrasi,
+            'tautanWhatsapp' => $tautanWhatsapp,
         ]);
     }
 
@@ -308,5 +366,42 @@ class Index extends Component
             ->whereNotNull('profil_sekolah_id')
             ->distinct()
             ->pluck('profil_sekolah_id');
+    }
+
+    /**
+     * Satu baris rekap utk pesan WhatsApp (round kedua puluh) - lihat
+     * docblock kelas di atas.
+     */
+    private function barisRekapWhatsapp(string $label, int $sudah, int $belum, int $persen, string $daftarBelum): string
+    {
+        return "*{$label}*: {$persen}% ({$sudah} sudah, {$belum} belum)\nBelum: {$daftarBelum}";
+    }
+
+    /**
+     * Daftar nama sekolah yang BELUM "sudah" (relatif thd $idSudah),
+     * dibatasi maksimal $batas nama lalu ditutup "dan N sekolah lainnya"
+     * - round kedua puluh, pembatasan ini keputusan TEKNIS (lihat
+     * docblock kelas di atas), bukan aturan bisnis.
+     *
+     * @param  Collection<int, ProfilSekolah>  $semuaSekolah
+     * @param  Collection<int, int>  $idSudah
+     */
+    private function daftarNamaBelum(Collection $semuaSekolah, Collection $idSudah, int $batas = 10): string
+    {
+        $namaBelum = $semuaSekolah
+            ->reject(fn (ProfilSekolah $s) => $idSudah->contains($s->id))
+            ->pluck('nama_sekolah');
+
+        if ($namaBelum->isEmpty()) {
+            return 'Tidak ada (semua sudah).';
+        }
+
+        if ($namaBelum->count() <= $batas) {
+            return $namaBelum->implode(', ');
+        }
+
+        $sisa = $namaBelum->count() - $batas;
+
+        return $namaBelum->take($batas)->implode(', ').", dan {$sisa} sekolah lainnya.";
     }
 }
