@@ -193,11 +193,23 @@
                 @endif
                 <br>
                 Yang membuat pernyataan
-                <div style="height:28px;"></div>
-                {{-- Round kedua puluh empat, poin 1: digeser ke kiri 2 langkah (margin-left:-40px, menetralkan margin-left:40px pada div pembungkus di atas, KHUSUS baris ini saja - baris tanggal/Nama/NIP lain tidak ikut bergeser). --}}
-                <div style="text-align:center;margin-left:-40px;">Materai</div>
-                {{-- Round kedua puluh empat, poin 1: Nama & NIP Kepala Sekolah digeser ke bawah 3 baris tambahan dari posisi round 23 (40px -> 106px, ekuivalen +/- 3 baris teks 11pt/line-height 1.5 = 3 x ~22px = 66px). --}}
-                <div style="height:106px;"></div>
+                {{-- Round 2026-10-15: "Materai" diposisikan TEPAT DI TENGAH
+                     ruang kosong tanda tangan (antara "Yang membuat
+                     pernyataan" & Nama/NIP), bukan lagi menempel dekat
+                     atas - jarak atas & bawah "Materai" disamakan (67px =
+                     total ruang kosong lama 28px+106px dibagi 2), total
+                     ruang kosong keseluruhan (134px) TIDAK berubah supaya
+                     posisi Nama/NIP di bawah tidak ikut bergeser. Ukuran
+                     tulisan "Materai" juga dikecilkan (11pt -> 8pt, lewat
+                     font-size inline KHUSUS baris ini saja). Digeser ke
+                     kiri 2 langkah (margin-left:-40px, menetralkan
+                     margin-left:40px pada div pembungkus di atas, KHUSUS
+                     baris ini saja - baris tanggal/Nama/NIP lain tidak
+                     ikut bergeser) tetap dipertahankan dari round
+                     sebelumnya. --}}
+                <div style="height:67px;"></div>
+                <div style="text-align:center;margin-left:-40px;font-size:8pt;">Materai</div>
+                <div style="height:67px;"></div>
                 {{ $namaPengawas ?: '............................' }}<br>
                 NIP. {{ $nipPengawas ?: '............................' }}
             </div>
