@@ -202,13 +202,15 @@
                      posisi Nama/NIP di bawah tidak ikut bergeser. Ukuran
                      tulisan "Materai" juga dikecilkan (11pt -> 8pt, lewat
                      font-size inline KHUSUS baris ini saja). Digeser ke
-                     kiri 2 langkah (margin-left:-40px, menetralkan
-                     margin-left:40px pada div pembungkus di atas, KHUSUS
-                     baris ini saja - baris tanggal/Nama/NIP lain tidak
-                     ikut bergeser) tetap dipertahankan dari round
-                     sebelumnya. --}}
+                     kiri (margin-left negatif, menetralkan margin-left:40px
+                     pada div pembungkus di atas, KHUSUS baris ini saja -
+                     baris tanggal/Nama/NIP lain tidak ikut bergeser) tetap
+                     dipertahankan dari round sebelumnya, lalu digeser
+                     sedikit LAGI ke kiri (-40px -> -55px) atas permintaan
+                     user lanjutan "tulisan materai nya geser ke kiri
+                     sedikit". --}}
                 <div style="height:67px;"></div>
-                <div style="text-align:center;margin-left:-40px;font-size:8pt;">Materai</div>
+                <div style="text-align:center;margin-left:-55px;font-size:8pt;">Materai</div>
                 <div style="height:67px;"></div>
                 {{ $namaPengawas ?: '............................' }}<br>
                 NIP. {{ $nipPengawas ?: '............................' }}
