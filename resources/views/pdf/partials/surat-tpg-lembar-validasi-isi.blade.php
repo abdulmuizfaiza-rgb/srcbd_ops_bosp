@@ -160,11 +160,11 @@
         </td>
     </tr>
     <tr>
-        <td style="border:1px solid #000;padding:4px 6px;vertical-align:top;">Mengetahui / Menyetujui,</td>
+        <td style="border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:center;">Mengetahui / Menyetujui,</td>
         <td colspan="2" style="border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:center;">VERIFIKATOR :</td>
     </tr>
     <tr>
-        <td style="border:1px solid #000;padding:4px 6px;vertical-align:top;">Kepala Seksi Tata Kelola Kelembagaan dan Ketenagaan</td>
+        <td style="border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:center;">Kepala Seksi Tata Kelola Kelembagaan dan Ketenagaan</td>
         <td style="width:33%;border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:center;">Pengawas,</td>
         <td style="width:33%;border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:center;">Kepala {{ $namaSekolah ?: '............................' }}</td>
     </tr>
@@ -174,7 +174,7 @@
         <td style="border:1px solid #000;height:56px;"></td>
     </tr>
     <tr>
-        <td style="border:1px solid #000;padding:4px 6px;vertical-align:top;">
+        <td style="border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:center;">
             {{ $namaKasieKpml ?: '............................' }}<br>
             NIP. {{ $nipKasieKpml ?: '............................' }}
         </td>
