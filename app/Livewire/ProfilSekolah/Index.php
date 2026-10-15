@@ -12,6 +12,8 @@ use App\Livewire\Concerns\HasZoomTampilan;
 use App\Models\DataPtk;
 use App\Models\ProfilSekolah;
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -115,6 +117,18 @@ class Index extends Component
 
     public string $alamat_sekolah = '';
 
+    public string $nama_yayasan = '';
+
+    /**
+     * Upload Logo Sekolah (permintaan user 2026-10-15) - auto-save begitu
+     * file dipilih (pola sama seperti kopSuratBaru di
+     * App\Livewire\PendataanOps\SuratTpg\Index), TIDAK ikut tombol
+     * "Simpan" form utama. Disimpan ke App\Models\ProfilSekolah::
+     * logo_sekolah, dipakai otomatis di tab "Cover SMPN"/"Cover SMP-S"
+     * menu Format Surat Rekomendasi & Pembatalan TPG.
+     */
+    public $logoSekolahBaru = null;
+
     public bool $showForm = false;
 
     public ?int $confirmingDeleteId = null;
@@ -199,6 +213,7 @@ class Index extends Component
         $this->nip_bendahara = (string) $sekolah->nip_bendahara;
         $this->status_kepegawaian_bendahara = (string) $sekolah->status_kepegawaian_bendahara;
         $this->alamat_sekolah = (string) $sekolah->alamat_sekolah;
+        $this->nama_yayasan = (string) $sekolah->nama_yayasan;
         $this->showForm = true;
         $this->dispatch('open-modal', 'sekolah-form');
     }
@@ -210,7 +225,7 @@ class Index extends Component
             'nama_kepala_sekolah', 'nip_kepala_sekolah', 'no_whatsapp_kepala_sekolah', 'status_kepegawaian_kepsek',
             'nama_pengawas', 'nip_pengawas',
             'nama_bendahara', 'nip_bendahara', 'status_kepegawaian_bendahara',
-            'alamat_sekolah',
+            'alamat_sekolah', 'nama_yayasan',
         ]);
         $this->resetErrorBag();
     }
@@ -255,6 +270,7 @@ class Index extends Component
                 : ['nullable', 'in:-'],
             'status_kepegawaian_bendahara' => ['nullable', Rule::in(array_keys(ProfilSekolah::statusKepegawaianOptions()))],
             'alamat_sekolah' => ['nullable', 'string', 'max:1000'],
+            'nama_yayasan' => ['nullable', 'string', 'max:255'],
         ];
 
         if ($kelolaSemua) {
@@ -288,6 +304,7 @@ class Index extends Component
             'nip_bendahara' => $validated['nip_bendahara'] ?: null,
             'status_kepegawaian_bendahara' => $validated['status_kepegawaian_bendahara'] ?: null,
             'alamat_sekolah' => $validated['alamat_sekolah'] ?: null,
+            'nama_yayasan' => $validated['nama_yayasan'] ?: null,
         ];
 
         if ($kelolaSemua) {
@@ -343,6 +360,76 @@ class Index extends Component
                 $this->redirect(route('pendataan-bosp.index'), navigate: true);
             }
         }
+    }
+
+    /**
+     * Upload/ganti Logo Sekolah (permintaan user 2026-10-15) - langsung
+     * tersimpan begitu file dipilih (auto-save, pola sama persis dgn
+     * App\Livewire\PendataanOps\SuratTpg\Index::updatedKopSuratBaru()),
+     * tanpa tombol "Simpan" terpisah & TANPA perlu modal form Tambah/Edit
+     * terbuka. Disimpan ke App\Models\ProfilSekolah::logo_sekolah.
+     *
+     * TIDAK ada pengecekan orientasi landscape seperti Kop Surat (logo
+     * sekolah lazimnya persegi/potret, bukan memanjang seperti
+     * letterhead) - hanya validasi tipe & ukuran file gambar biasa.
+     */
+    public function updatedLogoSekolahBaru(): void
+    {
+        if (! $this->logoSekolahBaru) {
+            return;
+        }
+
+        abort_unless($this->editingId, 403);
+        $sekolah = ProfilSekolah::findOrFail($this->editingId);
+        abort_unless($this->bolehEdit($sekolah), 403);
+
+        $validator = Validator::make(
+            ['logoSekolahBaru' => $this->logoSekolahBaru],
+            ['logoSekolahBaru' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048']],
+            [],
+            ['logoSekolahBaru' => 'Logo Sekolah']
+        );
+
+        if ($validator->fails()) {
+            $this->addError('logoSekolahBaru', $validator->errors()->first('logoSekolahBaru'));
+            $this->logoSekolahBaru = null;
+
+            return;
+        }
+
+        $pathLama = $sekolah->logo_sekolah;
+        $pathBaru = $this->logoSekolahBaru->store('logo-sekolah', 'public');
+        $sekolah->update(['logo_sekolah' => $pathBaru]);
+
+        if ($pathLama && Storage::disk('public')->exists($pathLama)) {
+            Storage::disk('public')->delete($pathLama);
+        }
+
+        $this->logoSekolahBaru = null;
+        $this->resetErrorBag('logoSekolahBaru');
+        session()->flash('status', 'Logo Sekolah berhasil diperbarui.');
+    }
+
+    /**
+     * Hapus Logo Sekolah (permintaan user 2026-10-15, pola sama dgn
+     * App\Livewire\PendataanOps\SuratTpg\Index::hapusKopSurat()) -
+     * supaya bisa dikosongkan dulu sebelum ganti, tanpa harus langsung
+     * menimpa dengan upload baru.
+     */
+    public function hapusLogoSekolah(): void
+    {
+        abort_unless($this->editingId, 403);
+        $sekolah = ProfilSekolah::findOrFail($this->editingId);
+        abort_unless($this->bolehEdit($sekolah), 403);
+
+        $pathLama = $sekolah->logo_sekolah;
+
+        if ($pathLama && Storage::disk('public')->exists($pathLama)) {
+            Storage::disk('public')->delete($pathLama);
+        }
+
+        $sekolah->update(['logo_sekolah' => null]);
+        session()->flash('status', 'Logo Sekolah berhasil dihapus.');
     }
 
     public function konfirmasiHapus(int $id): void
@@ -991,8 +1078,19 @@ class Index extends Component
         $this->dipilihPtk = array_values(array_intersect($this->dipilihPtk, $idHalamanIniPtk));
         $semuaTerpilihPtk = count($idHalamanIniPtk) > 0 && count(array_diff($idHalamanIniPtk, $this->dipilihPtk)) === 0;
 
+        // Logo Sekolah yang sedang diedit (permintaan user 2026-10-15) -
+        // dicari langsung dari $editingId (bukan dari $daftarSekolah,
+        // krn saat Superadmin memfilter daftar, sekolah yang sedang
+        // diedit belum tentu ada di koleksi yang sama) supaya kotak
+        // upload/ganti/hapus di modal form bisa menampilkan logo yang
+        // sudah ada.
+        $sekolahSedangDiedit = $this->editingId ? ProfilSekolah::find($this->editingId) : null;
+
         return view('livewire.profil-sekolah.index', [
             'daftarSekolah' => $daftarSekolah,
+            'logoSekolahSrc' => ($sekolahSedangDiedit && $sekolahSedangDiedit->logo_sekolah)
+                ? route('profil-sekolah.logo-sekolah', $sekolahSedangDiedit->id)
+                : null,
             'statusOptions' => ProfilSekolah::statusOptions(),
             'statusKepegawaianOptions' => ProfilSekolah::statusKepegawaianOptions(),
             'statusKepegawaianKepsekOptions' => ProfilSekolah::statusKepegawaianKepsekOptions(),

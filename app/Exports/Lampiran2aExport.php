@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Models\DataPtk;
 use App\Models\Lampiran2a;
 use App\Models\ProfilSekolah;
 use Illuminate\Support\Collection as SupportCollection;
@@ -29,6 +30,15 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Kolom Status Kepegawaian diberi dropdown (Data Validation Excel) supaya
  * penulisannya selalu sama dengan pilihan yang ada di aplikasi - daftar
  * sumbernya ditulis ke kolom tersembunyi I.
+ *
+ * SEJAK 2026-10-15: Status Kepegawaian Lampiran 2a sekarang diambil
+ * OTOMATIS dari Data PTK (permintaan user) begitu baris terhubung ke
+ * sebuah PTK - lihat App\Livewire\PendataanOps\Lampiran2a\Index::
+ * updatedDataPtkId(). Daftar sumber dropdown kolom I di bawah digabung
+ * (union) antara pilihan Lampiran 2a sendiri (mode ketik bebas, data
+ * lama) DAN pilihan Status Kepegawaian Data PTK (mode otomatis, jalur
+ * utama sekarang) - lihat tulisDaftarPilihanTersembunyi() - supaya
+ * nilai apa pun yang mungkin tersimpan tetap ada di daftar dropdown.
  *
  * 4 baris kosong (bergaris tabel, mengikuti lebar tabel) disediakan
  * setelah baris data terakhir sebelum lembar tanda tangan Pengawas &
@@ -216,10 +226,19 @@ class Lampiran2aExport implements FromCollection, ShouldAutoSize, WithCustomStar
      * selalu sama persis dengan pilihan yang ada di aplikasi. Daftar
      * sumbernya ditulis ke kolom tersembunyi I lalu dirujuk lewat Data
      * Validation Excel (bukan kolom biasa).
+     *
+     * Sejak 2026-10-15: digabung (union) dengan pilihan Status
+     * Kepegawaian Data PTK, karena baris Lampiran 2a yang terhubung ke
+     * Data PTK (jalur utama sekarang) bisa punya nilai status dari
+     * daftar Data PTK yang lebih luas, bukan cuma daftar Lampiran 2a
+     * sendiri (mode ketik bebas, data lama).
      */
     private function tulisDaftarPilihanTersembunyi(Worksheet $sheet): void
     {
-        $statusKepegawaian = array_values(Lampiran2a::STATUS_KEPEGAWAIAN_OPTIONS);
+        $statusKepegawaian = array_values(array_unique(array_merge(
+            Lampiran2a::STATUS_KEPEGAWAIAN_OPTIONS,
+            DataPtk::statusKepegawaianOptions()
+        )));
         foreach ($statusKepegawaian as $indeks => $nilai) {
             $sheet->setCellValue('I'.($indeks + 1), $nilai);
         }

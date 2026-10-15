@@ -35,6 +35,8 @@ class SuratTpgCetakController extends Controller
         $jenis = match ($request->query('jenis')) {
             SuratTpg::JENIS_PENGHENTIAN => SuratTpg::JENIS_PENGHENTIAN,
             SuratTpg::JENIS_PERNYATAAN => SuratTpg::JENIS_PERNYATAAN,
+            SuratTpg::JENIS_COVER_SMPN => SuratTpg::JENIS_COVER_SMPN,
+            SuratTpg::JENIS_COVER_SMP_S => SuratTpg::JENIS_COVER_SMP_S,
             default => SuratTpg::JENIS_REKOMENDASI,
         };
 
@@ -83,12 +85,18 @@ class SuratTpgCetakController extends Controller
             'nipPengawas' => $sekolah->nip_pengawas,
             'tahunPelajaran' => $surat->tahun_pelajaran ?? null,
             'kopSuratSrc' => $sekolah->kopSuratDataUri(),
+            // Logo Sekolah & $sekolah (BARU 2026-10-15, tab Cover SMPN/
+            // Cover SMP-S - lihat pdf.partials.surat-tpg-cover-isi).
+            'logoSekolahSrc' => $sekolah->logoSekolahDataUri(),
+            'sekolah' => $sekolah,
             'margin' => $margin,
         ];
 
         $view = match ($jenis) {
             SuratTpg::JENIS_PENGHENTIAN => 'pdf.surat-tpg-penghentian',
             SuratTpg::JENIS_PERNYATAAN => 'pdf.surat-tpg-pernyataan',
+            SuratTpg::JENIS_COVER_SMPN => 'pdf.surat-tpg-cover-smpn',
+            SuratTpg::JENIS_COVER_SMP_S => 'pdf.surat-tpg-cover-smp-s',
             default => 'pdf.surat-tpg-rekomendasi',
         };
         $ukuranKertas = $kertas === 'f4' ? 'folio' : 'a4';

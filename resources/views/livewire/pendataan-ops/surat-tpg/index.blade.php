@@ -67,6 +67,44 @@
                         >
                             Surat Pernyataan
                         </button>
+                        {{--
+                            Tab "Cover SMPN"/"Cover SMP-S" (BARU 2026-10-15,
+                            permintaan user) - HANYA salah satu yang muncul,
+                            otomatis sesuai Status sekolah yang aktif
+                            (dikonfirmasi AskUserQuestion "Otomatis sesuai
+                            Status sekolah"): Negeri -> Cover SMPN, Swasta ->
+                            Cover SMP-S. Kalau belum ada sekolah dipilih
+                            (Superadmin), KEDUANYA ditampilkan dulu (tidak
+                            tahu status-nya) - begitu sekolah dipilih,
+                            otomatis tersaring jadi satu saja. Warna sky utk
+                            membedakan dari 3 tab di atas.
+                        --}}
+                        @if (! $sekolah || $sekolah->status === 'negeri')
+                            <button
+                                type="button"
+                                wire:click="pindahTab('cover_smpn')"
+                                @class([
+                                    'px-4 py-2.5 rounded-t-xl text-sm font-bold tracking-wide transition-all duration-150 border-b-4',
+                                    'bg-white text-sky-700 border-sky-500 shadow-sm' => $tabAktif === 'cover_smpn',
+                                    'bg-slate-50 text-slate-500 border-transparent hover:bg-slate-100 hover:text-slate-700' => $tabAktif !== 'cover_smpn',
+                                ])
+                            >
+                                Cover SMPN
+                            </button>
+                        @endif
+                        @if (! $sekolah || $sekolah->status === 'swasta')
+                            <button
+                                type="button"
+                                wire:click="pindahTab('cover_smp_s')"
+                                @class([
+                                    'px-4 py-2.5 rounded-t-xl text-sm font-bold tracking-wide transition-all duration-150 border-b-4',
+                                    'bg-white text-sky-700 border-sky-500 shadow-sm' => $tabAktif === 'cover_smp_s',
+                                    'bg-slate-50 text-slate-500 border-transparent hover:bg-slate-100 hover:text-slate-700' => $tabAktif !== 'cover_smp_s',
+                                ])
+                            >
+                                Cover SMP-S
+                            </button>
+                        @endif
                     </nav>
                 </div>
 
@@ -128,7 +166,12 @@
                                 Unduh Word
                             </x-secondary-button>
 
-                            @if ($sekolah)
+                            {{-- Tombol Hapus disembunyikan utk tab Cover SMPN/Cover
+                                 SMP-S (BARU 2026-10-15) - tab ini tidak pernah punya
+                                 baris data surat_tpg tersendiri (seluruh isinya
+                                 otomatis, lihat SuratTpg::JENIS_COVER_SMPN), jadi
+                                 tidak ada apa pun yang perlu/bisa dihapus. --}}
+                            @if ($sekolah && $tabAktif !== 'cover_smpn' && $tabAktif !== 'cover_smp_s')
                                 <button type="button" wire:click="konfirmasiHapusSurat" class="inline-flex items-center px-2.5 py-1.5 bg-white border border-red-300 rounded-md font-semibold text-[10px] text-red-600 uppercase tracking-widest shadow-sm hover:bg-red-50 whitespace-nowrap">
                                     <x-icon name="trash" class="w-3.5 h-3.5 mr-1" />
                                     Hapus
@@ -195,6 +238,13 @@
                                      (round kedua puluh dua, permintaan user "hapus
                                      kop surat nya"). --}}
                                 @include('pdf.partials.surat-tpg-pernyataan-isi', ['editable' => true])
+                            @elseif ($tabAktif === 'cover_smpn' || $tabAktif === 'cover_smp_s')
+                                {{-- Cover SMPN/Cover SMP-S (BARU 2026-10-15) - TIDAK
+                                     pakai Kop Surat (partial surat-tpg-kop), pakai Logo
+                                     Sekolah sendiri (lihat partial di bawah) & seluruh
+                                     isinya otomatis (tidak ada field yang diketik
+                                     manual di tab ini). --}}
+                                @include('pdf.partials.surat-tpg-cover-isi')
                             @else
                                 @include('pdf.partials.surat-tpg-kop')
                                 @include('pdf.partials.surat-tpg-rekomendasi-isi', ['editable' => true])

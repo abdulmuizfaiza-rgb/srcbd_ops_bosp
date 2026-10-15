@@ -56,6 +56,21 @@ class SuratTpg extends Model
     public const JENIS_PERNYATAAN = 'pernyataan';
 
     /**
+     * Tab "Cover SMPN"/"Cover SMP-S" (permintaan user 2026-10-15) - TIDAK
+     * PERNAH punya baris `surat_tpg` tersendiri (tidak ada Nomor Surat/
+     * Tanggal Surat/Tahun Pelajaran yang diisi manual - seluruh isinya
+     * otomatis dari Profil Sekolah + filter Tahun/Triwulan yang sudah
+     * ada). Konstanta ini HANYA dipakai sebagai identitas tab pada
+     * App\Livewire\PendataanOps\SuratTpg\Index::pindahTab()/
+     * viewSuratPerJenis() & App\Http\Controllers\SuratTpgCetakController,
+     * konsisten dengan 3 jenis surat di atas, bukan nilai kolom `jenis`
+     * yang pernah benar-benar tersimpan di tabel ini.
+     */
+    public const JENIS_COVER_SMPN = 'cover_smpn';
+
+    public const JENIS_COVER_SMP_S = 'cover_smp_s';
+
+    /**
      * Daftar kolom "data" surat_tpg - dipakai semuaFieldDataKosong() utk
      * mendeteksi baris yang seluruh field datanya sudah kosong (mis.
      * user isi lalu hapus lagi lewat auto-save per keystroke), supaya

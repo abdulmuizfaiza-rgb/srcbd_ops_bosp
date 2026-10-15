@@ -163,12 +163,23 @@
 
                 <div>
                     <x-input-label for="status_kepegawaian" value="Status Kepegawaian" />
-                    <select wire:model="status_kepegawaian" id="status_kepegawaian" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm block mt-1 w-full">
-                        <option value="">-- Pilih Status Kepegawaian --</option>
-                        @foreach ($statusKepegawaianOptions as $value => $label)
-                            <option value="{{ $value }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
+                    @if ($dataPtkId)
+                        {{-- Otomatis dari Data PTK sejak 2026-10-15 (permintaan
+                             user) - field dikunci, pola sama dengan NRG/NUPTK/
+                             NPWP di atas (bukan <select> lagi supaya tidak ada
+                             risiko nilai dari Data PTK tidak cocok dengan
+                             daftar pilihan Lampiran 2a sendiri yang lebih
+                             sempit). --}}
+                        <x-text-input wire:model="status_kepegawaian" id="status_kepegawaian" class="block mt-1 w-full" type="text" disabled />
+                        <p class="text-xs text-slate-400 mt-1">Otomatis dari Data PTK.</p>
+                    @else
+                        <select wire:model="status_kepegawaian" id="status_kepegawaian" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm block mt-1 w-full">
+                            <option value="">-- Pilih Status Kepegawaian --</option>
+                            @foreach ($statusKepegawaianOptions as $value => $label)
+                                <option value="{{ $value }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    @endif
                     <x-input-error :messages="$errors->get('status_kepegawaian')" class="mt-2" />
                 </div>
 

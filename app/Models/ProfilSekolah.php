@@ -30,6 +30,8 @@ use App\Models\Concerns\Syncable;
     'status_kepegawaian_bendahara',
     'alamat_sekolah',
     'kop_surat',
+    'nama_yayasan',
+    'logo_sekolah',
 ])]
 class ProfilSekolah extends Model
 {
@@ -130,6 +132,26 @@ class ProfilSekolah extends Model
 
         $mime = Storage::disk('public')->mimeType($this->kop_surat) ?: 'image/png';
         $isi = Storage::disk('public')->get($this->kop_surat);
+
+        return 'data:'.$mime.';base64,'.base64_encode($isi);
+    }
+
+    /**
+     * Data URI base64 untuk gambar Logo Sekolah (permintaan user
+     * 2026-10-15) - dipakai di tab "Cover SMPN"/"Cover SMP-S" menu
+     * Format Surat Rekomendasi & Pembatalan TPG, HANYA untuk PDF
+     * (dompdf) & Word (.doc) - sama persis polanya dengan
+     * kopSuratDataUri() di atas. Untuk tampilan layar (preview Livewire),
+     * lihat App\Http\Controllers\LogoSekolahFileController.
+     */
+    public function logoSekolahDataUri(): ?string
+    {
+        if (! $this->logo_sekolah || ! Storage::disk('public')->exists($this->logo_sekolah)) {
+            return null;
+        }
+
+        $mime = Storage::disk('public')->mimeType($this->logo_sekolah) ?: 'image/png';
+        $isi = Storage::disk('public')->get($this->logo_sekolah);
 
         return 'data:'.$mime.';base64,'.base64_encode($isi);
     }

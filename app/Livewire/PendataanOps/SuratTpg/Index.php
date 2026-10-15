@@ -183,8 +183,36 @@ class Index extends Component
 
     public function pindahTab(string $tab): void
     {
-        if (! in_array($tab, [SuratTpg::JENIS_REKOMENDASI, SuratTpg::JENIS_PENGHENTIAN, SuratTpg::JENIS_PERNYATAAN], true)) {
+        $tabValid = [
+            SuratTpg::JENIS_REKOMENDASI, SuratTpg::JENIS_PENGHENTIAN, SuratTpg::JENIS_PERNYATAAN,
+            SuratTpg::JENIS_COVER_SMPN, SuratTpg::JENIS_COVER_SMP_S,
+        ];
+
+        if (! in_array($tab, $tabValid, true)) {
             return;
+        }
+
+        // Tab Cover SMPN/Cover SMP-S (permintaan user 2026-10-15) HANYA
+        // boleh dibuka sesuai Status sekolah yang sedang aktif (Negeri ->
+        // cover_smpn, Swasta -> cover_smp_s) - tombol tab yang salah
+        // memang tidak dirender di Blade utk status tsb, ini jaga-jaga
+        // tambahan (defense in depth) supaya tidak bisa "dipaksa" lewat
+        // wire:click manual/devtools.
+        if (in_array($tab, [SuratTpg::JENIS_COVER_SMPN, SuratTpg::JENIS_COVER_SMP_S], true)) {
+            $sekolahId = $this->sekolahAktifId();
+            $sekolah = $sekolahId ? ProfilSekolah::find($sekolahId) : null;
+
+            if (! $sekolah) {
+                return;
+            }
+
+            $tabSesuaiStatus = $sekolah->status === ProfilSekolah::STATUS_NEGERI
+                ? SuratTpg::JENIS_COVER_SMPN
+                : SuratTpg::JENIS_COVER_SMP_S;
+
+            if ($tab !== $tabSesuaiStatus) {
+                return;
+            }
         }
 
         $this->tabAktif = $tab;
@@ -203,7 +231,32 @@ class Index extends Component
 
         $this->profil_sekolah_id = $id;
         $this->resetErrorBag();
+        $this->sinkronkanTabCoverDenganStatusSekolah();
         $this->muatSurat();
+    }
+
+    /**
+     * Permintaan user 2026-10-15: begitu Superadmin ganti sekolah filter
+     * sementara tab Cover SMPN/Cover SMP-S sedang aktif, tab-nya otomatis
+     * disesuaikan ke jenis cover yang benar utk sekolah BARU (atau
+     * kembali ke tab "rekomendasi" kalau sekolah dikosongkan) - supaya
+     * tidak "nyangkut" di tab yang tombolnya sudah tidak ditampilkan lagi
+     * di Blade untuk status sekolah yang baru.
+     */
+    protected function sinkronkanTabCoverDenganStatusSekolah(): void
+    {
+        if (! in_array($this->tabAktif, [SuratTpg::JENIS_COVER_SMPN, SuratTpg::JENIS_COVER_SMP_S], true)) {
+            return;
+        }
+
+        $sekolahId = $this->sekolahAktifId();
+        $sekolah = $sekolahId ? ProfilSekolah::find($sekolahId) : null;
+
+        $this->tabAktif = match (true) {
+            ! $sekolah => SuratTpg::JENIS_REKOMENDASI,
+            $sekolah->status === ProfilSekolah::STATUS_NEGERI => SuratTpg::JENIS_COVER_SMPN,
+            default => SuratTpg::JENIS_COVER_SMP_S,
+        };
     }
 
     public function updatedTahun(): void
@@ -584,6 +637,13 @@ class Index extends Component
             'kopSuratSrc' => $sekolah && $sekolah->kop_surat
                 ? route('pendataan-ops.surat-tpg.kop-surat', $sekolah->id)
                 : null,
+            // Logo Sekolah (permintaan user 2026-10-15, tab Cover
+            // SMPN/Cover SMP-S) - pola sama persis dgn kopSuratSrc di
+            // atas: route terautentikasi utk preview layar, ditimpa data
+            // URI base64 di exportPdf()/exportWord() (lihat di bawah).
+            'logoSekolahSrc' => $sekolah && $sekolah->logo_sekolah
+                ? route('profil-sekolah.logo-sekolah', $sekolah->id)
+                : null,
             'sekolah' => $sekolah,
         ];
     }
@@ -595,6 +655,8 @@ class Index extends Component
             SuratTpg::JENIS_REKOMENDASI => 'surat-tpg-rekomendasi',
             SuratTpg::JENIS_PENGHENTIAN => 'surat-tpg-penghentian',
             SuratTpg::JENIS_PERNYATAAN => 'surat-tpg-pernyataan',
+            SuratTpg::JENIS_COVER_SMPN => 'surat-tpg-cover-smpn',
+            SuratTpg::JENIS_COVER_SMP_S => 'surat-tpg-cover-smp-s',
         ];
     }
 
@@ -613,6 +675,7 @@ class Index extends Component
         $data = $this->dataSurat();
         $data['editable'] = false;
         $data['kopSuratSrc'] = $sekolah->kopSuratDataUri();
+        $data['logoSekolahSrc'] = $sekolah->logoSekolahDataUri();
 
         $pengaturan = $this->pengaturanCetak();
         $data['margin'] = $pengaturan['margin'];
@@ -651,6 +714,7 @@ class Index extends Component
         $data = $this->dataSurat();
         $data['editable'] = false;
         $data['kopSuratSrc'] = $sekolah->kopSuratDataUri();
+        $data['logoSekolahSrc'] = $sekolah->logoSekolahDataUri();
         $data['margin'] = $this->pengaturanCetak()['margin'];
 
         $view = 'word.'.($this->viewSuratPerJenis()[$this->tabAktif] ?? 'surat-tpg-rekomendasi');

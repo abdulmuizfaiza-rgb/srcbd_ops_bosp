@@ -219,6 +219,16 @@ class Index extends Component
      * 2026-10-01) - Nama PTK ikut terisi lewat label pilihan yang sama,
      * ditulis ulang di sini juga supaya nilai yang TERSIMPAN (bukan
      * cuma yang tertampil) selalu konsisten dengan Data PTK.
+     *
+     * Status Kepegawaian JUGA ikut diambil otomatis dari Data PTK sejak
+     * 2026-10-15 (permintaan user eksplisit) - field ini di form jadi
+     * terkunci (lihat blade, pola sama dengan NRG/NUPTK/NPWP) begitu
+     * PTK dipilih, supaya tidak bisa "dibengkokkan" manual jadi beda
+     * dengan status yang sebenarnya tercatat di Data PTK. Perubahan ini
+     * otomatis ikut ke hasil Unduh Excel/PDF (lihat simpan() untuk
+     * validasinya & Lampiran2aExport::tulisDaftarPilihanTersembunyi()
+     * untuk dropdown-nya) karena kedua export tsb membaca langsung dari
+     * kolom status_kepegawaian yang tersimpan - satu sumber kebenaran.
      */
     public function updatedDataPtkId(): void
     {
@@ -238,6 +248,7 @@ class Index extends Component
         $this->nrg = (string) ($ptk->nomor_registrasi_guru ?: '');
         $this->nuptk = (string) ($ptk->nuptk ?: '');
         $this->npwp = (string) ($ptk->npwp ?: '');
+        $this->status_kepegawaian = (string) ($ptk->status_kepegawaian ?: '');
     }
 
     /**
@@ -301,12 +312,21 @@ class Index extends Component
 
         abort_unless($this->profil_sekolah_id && $this->bolehKelola($this->profil_sekolah_id), 403);
 
+        // Status Kepegawaian 2026-10-15: kalau PTK dipilih dari Data PTK
+        // (otomatis, field terkunci di form), validasinya mengikuti
+        // daftar pilihan Status Kepegawaian Data PTK (sumber aslinya) -
+        // kalau TIDAK ada PTK terpilih (mode ketik bebas data lama),
+        // tetap pakai daftar pilihan Lampiran 2a sendiri seperti semula.
+        $pilihanStatusKepegawaian = $this->dataPtkId
+            ? array_keys(DataPtk::statusKepegawaianOptions())
+            : array_keys(Lampiran2a::STATUS_KEPEGAWAIAN_OPTIONS);
+
         $validated = $this->validate([
             'profil_sekolah_id' => ['required', Rule::exists('profil_sekolah', 'id')],
             'nrg' => ['required', 'regex:/^[0-9]{12}$/'],
             'nuptk' => ['required', 'regex:/^[0-9]{16}$/'],
             'nama_ptk' => ['required', 'string', 'max:255'],
-            'status_kepegawaian' => ['required', Rule::in(array_keys(Lampiran2a::STATUS_KEPEGAWAIAN_OPTIONS))],
+            'status_kepegawaian' => ['required', Rule::in($pilihanStatusKepegawaian)],
             'gaji_pokok_januari' => ['required', 'integer', 'min:0'],
             'npwp' => ['required', 'regex:/^[0-9]{15,16}$/'],
         ], [

@@ -4,6 +4,7 @@ use App\Http\Controllers\BackupFileController;
 use App\Http\Controllers\FormulirBosK7CetakController;
 use App\Http\Controllers\GoogleDriveOAuthController;
 use App\Http\Controllers\KopSuratFileController;
+use App\Http\Controllers\LogoSekolahFileController;
 use App\Http\Controllers\PanduanAplikasiFileController;
 use App\Http\Controllers\PanduanAplikasiUnduhSemuaController;
 use App\Http\Controllers\PendataanOpsFileController;
@@ -79,6 +80,12 @@ Route::view('profile', 'profile')
 
 Route::middleware(['auth', 'can:akses-profil-sekolah'])->group(function () {
     Route::get('profil-sekolah', ProfilSekolahIndex::class)->name('profil-sekolah.index');
+    // Logo Sekolah (permintaan user 2026-10-15) - route ditaruh di grup
+    // ini (gate yang selalu true utk user login, lihat
+    // LogoSekolahFileController) supaya bisa diakses juga dari menu
+    // Format Surat Rekomendasi & Pembatalan TPG (tab Cover SMPN/SMP-S).
+    Route::get('profil-sekolah/logo-sekolah/{profilSekolah}', [LogoSekolahFileController::class, 'show'])
+        ->name('profil-sekolah.logo-sekolah');
 });
 
 Route::middleware(['auth', 'can:akses-pendataan-ops'])->group(function () {
