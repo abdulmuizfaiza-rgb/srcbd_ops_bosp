@@ -58,7 +58,9 @@ class ProfilSekolah extends Model
     }
 
     /**
-     * Pilihan status kepegawaian untuk Kepala Sekolah & Bendahara.
+     * Pilihan status kepegawaian untuk Bendahara (dipakai juga sebagai
+     * dasar untuk Kepala Sekolah, lihat statusKepegawaianKepsekOptions()
+     * di bawah).
      *
      * @return array<string, string>
      */
@@ -70,6 +72,22 @@ class ProfilSekolah extends Model
             'ASN PPPK-PW' => 'ASN PPPK-PW',
             'Honorer' => 'Honorer',
         ];
+    }
+
+    /**
+     * Pilihan status kepegawaian KHUSUS untuk Kepala Sekolah - sama seperti
+     * statusKepegawaianOptions() (dipakai Bendahara), ditambah GTT & GTY
+     * (permintaan user 2026-10-15, KHUSUS field Status Kepegawaian Kepala
+     * Sekolah pada menu Profil Sekolah - TIDAK berlaku untuk Bendahara).
+     *
+     * @return array<string, string>
+     */
+    public static function statusKepegawaianKepsekOptions(): array
+    {
+        return array_merge(self::statusKepegawaianOptions(), [
+            'GTT' => 'GTT',
+            'GTY' => 'GTY',
+        ]);
     }
 
     public function getStatusLabelAttribute(): string

@@ -246,7 +246,7 @@ class Index extends Component
             'nama_kepala_sekolah' => ['nullable', 'string', 'max:255'],
             'nip_kepala_sekolah' => ['nullable', 'string', 'max:50'],
             'no_whatsapp_kepala_sekolah' => ['nullable', 'regex:/^08[0-9]{8,11}$/'],
-            'status_kepegawaian_kepsek' => ['nullable', Rule::in(array_keys(ProfilSekolah::statusKepegawaianOptions()))],
+            'status_kepegawaian_kepsek' => ['nullable', Rule::in(array_keys(ProfilSekolah::statusKepegawaianKepsekOptions()))],
             'nama_pengawas' => ['nullable', 'string', 'max:255'],
             'nip_pengawas' => ['nullable', 'string', 'max:50'],
             'nama_bendahara' => ['nullable', 'string', 'max:255'],
@@ -972,6 +972,7 @@ class Index extends Component
             'daftarSekolah' => $daftarSekolah,
             'statusOptions' => ProfilSekolah::statusOptions(),
             'statusKepegawaianOptions' => ProfilSekolah::statusKepegawaianOptions(),
+            'statusKepegawaianKepsekOptions' => ProfilSekolah::statusKepegawaianKepsekOptions(),
             'sekolahSayaId' => auth()->user()->profil_sekolah_id,
             'bolehKelolaSemua' => $kelolaSemua,
             'filterNamaSekolahOptions' => $kelolaSemua

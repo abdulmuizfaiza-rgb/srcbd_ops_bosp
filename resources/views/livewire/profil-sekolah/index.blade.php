@@ -490,9 +490,13 @@
 
                     <div>
                         <x-input-label for="status_kepegawaian_kepsek" value="Status Kepegawaian Kepala Sekolah" />
+                        {{-- 2026-10-15: pakai $statusKepegawaianKepsekOptions (KHUSUS Kepala
+                             Sekolah, sudah termasuk GTT & GTY), BUKAN $statusKepegawaianOptions
+                             yang dipakai select Bendahara di bawah - supaya GTT/GTY TIDAK ikut
+                             muncul di pilihan Bendahara. --}}
                         <select wire:model="status_kepegawaian_kepsek" id="status_kepegawaian_kepsek" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm block mt-1 w-full">
                             <option value="">-- Pilih Status Kepegawaian --</option>
-                            @foreach ($statusKepegawaianOptions as $value => $label)
+                            @foreach ($statusKepegawaianKepsekOptions as $value => $label)
                                 <option value="{{ $value }}">{{ $label }}</option>
                             @endforeach
                         </select>
