@@ -206,11 +206,11 @@
                      pada div pembungkus di atas, KHUSUS baris ini saja -
                      baris tanggal/Nama/NIP lain tidak ikut bergeser) tetap
                      dipertahankan dari round sebelumnya, lalu digeser
-                     sedikit LAGI ke kiri (-40px -> -55px) atas permintaan
-                     user lanjutan "tulisan materai nya geser ke kiri
-                     sedikit". --}}
+                     sedikit LAGI ke kiri sebanyak DUA KALI atas permintaan
+                     user yang berulang "tulisan materai nya geser ke kiri
+                     sedikit" (-40px -> -55px -> -70px, masing-masing 15px). --}}
                 <div style="height:67px;"></div>
-                <div style="text-align:center;margin-left:-55px;font-size:8pt;">Materai</div>
+                <div style="text-align:center;margin-left:-70px;font-size:8pt;">Materai</div>
                 <div style="height:67px;"></div>
                 {{ $namaPengawas ?: '............................' }}<br>
                 NIP. {{ $nipPengawas ?: '............................' }}
