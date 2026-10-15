@@ -164,25 +164,25 @@
         <td colspan="2" style="border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:center;">VERIFIKATOR :</td>
     </tr>
     <tr>
-        <td style="border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:center;">Kepala Seksi Tata Kelola Kelembagaan dan Ketenagaan</td>
-        <td style="width:33%;border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:center;">Pengawas,</td>
-        <td style="width:33%;border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:center;">Kepala {{ $namaSekolah ?: '............................' }}</td>
+        <td style="border:1px solid #000;border-bottom:none;padding:4px 6px;vertical-align:top;text-align:center;">Kepala Seksi Tata Kelola Kelembagaan dan Ketenagaan</td>
+        <td style="width:33%;border:1px solid #000;border-bottom:none;padding:4px 6px;vertical-align:top;text-align:center;">Pengawas,</td>
+        <td style="width:33%;border:1px solid #000;border-bottom:none;padding:4px 6px;vertical-align:top;text-align:center;">Kepala {{ $namaSekolah ?: '............................' }}</td>
     </tr>
     <tr>
-        <td style="border:1px solid #000;height:56px;"></td>
-        <td style="border:1px solid #000;height:56px;"></td>
-        <td style="border:1px solid #000;height:56px;"></td>
+        <td style="border-left:1px solid #000;border-right:1px solid #000;height:56px;"></td>
+        <td style="border-left:1px solid #000;border-right:1px solid #000;height:56px;"></td>
+        <td style="border-left:1px solid #000;border-right:1px solid #000;height:56px;"></td>
     </tr>
     <tr>
-        <td style="border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:center;">
+        <td style="border:1px solid #000;border-top:none;padding:4px 6px;vertical-align:top;text-align:center;">
             {{ $namaKasieKpml ?: '............................' }}<br>
             NIP. {{ $nipKasieKpml ?: '............................' }}
         </td>
-        <td style="border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:center;">
+        <td style="border:1px solid #000;border-top:none;padding:4px 6px;vertical-align:top;text-align:center;">
             {{ $namaPengawas ?: '............................' }}<br>
             NIP. {{ $nipPengawas ?: '............................' }}
         </td>
-        <td style="border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:center;">
+        <td style="border:1px solid #000;border-top:none;padding:4px 6px;vertical-align:top;text-align:center;">
             {{ $namaKepsek ?: '............................' }}<br>
             NIP. {{ $nipKepsek ?: '............................' }}
         </td>

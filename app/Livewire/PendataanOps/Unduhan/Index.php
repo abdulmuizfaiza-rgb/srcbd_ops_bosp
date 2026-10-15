@@ -8,6 +8,8 @@ use App\Models\Lampiran2a;
 use App\Models\Lampiran2b;
 use App\Models\Lampiran2c;
 use App\Models\ProfilSekolah;
+use App\Support\LembarValidasiTpgUnduhanData;
+use App\Support\RekapCairTpgUnduhanData;
 use App\Support\SuratTpgGabunganData;
 use App\Support\UnduhanLampiranData;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -22,7 +24,9 @@ use Maatwebsite\Excel\Facades\Excel;
 /**
  * Menu Unduhan (Pendataan OPS > Unduhan) - Superadmin/Admin OPS memilih
  * Triwulan (tab) & Tahun, lalu bisa mengunduh gabungan Lampiran 2a+2b+2c
- * untuk pilihan itu, dalam bentuk Excel (.xlsx, 3 sheet) ATAU PDF.
+ * untuk pilihan itu, dalam bentuk Excel (.xlsx, 5 sheet - BARU 2026-10-16:
+ * Lembar Validasi TPG, Lampiran 2a, Lampiran 2b, Lampiran 2c, Data
+ * Cair/Belum TPG, sebelumnya 3 sheet) ATAU PDF.
  *
  * - Admin OPS: data yang diunduh selalu hanya sekolahnya sendiri.
  * - Superadmin: data yang diunduh SELALU gabungan SEMUA sekolah yang
@@ -178,11 +182,21 @@ class Index extends Component
 
     public function unduhExcel()
     {
-        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Lampiran 2a/2b/2c (Unduhan)', 'Excel');
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Lembar Validasi TPG, Lampiran 2a/2b/2c, Data Cair/Belum TPG (Unduhan)', 'Excel');
         [$baris2a, $baris2b, $baris2c] = $this->ambilData();
+        $sekolahId = $this->sekolahIdUntukUnduhan();
 
         return Excel::download(
-            new UnduhanLampiranExport($baris2a, $baris2b, $baris2c, $this->triwulan, $this->tahun, $this->sekolahUntukExport()),
+            new UnduhanLampiranExport(
+                $baris2a,
+                $baris2b,
+                $baris2c,
+                $this->triwulan,
+                $this->tahun,
+                $this->sekolahUntukExport(),
+                LembarValidasiTpgUnduhanData::ambil($this->triwulan, $this->tahun, $sekolahId),
+                RekapCairTpgUnduhanData::ambil($this->triwulan, $this->tahun, $sekolahId),
+            ),
             $this->namaUntukFile().'.xlsx'
         );
     }

@@ -19,7 +19,8 @@
                         <h3 class="text-lg font-medium text-slate-900">Unduhan Lampiran 2a, 2b &amp; 2c</h3>
                         <p class="text-sm text-slate-500 mt-1">
                             Pilih Triwulan (tab di atas) &amp; Tahun, lalu unduh gabungan data Lampiran 2a, 2b, dan
-                            2c untuk pilihan tersebut - siap pakai dalam format Excel (3 sheet) atau PDF.
+                            2c untuk pilihan tersebut - siap pakai dalam format PDF, atau Excel (5 sheet: Lembar
+                            Validasi TPG, Lampiran 2a, Lampiran 2b, Lampiran 2c, Data Cair/Belum TPG).
                         </p>
                     </div>
 
