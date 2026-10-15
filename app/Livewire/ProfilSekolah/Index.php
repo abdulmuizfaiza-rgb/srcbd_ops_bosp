@@ -917,7 +917,7 @@ class Index extends Component
             'bidang_studi_sertifikasi' => $rincianSertifikasiWajib ? ['nullable', 'string', 'max:255'] : ['nullable'],
             'tahun_lulus_sertifikasi' => $rincianSertifikasiWajib ? ['nullable', 'regex:/^([0-9]{4}|-)$/'] : ['nullable'],
             'nomor_sertifikat_sertifikasi' => ['nullable', 'string', 'max:255'],
-            'nomor_registrasi_guru' => ['nullable', 'string', 'max:255'],
+            'nomor_registrasi_guru' => ['nullable', 'regex:/^([0-9]{1,12}|-)$/'],
             'nomor_peserta_sertifikasi' => ['nullable', 'string', 'max:255'],
             'status_dapodik' => ['required', Rule::in(array_keys(DataPtk::statusDapodikOptions()))],
             'status_keaktifan' => ['required', Rule::in(array_keys(DataPtk::statusKeaktifanOptions()))],
@@ -929,6 +929,7 @@ class Index extends Component
             'tahun_lulus_ijazah.regex' => 'Tahun Lulus Ijazah harus berupa 4 digit angka tahun.',
             'npwp.regex' => 'NPWP harus berupa angka, maksimal 16 digit.',
             'tahun_lulus_sertifikasi.regex' => 'Tahun Lulus Sertifikasi harus berupa 4 digit angka tahun.',
+            'nomor_registrasi_guru.regex' => 'Nomor Registrasi Guru harus berupa angka, maksimal 12 digit.',
         ]);
 
         // Sumber kebenaran tunggal aturan "Belum -> otomatis '-'" supaya

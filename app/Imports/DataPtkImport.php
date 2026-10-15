@@ -187,6 +187,7 @@ class DataPtkImport implements ToModel, WithHeadingRow, WithValidation
             'npwp' => ['nullable', 'regex:/^[0-9]{1,16}$/'],
             'status_sertifikasi' => ['required', Rule::in(array_keys(DataPtk::statusSertifikasiOptions()))],
             'tahun_lulus_sertifikasi' => ['nullable', 'regex:/^([0-9]{4}|-)$/'],
+            'nomor_registrasi_guru' => ['nullable', 'regex:/^([0-9]{1,12}|-)$/'],
             'nama_sekolah' => $this->sekolahDiperbolehkan === null
                 ? ['required', 'string', Rule::exists('profil_sekolah', 'nama_sekolah')]
                 : ['nullable'],
@@ -205,6 +206,7 @@ class DataPtkImport implements ToModel, WithHeadingRow, WithValidation
             'tahun_lulus_ijazah.regex' => 'Tahun Lulus Ijazah harus berupa 4 digit angka tahun.',
             'npwp.regex' => 'NPWP harus berupa angka, maksimal 16 digit.',
             'tahun_lulus_sertifikasi.regex' => 'Tahun Lulus Sertifikasi harus berupa 4 digit angka tahun.',
+            'nomor_registrasi_guru.regex' => 'Nomor Registrasi Guru harus berupa angka, maksimal 12 digit.',
             'nama_sekolah.exists' => 'Nama Sekolah tidak ditemukan di menu Data Sekolah.',
             'jabatan.in' => 'Jabatan harus dipilih dari daftar pilihan yang tersedia.',
             'pangkat_golongan.in' => 'Pangkat / Golongan harus dipilih dari daftar pilihan yang tersedia.',

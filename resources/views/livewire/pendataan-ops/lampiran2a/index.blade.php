@@ -140,23 +140,32 @@
                     </p>
                 </div>
 
+                {{-- Perbaikan 2026-10-16: NRG/NUPTK/Nama PTK/NPWP di bawah ini
+                     sebelumnya memakai @disabled($dataPtkId) LANGSUNG di
+                     tag komponen <x-text-input> - pola ini rusak saat
+                     dikompilasi Blade (sama seperti bug "Nama Yayasan" &
+                     "Status Sertifikasi" yang sudah diperbaiki sebelumnya),
+                     sehingga field selalu non-aktif & nilai otomatis dari
+                     Data PTK tidak pernah benar-benar tampil/tersimpan.
+                     Diganti ke :disabled="$dataPtkId" (binding prop Blade
+                     yang benar). --}}
                 <div>
                     <x-input-label for="nrg" value="NRG" />
-                    <x-text-input wire:model="nrg" id="nrg" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="12" @disabled($dataPtkId) />
+                    <x-text-input wire:model="nrg" id="nrg" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="12" :disabled="$dataPtkId" />
                     <p class="text-xs text-slate-400 mt-1" @if (! $dataPtkId) style="display:none" @endif>Otomatis dari Nomor Registrasi Guru pada Data PTK.</p>
                     <x-input-error :messages="$errors->get('nrg')" class="mt-2" />
                 </div>
 
                 <div>
                     <x-input-label for="nuptk" value="NUPTK" />
-                    <x-text-input wire:model="nuptk" id="nuptk" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="16" @disabled($dataPtkId) />
+                    <x-text-input wire:model="nuptk" id="nuptk" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="16" :disabled="$dataPtkId" />
                     <p class="text-xs text-slate-400 mt-1" @if (! $dataPtkId) style="display:none" @endif>Otomatis dari Data PTK.</p>
                     <x-input-error :messages="$errors->get('nuptk')" class="mt-2" />
                 </div>
 
                 <div class="sm:col-span-2">
                     <x-input-label for="nama_ptk" value="Nama PTK" />
-                    <x-text-input wire:model="nama_ptk" id="nama_ptk" class="block mt-1 w-full" type="text" @disabled($dataPtkId) />
+                    <x-text-input wire:model="nama_ptk" id="nama_ptk" class="block mt-1 w-full" type="text" :disabled="$dataPtkId" />
                     <p class="text-xs text-slate-400 mt-1" @if (! $dataPtkId) style="display:none" @endif>Otomatis dari Data PTK.</p>
                     <x-input-error :messages="$errors->get('nama_ptk')" class="mt-2" />
                 </div>
@@ -191,7 +200,7 @@
 
                 <div class="sm:col-span-2">
                     <x-input-label for="npwp" value="NPWP" />
-                    <x-text-input wire:model="npwp" id="npwp" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="16" @disabled($dataPtkId) />
+                    <x-text-input wire:model="npwp" id="npwp" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="16" :disabled="$dataPtkId" />
                     <p class="text-xs text-slate-400 mt-1" @if ($dataPtkId) style="display:none" @endif>15 digit (format lama) atau 16 digit (format NIK).</p>
                     <p class="text-xs text-slate-400 mt-1" @if (! $dataPtkId) style="display:none" @endif>Otomatis dari Data PTK.</p>
                     <x-input-error :messages="$errors->get('npwp')" class="mt-2" />
@@ -203,6 +212,26 @@
                 <x-primary-button class="!px-3 !py-1.5 !text-[10px]"><x-icon name="check" class="w-3.5 h-3.5 mr-1" />Simpan</x-primary-button>
             </div>
         </form>
+    </x-modal>
+
+    {{-- Modal Peringatan PTK Sudah Tersimpan di Triwulan Ini (permintaan
+         user 2026-10-16) - supaya 1 PTK tidak bisa tersimpan 2x pada
+         triwulan yang sama lewat Lampiran 2a, lihat updatedDataPtkId()
+         & simpan() pada Index.php. --}}
+    <x-modal name="lampiran-2a-ptk-sudah-ada" maxWidth="md">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900">PTK Sudah Tersimpan</h2>
+            <p class="mt-2 text-sm text-slate-600">
+                <strong>{{ $namaPtkSudahAda }}</strong> sudah tersimpan di Lampiran 2a pada {{ $triwulanOptions[$triwulan] }} Tahun {{ $tahunSekarang }}. Data tidak bisa disimpan 2 kali untuk triwulan yang sama.
+            </p>
+            <p class="mt-2 text-sm text-slate-600">
+                Hapus dulu data riwayat yang sudah ada kalau ingin menginput ulang dari awal, atau gunakan tombol <strong>Edit</strong> pada baris tersebut kalau hanya ingin mengubah datanya.
+            </p>
+
+            <div class="mt-6 flex justify-end">
+                <x-secondary-button type="button" x-on:click="show = false" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Tutup</x-secondary-button>
+            </div>
+        </div>
     </x-modal>
 
     {{-- Modal Konfirmasi Hapus --}}

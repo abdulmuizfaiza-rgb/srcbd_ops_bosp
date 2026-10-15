@@ -90,6 +90,13 @@ class Index extends Component
 
     public string $nrg = '';
 
+    /**
+     * Nama PTK yang terdeteksi SUDAH tersimpan di Lampiran 2a pada
+     * triwulan yang sama (permintaan user 2026-10-16) - dipakai untuk
+     * menampilkan pop-up peringatan, lihat updatedDataPtkId() & simpan().
+     */
+    public string $namaPtkSudahAda = '';
+
     public string $nuptk = '';
 
     public string $nama_ptk = '';
@@ -190,7 +197,7 @@ class Index extends Component
     {
         $this->reset([
             'editingId', 'profil_sekolah_id', 'dataPtkId', 'nrg', 'nuptk', 'nama_ptk',
-            'status_kepegawaian', 'gaji_pokok_januari', 'npwp',
+            'status_kepegawaian', 'gaji_pokok_januari', 'npwp', 'namaPtkSudahAda',
         ]);
         $this->resetErrorBag();
     }
@@ -240,6 +247,38 @@ class Index extends Component
 
         if (! $ptk) {
             $this->dataPtkId = null;
+
+            return;
+        }
+
+        // Cegah 1 PTK yang sama tersimpan 2x di triwulan yang sama
+        // (permintaan user 2026-10-16) - dicek lewat NUPTK (field wajib &
+        // identitas unik tiap PTK), BUKAN dataPtkId, karena tabel
+        // lampiran_2a tidak menyimpan relasi langsung ke Data PTK (lihat
+        // catatan "KOMPATIBILITAS DATA LAMA" pada docblock class). Saat
+        // sedang Edit, baris yang sedang diedit sendiri dikecualikan.
+        // Pengecekan ini hanya umpan balik langsung di form - pengecekan
+        // yang SEBENARNYA mengikat (tidak bisa "dibengkokkan" lewat
+        // devtools) ada di simpan().
+        $sudahAda = Lampiran2a::where('profil_sekolah_id', $this->profil_sekolah_id)
+            ->where('triwulan', $this->triwulan)
+            ->where('tahun', now()->year)
+            ->where('nuptk', $ptk->nuptk)
+            ->when($this->editingId, fn ($q) => $q->where('id', '!=', $this->editingId))
+            ->exists();
+
+        if ($sudahAda) {
+            // Dikosongkan semua (bukan cuma dataPtkId) supaya form tidak
+            // menyisakan nrg/nuptk/nama_ptk/npwp/status_kepegawaian milik
+            // PTK yang ditolak ini - pola sama dengan updatedProfilSekolahId().
+            $this->dataPtkId = null;
+            $this->namaPtkSudahAda = $ptk->nama_ptk;
+            $this->nrg = '';
+            $this->nuptk = '';
+            $this->nama_ptk = '';
+            $this->npwp = '';
+            $this->status_kepegawaian = '';
+            $this->dispatch('open-modal', 'lampiran-2a-ptk-sudah-ada');
 
             return;
         }
@@ -334,6 +373,26 @@ class Index extends Component
             'nuptk.regex' => 'NUPTK harus berupa 16 digit angka.',
             'npwp.regex' => 'NPWP harus berupa 15-16 digit angka.',
         ]);
+
+        // Sumber kebenaran tunggal aturan "1 PTK tidak bisa tersimpan 2x
+        // di triwulan yang sama" (permintaan user 2026-10-16) - dicek
+        // ulang di sini (bukan cuma di updatedDataPtkId()) supaya tidak
+        // bisa "dibengkokkan" lewat devtools, termasuk kalau admin
+        // mengetik manual (tanpa pilih dari dropdown Data PTK).
+        $sudahAda = Lampiran2a::where('profil_sekolah_id', $validated['profil_sekolah_id'])
+            ->where('triwulan', $this->triwulan)
+            ->where('tahun', now()->year)
+            ->where('nuptk', $validated['nuptk'])
+            ->when($this->editingId, fn ($q) => $q->where('id', '!=', $this->editingId))
+            ->exists();
+
+        if ($sudahAda) {
+            $this->dataPtkId = null;
+            $this->namaPtkSudahAda = $validated['nama_ptk'];
+            $this->dispatch('open-modal', 'lampiran-2a-ptk-sudah-ada');
+
+            return;
+        }
 
         $validated['triwulan'] = $this->triwulan;
         $validated['created_by'] = auth()->id();
