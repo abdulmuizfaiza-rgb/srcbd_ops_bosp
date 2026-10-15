@@ -74,6 +74,17 @@
       HURUF BESAR SEMUA (CSS text-transform:uppercase, bukan mengubah
       data tersimpan) - permintaan user 2026-10-15 malam. Alamat Sekolah
       & Tahun TIDAK ikut huruf besar.
+    - PENTING: ketiga tinggi baris tabel (judul/logo/tulisan bawah) di
+      atas dihitung SENGAJA PAS/PRESISI dgn total tinggi tabel - TIDAK
+      ADA sisa ruang/toleransi sama sekali. Karena itu setiap <td> WAJIB
+      diberi padding:0 (sel tabel secara default punya padding bawaan
+      dari browser/dompdf yg menambah tinggi efektif di LUAR nilai
+      height yg sudah dihitung presisi) - kalau padding bawaan ini tidak
+      dinolkan, akumulasi tambahan tinggi dari 3 sel bisa membuat tabel
+      sedikit lebih tinggi drpd ruang yg tersedia di 1 halaman, sehingga
+      baris terakhir (tulisan bawah) terdorong SELURUHNYA ke halaman 2
+      (dilaporkan user 2026-10-15 malam, muncul di halaman 2 bukan di
+      bawah logo pada halaman 1 spt seharusnya).
 --}}
 @php
     // Catatan penulisan komentar: hindari menulis kata directive Blade
@@ -139,7 +150,7 @@
 
 <table style="width:100%; height: {{ $tinggiKontenCm }}cm; border-collapse:collapse;">
     <tr>
-        <td style="height: {{ $tinggiBarisJudulCm }}cm; text-align:center; vertical-align:top;">
+        <td style="height: {{ $tinggiBarisJudulCm }}cm; padding:0; text-align:center; vertical-align:top;">
             <div style="font-weight:bold;font-size:13pt;line-height:1.5;text-transform:uppercase;">
                 Verifikasi dan Validasi<br>
                 Tunjangan Profesi Guru<br>
@@ -149,7 +160,7 @@
         </td>
     </tr>
     <tr>
-        <td style="height: {{ $logoUkuranCm }}cm; text-align:center; vertical-align:middle;">
+        <td style="height: {{ $logoUkuranCm }}cm; padding:0; text-align:center; vertical-align:middle;">
             @if ($logoSekolahSrc)
                 <img src="{{ $logoSekolahSrc }}" style="width:{{ $logoPx }}px;height:{{ $logoPx }}px;">
             @else
@@ -158,7 +169,7 @@
         </td>
     </tr>
     <tr>
-        <td style="height: {{ $tinggiBarisBawahCm }}cm; text-align:center; vertical-align:bottom;">
+        <td style="height: {{ $tinggiBarisBawahCm }}cm; padding:0; text-align:center; vertical-align:bottom;">
             <div style="font-weight:bold;font-size:13pt;line-height:1.5;text-transform:uppercase;">
                 @unless ($isNegeri)
                     {{ $sekolah->nama_yayasan ?: '...................................' }}<br>
