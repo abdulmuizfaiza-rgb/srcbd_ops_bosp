@@ -71,6 +71,21 @@ class SuratTpg extends Model
     public const JENIS_COVER_SMP_S = 'cover_smp_s';
 
     /**
+     * Tab "Lembar Validasi TPG" (BARU 2026-10-15/16, permintaan user,
+     * format sesuai gambar contoh yang diupload) - SAMA seperti
+     * JENIS_COVER_SMPN/JENIS_COVER_SMP_S di atas: konstanta ini HANYA
+     * dipakai sbg identitas tab (pindahTab()/viewSuratPerJenis()/
+     * SuratTpgCetakController), BUKAN nilai kolom `jenis` pada tabel
+     * `surat_tpg` - data tab ini (Tanggal Verifikasi & Validasi, Catatan
+     * Hasil Verifikasi, ceklist per-PTK) tersimpan di tabel TERPISAH
+     * `lembar_validasi_tpg`/`lembar_validasi_tpg_ceklist` (lihat
+     * App\Models\LembarValidasiTpg/LembarValidasiTpgCeklist), krn field
+     * yang disimpan beda sama sekali dgn 3 jenis surat di atas (bukan
+     * nomor_surat/tanggal_surat/tahun_pelajaran).
+     */
+    public const JENIS_LEMBAR_VALIDASI = 'lembar_validasi_tpg';
+
+    /**
      * Daftar kolom "data" surat_tpg - dipakai semuaFieldDataKosong() utk
      * mendeteksi baris yang seluruh field datanya sudah kosong (mis.
      * user isi lalu hapus lagi lewat auto-save per keystroke), supaya

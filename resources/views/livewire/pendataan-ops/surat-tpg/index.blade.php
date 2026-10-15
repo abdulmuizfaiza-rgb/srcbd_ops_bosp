@@ -105,6 +105,24 @@
                                 Cover SMP-S
                             </button>
                         @endif
+                        {{--
+                            Tab "Lembar Validasi TPG" (BARU 2026-10-15/16,
+                            permintaan user, format sesuai gambar contoh
+                            yang diupload) - warna rose supaya beda dari
+                            tab2 lain. Selalu ditampilkan (tidak
+                            tergantung Status sekolah spt tab Cover).
+                        --}}
+                        <button
+                            type="button"
+                            wire:click="pindahTab('lembar_validasi_tpg')"
+                            @class([
+                                'px-4 py-2.5 rounded-t-xl text-sm font-bold tracking-wide transition-all duration-150 border-b-4',
+                                'bg-white text-rose-700 border-rose-500 shadow-sm' => $tabAktif === 'lembar_validasi_tpg',
+                                'bg-slate-50 text-slate-500 border-transparent hover:bg-slate-100 hover:text-slate-700' => $tabAktif !== 'lembar_validasi_tpg',
+                            ])
+                        >
+                            Lembar Validasi TPG
+                        </button>
                     </nav>
                 </div>
 
@@ -245,6 +263,13 @@
                                      isinya otomatis (tidak ada field yang diketik
                                      manual di tab ini). --}}
                                 @include('pdf.partials.surat-tpg-cover-isi')
+                            @elseif ($tabAktif === 'lembar_validasi_tpg')
+                                {{-- Lembar Validasi TPG (BARU 2026-10-15/16) - pakai
+                                     Kop Surat (sama spt tab Rekomendasi/Penghentian),
+                                     isi tabel PTK & ceklist-nya ada di partial
+                                     tersendiri (lihat surat-tpg-lembar-validasi-isi). --}}
+                                @include('pdf.partials.surat-tpg-kop')
+                                @include('pdf.partials.surat-tpg-lembar-validasi-isi', ['editable' => true])
                             @else
                                 @include('pdf.partials.surat-tpg-kop')
                                 @include('pdf.partials.surat-tpg-rekomendasi-isi', ['editable' => true])

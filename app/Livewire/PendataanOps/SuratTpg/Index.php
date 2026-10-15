@@ -4,6 +4,9 @@ namespace App\Livewire\PendataanOps\SuratTpg;
 
 use App\Models\AksesDataLog;
 use App\Livewire\Concerns\HasZoomTampilan;
+use App\Models\Lampiran2a;
+use App\Models\LembarValidasiTpg;
+use App\Models\LembarValidasiTpgCeklist;
 use App\Models\ProfilSekolah;
 use App\Models\SuratTpg;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -120,6 +123,34 @@ class Index extends Component
     /** Tahun Pelajaran ("2025/2026" dst) - HANYA dipakai tab Surat Pernyataan, diketik manual & tersimpan otomatis (round kedua puluh satu). */
     public ?string $tahunPelajaran = null;
 
+    /**
+     * Tab "Lembar Validasi TPG" (BARU 2026-10-15/16, permintaan user,
+     * format sesuai gambar contoh yang diupload) - 2 field header
+     * (tanggal verifikasi & catatan) diketik manual & tersimpan otomatis
+     * ke App\Models\LembarValidasiTpg (mirip $nomorSurat/$tahunPelajaran
+     * di atas), BEDA dgn $daftarPtk di bawah yang berisi ceklist 8
+     * kriteria PER-PTK (diisi dari Lampiran 2a, tersimpan ke
+     * App\Models\LembarValidasiTpgCeklist - lihat muatLembarValidasi()).
+     */
+    public ?string $tanggalVerifikasi = null;
+
+    public ?string $catatanHasilVerifikasi = null;
+
+    /**
+     * Daftar PTK (dari Lampiran 2a sekolah+tahun+triwulan aktif) beserta
+     * ceklist 8 kriterianya, dikunci (keyed) oleh NUPTK (BUKAN id baris
+     * Lampiran2a - lihat alasan lengkap di docblock App\Models\
+     * LembarValidasiTpgCeklist) - tiap elemen: ['nama_ptk' => string] +
+     * 8 boolean (lihat App\Models\LembarValidasiTpgCeklist::KOLOM_CEKLIST).
+     * wire:model.live pada checkbox Blade memakai dot-notation
+     * "daftarPtk.{nuptk}.{kolom}" - ditangkap lewat hook updated() di
+     * bawah (bukan method updated<Properti>() per kolom, krn kuncinya
+     * dinamis/banyak).
+     *
+     * @var array<string, array<string, mixed>>
+     */
+    public array $daftarPtk = [];
+
     /** File kop surat yang baru dipilih di kotak upload (belum disimpan sampai updatedKopSuratBaru() jalan). */
     public $kopSuratBaru = null;
 
@@ -159,6 +190,7 @@ class Index extends Component
         }
 
         $this->muatSurat();
+        $this->muatLembarValidasi();
     }
 
     protected function bolehKelolaSemua(): bool
@@ -185,7 +217,7 @@ class Index extends Component
     {
         $tabValid = [
             SuratTpg::JENIS_REKOMENDASI, SuratTpg::JENIS_PENGHENTIAN, SuratTpg::JENIS_PERNYATAAN,
-            SuratTpg::JENIS_COVER_SMPN, SuratTpg::JENIS_COVER_SMP_S,
+            SuratTpg::JENIS_COVER_SMPN, SuratTpg::JENIS_COVER_SMP_S, SuratTpg::JENIS_LEMBAR_VALIDASI,
         ];
 
         if (! in_array($tab, $tabValid, true)) {
@@ -217,6 +249,7 @@ class Index extends Component
 
         $this->tabAktif = $tab;
         $this->muatSurat();
+        $this->muatLembarValidasi();
     }
 
     public function pilihSekolah(?int $id): void
@@ -233,6 +266,7 @@ class Index extends Component
         $this->resetErrorBag();
         $this->sinkronkanTabCoverDenganStatusSekolah();
         $this->muatSurat();
+        $this->muatLembarValidasi();
     }
 
     /**
@@ -262,11 +296,13 @@ class Index extends Component
     public function updatedTahun(): void
     {
         $this->muatSurat();
+        $this->muatLembarValidasi();
     }
 
     public function updatedTriwulan(): void
     {
         $this->muatSurat();
+        $this->muatLembarValidasi();
     }
 
     /** @return array<string, string> */
@@ -447,6 +483,234 @@ class Index extends Component
     }
 
     /**
+     * Daftar nama kolom ceklist (8 kriteria) - alias langsung ke
+     * App\Models\LembarValidasiTpgCeklist::KOLOM_CEKLIST, dipakai utk
+     * memvalidasi nama kolom yang datang dari updated()/centangSemuaKolom()
+     * sebelum disimpan (jaga-jaga thd manipulasi wire:model manual lewat
+     * devtools - nama kolom yang tidak dikenal diabaikan).
+     *
+     * @return array<int, string>
+     */
+    protected function daftarKolomCeklist(): array
+    {
+        return LembarValidasiTpgCeklist::KOLOM_CEKLIST;
+    }
+
+    /**
+     * Memuat Tanggal Verifikasi & Validasi + Catatan Hasil Verifikasi
+     * (App\Models\LembarValidasiTpg) + daftar PTK dari Lampiran 2a
+     * beserta ceklist 8 kriterianya (App\Models\LembarValidasiTpgCeklist,
+     * dicocokkan lewat NUPTK - lihat docblock model tsb) untuk kombinasi
+     * sekolah+tahun+triwulan aktif saat ini - dipanggil dari mount() &
+     * setiap kali salah satu dari ketiganya berubah (pindahTab/
+     * pilihSekolah/updatedTahun/updatedTriwulan), SAMA seperti pola
+     * muatSurat() di atas. Baris App\Models\Lampiran2a diurutkan
+     * `orderBy('id')` (urutan input, BUKAN `->latest()` spt layar
+     * Lampiran 2a sendiri - urutan terbalik tidak cocok utk daftar
+     * bernomor pada dokumen resmi).
+     */
+    protected function muatLembarValidasi(): void
+    {
+        $sekolahId = $this->sekolahAktifId();
+
+        $header = $sekolahId
+            ? LembarValidasiTpg::query()
+                ->where('profil_sekolah_id', $sekolahId)
+                ->where('tahun', $this->tahun)
+                ->where('triwulan', $this->triwulan)
+                ->first()
+            : null;
+
+        $this->tanggalVerifikasi = $header?->tanggal_verifikasi?->format('Y-m-d');
+        $this->catatanHasilVerifikasi = $header->catatan_hasil_verifikasi ?? null;
+
+        $this->daftarPtk = [];
+
+        if (! $sekolahId) {
+            return;
+        }
+
+        $daftarLampiran = Lampiran2a::query()
+            ->where('profil_sekolah_id', $sekolahId)
+            ->where('tahun', $this->tahun)
+            ->where('triwulan', $this->triwulan)
+            ->orderBy('id')
+            ->get(['nuptk', 'nama_ptk']);
+
+        if ($daftarLampiran->isEmpty()) {
+            return;
+        }
+
+        $ceklistTersimpan = LembarValidasiTpgCeklist::query()
+            ->where('profil_sekolah_id', $sekolahId)
+            ->where('tahun', $this->tahun)
+            ->where('triwulan', $this->triwulan)
+            ->whereIn('nuptk', $daftarLampiran->pluck('nuptk'))
+            ->get()
+            ->keyBy('nuptk');
+
+        foreach ($daftarLampiran as $ptk) {
+            $ceklist = $ceklistTersimpan->get($ptk->nuptk);
+
+            $baris = ['nama_ptk' => $ptk->nama_ptk];
+
+            foreach ($this->daftarKolomCeklist() as $kolom) {
+                $baris[$kolom] = (bool) ($ceklist->{$kolom} ?? false);
+            }
+
+            $this->daftarPtk[$ptk->nuptk] = $baris;
+        }
+    }
+
+    /**
+     * Hook Livewire 3 generik yang terpanggil SETIAP properti publik
+     * berubah (termasuk path bertitik pada array, mis.
+     * "daftarPtk.1234567890123456.memiliki_sertifikat_pendidik") -
+     * dipakai KHUSUS utk menangkap toggle checkbox ceklist per-PTK
+     * (wire:model.live pada Blade memakai path dinamis per NUPTK,
+     * sehingga tidak bisa dipakai method updated<Properti>() biasa yang
+     * namanya tetap). Properti lain (nomorSurat dkk) TETAP memakai
+     * method updated<Properti>() masing-masing seperti biasa (hook ini
+     * tidak mengganggunya - Livewire memanggil KEDUANYA).
+     */
+    public function updated(string $name, mixed $value): void
+    {
+        if (! str_starts_with($name, 'daftarPtk.')) {
+            return;
+        }
+
+        $bagian = explode('.', $name);
+
+        if (count($bagian) !== 3) {
+            return;
+        }
+
+        [, $nuptk, $kolom] = $bagian;
+
+        if (! in_array($kolom, $this->daftarKolomCeklist(), true)) {
+            return;
+        }
+
+        $this->simpanCeklist($nuptk, $kolom, (bool) $value);
+    }
+
+    /**
+     * Simpan 1 nilai ceklist (find-or-create baris
+     * LembarValidasiTpgCeklist utk kombinasi sekolah+tahun+triwulan+
+     * nuptk aktif) - dipanggil dari updated() (toggle 1 checkbox) &
+     * centangSemuaKolom() (centang 1 kolom utk semua PTK sekaligus).
+     */
+    protected function simpanCeklist(string $nuptk, string $kolom, bool $nilai): void
+    {
+        $sekolahId = $this->sekolahAktifId();
+
+        if (! $sekolahId || ! $this->bolehKelola($sekolahId)) {
+            return;
+        }
+
+        // Jaga-jaga: pastikan NUPTK ini memang ada di Lampiran 2a utk
+        // sekolah+tahun+triwulan aktif (thd manipulasi wire:model manual
+        // lewat devtools) sebelum menyimpan.
+        $adaDiLampiran2a = Lampiran2a::query()
+            ->where('profil_sekolah_id', $sekolahId)
+            ->where('tahun', $this->tahun)
+            ->where('triwulan', $this->triwulan)
+            ->where('nuptk', $nuptk)
+            ->exists();
+
+        if (! $adaDiLampiran2a) {
+            return;
+        }
+
+        LembarValidasiTpgCeklist::updateOrCreate(
+            [
+                'profil_sekolah_id' => $sekolahId,
+                'tahun' => $this->tahun,
+                'triwulan' => $this->triwulan,
+                'nuptk' => $nuptk,
+            ],
+            [$kolom => $nilai]
+        );
+    }
+
+    /**
+     * Tombol "Centang Semua" PER KOLOM (jawaban AskUserQuestion
+     * 2026-10-15: "1 tombol per kolom") - mencentang 1 kriteria utk
+     * SEMUA PTK yang sedang tampil sekaligus (admin tetap bisa
+     * meng-uncheck manual per-PTK sesudahnya kalau ada pengecualian).
+     */
+    public function centangSemuaKolom(string $kolom): void
+    {
+        $sekolahId = $this->sekolahAktifId();
+
+        if (! $sekolahId || ! $this->bolehKelola($sekolahId) || ! in_array($kolom, $this->daftarKolomCeklist(), true)) {
+            return;
+        }
+
+        foreach (array_keys($this->daftarPtk) as $nuptk) {
+            $this->daftarPtk[$nuptk][$kolom] = true;
+            $this->simpanCeklist($nuptk, $kolom, true);
+        }
+    }
+
+    public function updatedTanggalVerifikasi(): void
+    {
+        $nilai = $this->tanggalVerifikasi === '' ? null : $this->tanggalVerifikasi;
+
+        $validator = Validator::make(['nilai' => $nilai], ['nilai' => ['nullable', 'date']], [], ['nilai' => 'Tanggal Verifikasi dan Validasi']);
+
+        if ($validator->fails()) {
+            $this->addError('tanggalVerifikasi', $validator->errors()->first('nilai'));
+
+            return;
+        }
+
+        $this->simpanLembarValidasi('tanggal_verifikasi', $nilai);
+    }
+
+    public function updatedCatatanHasilVerifikasi(): void
+    {
+        $this->simpanLembarValidasi('catatan_hasil_verifikasi', $this->catatanHasilVerifikasi === '' ? null : $this->catatanHasilVerifikasi);
+    }
+
+    /** Simpan 1 field header Lembar Validasi TPG (tanggal_verifikasi/catatan_hasil_verifikasi) - pola sama persis dgn simpanSurat() di atas. */
+    protected function simpanLembarValidasi(string $field, mixed $nilai): void
+    {
+        $sekolahId = $this->sekolahAktifId();
+
+        if (! $sekolahId) {
+            return;
+        }
+
+        abort_unless($this->bolehKelola($sekolahId), 403);
+
+        $header = LembarValidasiTpg::where('profil_sekolah_id', $sekolahId)
+            ->where('tahun', $this->tahun)
+            ->where('triwulan', $this->triwulan)
+            ->first();
+
+        if ($header) {
+            $header->update([$field => $nilai]);
+        } else {
+            LembarValidasiTpg::create([
+                'profil_sekolah_id' => $sekolahId,
+                'tahun' => $this->tahun,
+                'triwulan' => $this->triwulan,
+                $field => $nilai,
+            ]);
+        }
+
+        $headerTerbaru = LembarValidasiTpg::where('profil_sekolah_id', $sekolahId)
+            ->where('tahun', $this->tahun)
+            ->where('triwulan', $this->triwulan)
+            ->first();
+
+        if ($headerTerbaru && $headerTerbaru->semuaFieldDataKosong()) {
+            $headerTerbaru->delete();
+        }
+    }
+
+    /**
      * Konfirmasi hapus manual SELURUH data surat aktif (sekolah+tahun+
      * triwulan+jenis tab yang sedang dibuka) - permintaan user
      * 2026-09-27, meniru App\Livewire\PendataanBosp\PajakBospReguler\
@@ -475,13 +739,31 @@ class Index extends Component
         $sekolahId = $this->sekolahAktifId();
 
         if ($sekolahId && $this->bolehKelola($sekolahId)) {
-            SuratTpg::where('profil_sekolah_id', $sekolahId)
-                ->where('tahun', $this->tahun)
-                ->where('triwulan', $this->triwulan)
-                ->where('jenis', $this->tabAktif)
-                ->delete();
+            // Tab "Lembar Validasi TPG" (BARU 2026-10-15/16) datanya
+            // BUKAN di tabel surat_tpg (lihat SuratTpg::JENIS_LEMBAR_VALIDASI
+            // docblock) - hapus header + SELURUH baris ceklist PTK utk
+            // sekolah+tahun+triwulan aktif dari tabel terpisahnya sendiri.
+            if ($this->tabAktif === SuratTpg::JENIS_LEMBAR_VALIDASI) {
+                LembarValidasiTpg::where('profil_sekolah_id', $sekolahId)
+                    ->where('tahun', $this->tahun)
+                    ->where('triwulan', $this->triwulan)
+                    ->delete();
 
-            $this->muatSurat();
+                LembarValidasiTpgCeklist::where('profil_sekolah_id', $sekolahId)
+                    ->where('tahun', $this->tahun)
+                    ->where('triwulan', $this->triwulan)
+                    ->delete();
+
+                $this->muatLembarValidasi();
+            } else {
+                SuratTpg::where('profil_sekolah_id', $sekolahId)
+                    ->where('tahun', $this->tahun)
+                    ->where('triwulan', $this->triwulan)
+                    ->where('jenis', $this->tabAktif)
+                    ->delete();
+
+                $this->muatSurat();
+            }
 
             session()->flash('status', 'Data surat berhasil dihapus.');
         }
@@ -645,6 +927,24 @@ class Index extends Component
                 ? route('profil-sekolah.logo-sekolah', $sekolah->id)
                 : null,
             'sekolah' => $sekolah,
+            // Tab "Lembar Validasi TPG" (BARU 2026-10-15/16) - SELALU
+            // disertakan di sini (pola sama dgn tahunPelajaran/
+            // logoSekolahSrc di atas yang juga selalu dihitung terlepas
+            // dari tab mana yang sedang aktif), supaya exportPdf()/
+            // exportWord() (yang memakai dataSurat() ini) langsung dapat
+            // data lengkapnya tanpa perlu logika tambahan per-jenis.
+            'tanggalVerifikasi' => $this->tanggalVerifikasi ? Carbon::parse($this->tanggalVerifikasi) : null,
+            'catatanHasilVerifikasi' => $this->catatanHasilVerifikasi,
+            'daftarPtkValidasi' => $this->daftarPtk,
+            'namaKasieKpml' => $sekolah?->nama_kasie_kpml,
+            'nipKasieKpml' => $sekolah?->nip_kasie_kpml,
+            // Label kuning "TPGASN"/"TPGNON-ASN" (jawaban AskUserQuestion
+            // 2026-10-15: "Mengikuti status sekolah" -> Negeri = TPGASN,
+            // Swasta = TPGNON-ASN) - konsisten dgn pola Negeri=ASN/
+            // Swasta=Non-ASN pada tab Cover SMPN/Cover SMP-S.
+            'labelTpgStatus' => $sekolah
+                ? ($sekolah->status === ProfilSekolah::STATUS_NEGERI ? 'TPGASN' : 'TPGNON-ASN')
+                : null,
         ];
     }
 
@@ -657,6 +957,7 @@ class Index extends Component
             SuratTpg::JENIS_PERNYATAAN => 'surat-tpg-pernyataan',
             SuratTpg::JENIS_COVER_SMPN => 'surat-tpg-cover-smpn',
             SuratTpg::JENIS_COVER_SMP_S => 'surat-tpg-cover-smp-s',
+            SuratTpg::JENIS_LEMBAR_VALIDASI => 'surat-tpg-lembar-validasi',
         ];
     }
 

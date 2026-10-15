@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 /**
  * Trait untuk SEMUA model yang datanya ikut disinkronkan lewat menu
  * "Sinkronisasi dan Tarik Data" (permintaan user 2026-10-14 poin 3).
- * Dipasang di 24 model (23 dari RegistriModulSekolah::semua() + Profil
+ * Dipasang di 26 model (25 dari RegistriModulSekolah::semua() + Profil
  * Sekolah) - lihat panduan update untuk daftar lengkapnya.
  *
  * 2 tanggung jawab, KEDUANYA HANYA relevan untuk pemakaian NORMAL lewat

@@ -12,6 +12,8 @@ use App\Models\Lampiran2b;
 use App\Models\Lampiran2c;
 use App\Models\LanggananDayaJasa;
 use App\Models\LaporanRealisasiBosp;
+use App\Models\LembarValidasiTpg;
+use App\Models\LembarValidasiTpgCeklist;
 use App\Models\PajakBospReguler;
 use App\Models\PendataanBosp;
 use App\Models\PendataanOps;
@@ -56,6 +58,8 @@ class RegistriModulSekolah
             'Lampiran 2B' => Lampiran2b::class,
             'Lampiran 2C' => Lampiran2c::class,
             'Surat TPG' => SuratTpg::class,
+            'Lembar Validasi TPG' => LembarValidasiTpg::class,
+            'Lembar Validasi TPG Ceklist' => LembarValidasiTpgCeklist::class,
             'Rekap RKAS' => RekapRkas::class,
             'Dana BOSP Tahap' => DanaBospTahap::class,
             'Penerimaan Honor PTK' => PenerimaanHonorPtk::class,
@@ -95,6 +99,8 @@ class RegistriModulSekolah
             'Formulir BOS K7' => [FormulirBosK7::class, ['profil_sekolah_id', 'tahun', 'bulan']],
             'Verval Realisasi BOSP' => [VervalRealisasiBosp::class, ['profil_sekolah_id', 'tahun', 'triwulan']],
             'Surat TPG' => [SuratTpg::class, ['profil_sekolah_id', 'tahun', 'triwulan', 'jenis']],
+            'Lembar Validasi TPG' => [LembarValidasiTpg::class, ['profil_sekolah_id', 'tahun', 'triwulan']],
+            'Lembar Validasi TPG Ceklist' => [LembarValidasiTpgCeklist::class, ['profil_sekolah_id', 'tahun', 'triwulan', 'nuptk']],
             'Pendataan OPS (Identitas)' => [PendataanOps::class, ['profil_sekolah_id']],
             'Pendataan BOSP (Identitas)' => [PendataanBosp::class, ['profil_sekolah_id']],
             'Data PTK' => [DataPtk::class, ['nik']],
