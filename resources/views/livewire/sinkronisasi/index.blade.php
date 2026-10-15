@@ -170,7 +170,13 @@
                                     <td class="px-4 py-2">
                                         <input type="checkbox" wire:model="dipilihRiwayat" value="{{ $log->id }}" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
                                     </td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-slate-600">{{ $log->created_at->format('d/m/Y H:i') }}</td>
+                                    {{-- 2026-10-15: ->keWaktuLokal() ditambahkan (permintaan user "jam nya
+                                         masih belum sesuai dengan jam yang ada di laptop") - menu ini
+                                         terlewat saat macro keWaktuLokal() (konversi UTC tersimpan ->
+                                         Asia/Jakarta/WIB untuk TAMPILAN saja, lihat
+                                         AppServiceProvider::boot()) diterapkan ke seluruh aplikasi pada
+                                         round 2026-09-27. --}}
+                                    <td class="px-4 py-2 whitespace-nowrap text-slate-600">{{ $log->created_at->keWaktuLokal()->format('d/m/Y H:i') }}</td>
                                     <td class="px-4 py-2 whitespace-nowrap text-slate-800">{{ \App\Models\SyncLog::labelArah($log->arah) }}</td>
                                     <td class="px-4 py-2 whitespace-nowrap">
                                         <span class="font-semibold {{ $log->status === 'berhasil' ? 'text-green-700' : 'text-red-700' }}">

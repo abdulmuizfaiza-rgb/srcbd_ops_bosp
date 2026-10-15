@@ -249,6 +249,21 @@
                         </div>
                     @endif
 
+                    {{-- 2026-10-15: ceklist "pilih semua" untuk tombol Status Approve
+                         registrasi (permintaan user) - pola SAMA PERSIS dengan bar
+                         "Samakan Kunci" di atas, HANYA muncul di tab Admin OPS/Admin
+                         BOSP (TIDAK di tab Superadmin, krn akun Superadmin yang dibuat
+                         lewat menu ini otomatis sudah disetujui). --}}
+                    @if ($tab !== 'superadmin' && count($terpilihUntukApprove))
+                        <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                            <p class="text-sm text-emerald-800">{{ count($terpilihUntukApprove) }} akun dipilih untuk disetujui (boleh lintas tab Admin OPS/Admin BOSP).</p>
+                            <div class="flex items-center gap-3">
+                                <button wire:click="bersihkanPilihanApprove" class="text-sm text-slate-500 hover:underline">Batal pilih</button>
+                                <x-primary-button wire:click="setujuiTerpilih" wire:confirm="Setujui {{ count($terpilihUntukApprove) }} akun terpilih sekaligus?">Setujui Terpilih</x-primary-button>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="flex justify-end mb-3">
                         <x-zoom-controls :zoom="$zoomPercent" />
                     </div>
@@ -263,6 +278,21 @@
                                             @checked($pengguna->count() > 0 && count(array_intersect($pengguna->pluck('id')->toArray(), $terpilihUntukSamakan)) === $pengguna->count())
                                             @change="$wire.pilihSemuaDiHalamanIni($event.target.checked, @js($pengguna->pluck('id')))">
                                     </th>
+                                    @if ($tab !== 'superadmin')
+                                        {{-- 2026-10-15: kolom ceklist "pilih semua" KHUSUS untuk Setujui
+                                             Terpilih (permintaan user) - TERPISAH dari kolom checkbox
+                                             "Samakan Kunci" di atas. "Pilih semua" di sini HANYA
+                                             mencentang baris yang BELUM disetujui pada halaman ini
+                                             ($pengguna->where('is_approved', false)), krn akun yang
+                                             sudah disetujui tidak relevan untuk aksi ini. --}}
+                                        @php($idBelumDisetujuiDiHalamanIni = $pengguna->where('is_approved', false)->pluck('id')->values())
+                                        <th class="px-3 py-2 w-8">
+                                            <input type="checkbox"
+                                                class="rounded border-slate-300"
+                                                @checked($idBelumDisetujuiDiHalamanIni->count() > 0 && count(array_intersect($idBelumDisetujuiDiHalamanIni->toArray(), $terpilihUntukApprove)) === $idBelumDisetujuiDiHalamanIni->count())
+                                                @change="$wire.pilihSemuaApproveDiHalamanIni($event.target.checked, @js($idBelumDisetujuiDiHalamanIni))">
+                                        </th>
+                                    @endif
                                     <th class="px-3 py-2">Username</th>
                                     @if ($tab !== 'superadmin')
                                         <th class="px-3 py-2">Nama Sekolah</th>
@@ -278,6 +308,13 @@
                                         <td class="px-3 py-2">
                                             <input type="checkbox" wire:model.live="terpilihUntukSamakan" value="{{ $item->id }}" class="rounded border-slate-300">
                                         </td>
+                                        @if ($tab !== 'superadmin')
+                                            <td class="px-3 py-2">
+                                                @unless ($item->is_approved)
+                                                    <input type="checkbox" wire:model.live="terpilihUntukApprove" value="{{ $item->id }}" class="rounded border-slate-300">
+                                                @endunless
+                                            </td>
+                                        @endif
                                         <td class="px-3 py-2 font-medium text-slate-800">{{ $item->username }}</td>
                                         @if ($tab !== 'superadmin')
                                             <td class="px-3 py-2 text-slate-600">{{ $item->nama_sekolah ?: '-' }}</td>
@@ -310,7 +347,11 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="px-3 py-6 text-center text-slate-400">Belum ada data pengguna di tab ini.</td>
+                                        {{-- 2026-10-15: colspan disesuaikan supaya akurat dgn jumlah
+                                             kolom yang sebenarnya tampil (4 kolom dasar + 3 kolom
+                                             tambahan khusus tab Admin OPS/Admin BOSP: Nama Sekolah,
+                                             Jabatan, & kolom ceklist Setujui Terpilih yang baru). --}}
+                                        <td colspan="{{ $tab !== 'superadmin' ? 7 : 4 }}" class="px-3 py-6 text-center text-slate-400">Belum ada data pengguna di tab ini.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

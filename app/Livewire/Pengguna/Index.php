@@ -94,6 +94,21 @@ class Index extends Component
      */
     public array $terpilihUntukSamakan = [];
 
+    /**
+     * State pemilihan massal utk "Setujui Terpilih" (permintaan user
+     * 2026-10-15: tambah ceklist "pilih semua" untuk tombol Status Approve
+     * registrasi Admin OPS/Admin BOSP) - daftar ID pengguna yang dicentang
+     * untuk disetujui sekaligus. Pola SAMA PERSIS dengan
+     * $terpilihUntukSamakan di atas (termasuk SENGAJA TIDAK direset saat
+     * pindah tab, boleh pilih dari tab Admin OPS & Admin BOSP sebelum
+     * diproses sekaligus) - HANYA TERPISAH krn ini dua aksi massal yang
+     * berbeda (approve vs samakan kunci), supaya centang satu tidak ikut
+     * mencentang yang lain. Checkbox/tombol terkait HANYA muncul di tab
+     * Admin OPS & Admin BOSP (TIDAK di tab Superadmin, krn akun Superadmin
+     * yang dibuat lewat menu ini otomatis sudah disetujui - lihat simpan()).
+     */
+    public array $terpilihUntukApprove = [];
+
     public bool $showModalSamakanMassal = false;
 
     /** @var array<int, string> */
@@ -344,6 +359,49 @@ class Index extends Component
     {
         User::whereKey($id)->update(['is_approved' => true]);
         session()->flash('status', 'Akun berhasil disetujui dan sekarang bisa digunakan untuk login.');
+    }
+
+    /**
+     * Setujui SEMUA akun yang dicentang di $terpilihUntukApprove sekaligus
+     * (permintaan user 2026-10-15). Akun yang sudah terlanjur disetujui
+     * duluan (mis. oleh Superadmin lain, atau sudah tercentang dari
+     * sebelumnya) SENGAJA difilter lewat where('is_approved', false) -
+     * supaya jumlah yang dilaporkan ke user akurat & tidak mengulang
+     * approve yang sudah terjadi.
+     */
+    public function setujuiTerpilih(): void
+    {
+        if (empty($this->terpilihUntukApprove)) {
+            return;
+        }
+
+        $jumlah = User::whereIn('id', $this->terpilihUntukApprove)
+            ->where('is_approved', false)
+            ->update(['is_approved' => true]);
+
+        $this->terpilihUntukApprove = [];
+
+        session()->flash('status', $jumlah > 0
+            ? $jumlah.' akun berhasil disetujui dan sekarang bisa digunakan untuk login.'
+            : 'Tidak ada akun yang disetujui (mungkin sudah disetujui sebelumnya).');
+    }
+
+    /**
+     * Pola SAMA PERSIS dengan pilihSemuaDiHalamanIni() di bawah, khusus
+     * untuk pemilihan massal "Setujui Terpilih".
+     */
+    public function pilihSemuaApproveDiHalamanIni(bool $centang, array $ids): void
+    {
+        if ($centang) {
+            $this->terpilihUntukApprove = array_values(array_unique([...$this->terpilihUntukApprove, ...$ids]));
+        } else {
+            $this->terpilihUntukApprove = array_values(array_diff($this->terpilihUntukApprove, $ids));
+        }
+    }
+
+    public function bersihkanPilihanApprove(): void
+    {
+        $this->terpilihUntukApprove = [];
     }
 
     public function konfirmasiHapus(int $id): void
