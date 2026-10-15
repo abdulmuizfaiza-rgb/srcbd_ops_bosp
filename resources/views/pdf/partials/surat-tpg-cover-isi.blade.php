@@ -58,15 +58,22 @@
       antara dompdf/browser/Word, terutama Word yg exportnya berupa HTML
       disimpan sbg .doc - lihat App\Livewire\PendataanOps\SuratTpg\
       Index::exportWord()) & TANPA calc() di CSS (dukungan dompdf utk
-      calc() tidak konsisten) - tetap dipakai teknik <table> dgn tinggi
-      yang DIHITUNG LANGSUNG DI PHP, TAPI sekarang baris judul (baris 1)
-      & baris logo (baris 2) SAMA-SAMA diberi tinggi TETAP (dihitung di
-      PHP, bukan otomatis mengikuti isi): tinggi baris judul dihitung
-      sedemikian rupa supaya titik tengah baris logo PERSIS jatuh di
-      titik tengah kertas, berapa pun panjang teks judul atau margin
-      atas yang sedang diatur. Baris tulisan bawah (baris 3) tetap
-      height:auto + vertical-align:bottom seperti sebelumnya (TIDAK
-      berubah), supaya tetap presisi 2,5cm dari tepi bawah kertas.
+      calc() tidak konsisten) - dipakai teknik <table> dgn tinggi SETIAP
+      baris (ketiga-tiganya: judul, logo, tulisan bawah) DIHITUNG
+      LANGSUNG DI PHP & ditulis eksplisit di masing-masing <td>, TIDAK
+      ADA SATU PUN baris yang dibiarkan height:auto mengandalkan tabel
+      otomatis membagi sisa ruang - sempat dicoba (baris tulisan bawah
+      dibiarkan auto) tapi hasilnya TIDAK konsisten (dilaporkan user
+      2026-10-15 malam: tulisan nempel di bawah logo, bukan turun ke
+      dekat batas bawah), makanya sekarang SEMUA baris dihitung manual.
+      Tinggi baris judul dihitung supaya titik tengah baris logo PERSIS
+      jatuh di titik tengah kertas; tinggi baris tulisan bawah dihitung
+      supaya batas bawahnya PERSIS 2,5cm dari tepi bawah kertas - berapa
+      pun panjang teks judul atau margin atas yang sedang diatur.
+    - Nama Yayasan & Nama Sekolah pada blok tulisan bawah ditampilkan
+      HURUF BESAR SEMUA (CSS text-transform:uppercase, bukan mengubah
+      data tersimpan) - permintaan user 2026-10-15 malam. Alamat Sekolah
+      & Tahun TIDAK ikut huruf besar.
 --}}
 @php
     // Catatan penulisan komentar: hindari menulis kata directive Blade
@@ -116,6 +123,18 @@
     // yang sedang diatur. Dibatasi minimal 0 (jaga-jaga kalau margin
     // atas diatur sangat besar).
     $tinggiBarisJudulCm = max(0, ($tinggiHalamanCm / 2) - (float) $m['atas'] - ($logoUkuranCm / 2));
+
+    // Baris tulisan bawah JUGA diberi tinggi TETAP yang dihitung di PHP
+    // (bukan dibiarkan otomatis mengisi sisa ruang tabel) - sebelumnya
+    // baris ini dibiarkan tanpa tinggi eksplisit dgn asumsi otomatis
+    // melebar mengisi sisa tinggi tabel, tapi ternyata perilaku itu
+    // TIDAK konsisten (dilaporkan user 2026-10-15 malam: tulisan nempel
+    // persis di bawah logo, bukan turun ke dekat batas bawah). Rumus di
+    // bawah otomatis sama dgn: tinggiKontenCm - tinggiBarisJudulCm -
+    // logoUkuranCm, disederhanakan jadi tidak bergantung pada margin
+    // atas sama sekali (selalu konsisten berapa pun margin atas yg
+    // diatur).
+    $tinggiBarisBawahCm = max(0, ($tinggiHalamanCm / 2) - $jarakTetapDariBawahCm - ($logoUkuranCm / 2));
 @endphp
 
 <table style="width:100%; height: {{ $tinggiKontenCm }}cm; border-collapse:collapse;">
@@ -139,8 +158,8 @@
         </td>
     </tr>
     <tr>
-        <td style="text-align:center; vertical-align:bottom;">
-            <div style="font-weight:bold;font-size:13pt;line-height:1.5;">
+        <td style="height: {{ $tinggiBarisBawahCm }}cm; text-align:center; vertical-align:bottom;">
+            <div style="font-weight:bold;font-size:13pt;line-height:1.5;text-transform:uppercase;">
                 @unless ($isNegeri)
                     {{ $sekolah->nama_yayasan ?: '...................................' }}<br>
                 @endunless
