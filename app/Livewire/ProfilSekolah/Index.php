@@ -604,6 +604,28 @@ class Index extends Component
         }
     }
 
+    /**
+     * Umpan balik langsung di form (sebelum simpan) - saat Jabatan
+     * diubah jadi Guru Honorer/GTY/GTT/PTT, Pangkat/Golongan langsung
+     * terlihat terisi tanda "-" (permintaan user 2026-10-15) supaya PTK
+     * tidak perlu pilih sendiri. Saat diubah balik ke jabatan lain,
+     * tanda "-" yang tersisa dari sebelumnya dikosongkan lagi supaya PTK
+     * bisa langsung memilih Pangkat/Golongan yang sebenarnya - nilai
+     * yang SUDAH dipilih manual sebelumnya (bukan "-") TIDAK ikut
+     * dikosongkan. Aturan yang SEBENARNYA mengikat tetap diterapkan
+     * ulang di simpanPtk() lewat DataPtk::terapkanAturanPangkatGolongan()
+     * (sumber kebenaran tunggal) - pola yang sama persis dengan
+     * updatedStatusSertifikasi() di atas.
+     */
+    public function updatedJabatan(): void
+    {
+        if (in_array($this->jabatan, DataPtk::jabatanTanpaPangkatGolongan(), true)) {
+            $this->pangkat_golongan = DataPtk::TANDA_KOSONG;
+        } elseif ($this->pangkat_golongan === DataPtk::TANDA_KOSONG) {
+            $this->pangkat_golongan = '';
+        }
+    }
+
     public function tambahPtk(): void
     {
         abort_unless($this->bolehTambahDataPtk(), 403);
@@ -705,7 +727,7 @@ class Index extends Component
             'pendidikan_terakhir' => ['required', Rule::in(array_keys(DataPtk::pendidikanTerakhirOptions()))],
             'jurusan_prodi' => ['nullable', 'string', 'max:255'],
             'tahun_lulus_ijazah' => ['nullable', 'regex:/^[0-9]{4}$/'],
-            'npwp' => ['nullable', 'regex:/^[0-9]{15,16}$/'],
+            'npwp' => ['nullable', 'regex:/^[0-9]{1,16}$/'],
             'status_sertifikasi' => ['required', Rule::in(array_keys(DataPtk::statusSertifikasiOptions()))],
             'bidang_studi_sertifikasi' => $rincianSertifikasiWajib ? ['nullable', 'string', 'max:255'] : ['nullable'],
             'tahun_lulus_sertifikasi' => $rincianSertifikasiWajib ? ['nullable', 'regex:/^([0-9]{4}|-)$/'] : ['nullable'],
@@ -720,7 +742,7 @@ class Index extends Component
             'nuptk.regex' => 'NUPTK harus berupa 16 digit angka.',
             'nip.regex' => 'NIP harus berupa 18 digit angka.',
             'tahun_lulus_ijazah.regex' => 'Tahun Lulus Ijazah harus berupa 4 digit angka tahun.',
-            'npwp.regex' => 'NPWP harus berupa 15-16 digit angka.',
+            'npwp.regex' => 'NPWP harus berupa angka, maksimal 16 digit.',
             'tahun_lulus_sertifikasi.regex' => 'Tahun Lulus Sertifikasi harus berupa 4 digit angka tahun.',
         ]);
 
@@ -728,6 +750,7 @@ class Index extends Component
         // tidak bisa "dibengkokkan" lewat devtools (validasi di atas hanya
         // longgar utk field ini, aturan SEBENARNYA diterapkan di sini).
         $validated = DataPtk::terapkanAturanSertifikasi($validated);
+        $validated = DataPtk::terapkanAturanPangkatGolongan($validated);
 
         foreach (['nuptk', 'nip', 'tempat_lahir', 'jurusan_prodi', 'pangkat_golongan', 'tanggal_lahir', 'tmt_sekolah_induk', 'tahun_lulus_ijazah', 'npwp', 'nomor_sertifikat_sertifikasi', 'nomor_registrasi_guru', 'nomor_peserta_sertifikasi'] as $fieldOpsional) {
             if (($validated[$fieldOpsional] ?? '') === '') {

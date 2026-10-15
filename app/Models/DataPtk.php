@@ -84,6 +84,12 @@ class DataPtk extends Model
         ];
     }
 
+    /**
+     * GTY, GTT, PTT ditambahkan 2026-10-15 (permintaan user) - dipakai
+     * juga sebagai pemicu auto-isi "-" pada Pangkat/Golongan, bersama
+     * "Guru Honorer" (lihat jabatanTanpaPangkatGolongan() &
+     * terapkanAturanPangkatGolongan() di bawah).
+     */
     public static function jabatanOptions(): array
     {
         return [
@@ -92,12 +98,41 @@ class DataPtk extends Model
             'Guru Ahli Muda' => 'Guru Ahli Muda',
             'Guru Ahli Madya' => 'Guru Ahli Madya',
             'Guru Ahli Utama' => 'Guru Ahli Utama',
+            'GTY' => 'GTY',
+            'GTT' => 'GTT',
+            'PTT' => 'PTT',
         ];
     }
 
+    /**
+     * Daftar Jabatan yang TIDAK memiliki jenjang Pangkat/Golongan (PTK
+     * non-ASN) - dipakai sebagai pemicu aturan "Pangkat/Golongan
+     * otomatis diisi tanda '-'" (permintaan user 2026-10-15, lihat
+     * terapkanAturanPangkatGolongan() di bawah). Jabatan "Guru Ahli
+     * ..." (fungsional ASN/PPPK) TIDAK termasuk di sini karena jabatan
+     * itu MEMANG punya jenjang Pangkat/Golongan.
+     *
+     * @return array<int, string>
+     */
+    public static function jabatanTanpaPangkatGolongan(): array
+    {
+        return [
+            'Guru Honorer',
+            'GTY',
+            'GTT',
+            'PTT',
+        ];
+    }
+
+    /**
+     * "-" ditambahkan 2026-10-15 (permintaan user) sebagai pilihan
+     * untuk PTK yang Jabatannya tidak memiliki jenjang Pangkat/Golongan
+     * (lihat jabatanTanpaPangkatGolongan() & terapkanAturanPangkatGolongan()).
+     */
     public static function pangkatGolonganOptions(): array
     {
         return [
+            '-' => '-',
             'Penata Muda III/a' => 'Penata Muda III/a',
             'Penata Muda Tk. I III/b' => 'Penata Muda Tk. I III/b',
             'Penata III/c' => 'Penata III/c',
@@ -186,6 +221,25 @@ class DataPtk extends Model
             foreach (self::FIELD_RINCIAN_SERTIFIKASI as $field) {
                 $data[$field] = self::TANDA_KOSONG;
             }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Terapkan aturan "Jabatan = Guru Honorer/GTY/GTT/PTT -> Pangkat/
+     * Golongan otomatis diisi tanda '-'" pada sebuah array data (dipakai
+     * bersama oleh Livewire component & Import Excel supaya aturannya
+     * satu sumber kebenaran - permintaan user 2026-10-15). Daftar
+     * Jabatan pemicunya lihat jabatanTanpaPangkatGolongan().
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function terapkanAturanPangkatGolongan(array $data): array
+    {
+        if (in_array($data['jabatan'] ?? null, self::jabatanTanpaPangkatGolongan(), true)) {
+            $data['pangkat_golongan'] = self::TANDA_KOSONG;
         }
 
         return $data;

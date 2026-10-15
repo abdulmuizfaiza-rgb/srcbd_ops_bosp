@@ -629,7 +629,7 @@
 
                 <div>
                     <x-input-label for="jabatan" value="Jabatan" />
-                    <select wire:model="jabatan" id="jabatan" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm block mt-1 w-full">
+                    <select wire:model.live="jabatan" id="jabatan" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm block mt-1 w-full">
                         <option value="">-- Pilih Jabatan --</option>
                         @foreach ($jabatanOptions as $value => $label)
                             <option value="{{ $value }}">{{ $label }}</option>
@@ -703,7 +703,7 @@
                 <div>
                     <x-input-label for="npwp" value="NPWP" />
                     <x-text-input wire:model="npwp" id="npwp" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="16" />
-                    <p class="text-xs text-slate-400 mt-1">15 digit (format lama) atau 16 digit (format NIK).</p>
+                    <p class="text-xs text-slate-400 mt-1">Maksimal 16 digit angka.</p>
                     <x-input-error :messages="$errors->get('npwp')" class="mt-2" />
                 </div>
 

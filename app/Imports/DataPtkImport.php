@@ -144,6 +144,7 @@ class DataPtkImport implements ToModel, WithHeadingRow, WithValidation
         ];
 
         $data = DataPtk::terapkanAturanSertifikasi($data);
+        $data = DataPtk::terapkanAturanPangkatGolongan($data);
 
         $existing = DataPtk::where('nik', $data['nik'])->first();
 
@@ -175,7 +176,7 @@ class DataPtkImport implements ToModel, WithHeadingRow, WithValidation
             'jenis_ptk' => ['required', Rule::in(array_keys(DataPtk::jenisPtkOptions()))],
             'pendidikan_terakhir' => ['required', Rule::in(array_keys(DataPtk::pendidikanTerakhirOptions()))],
             'tahun_lulus_ijazah' => ['nullable', 'regex:/^[0-9]{4}$/'],
-            'npwp' => ['nullable', 'regex:/^[0-9]{15,16}$/'],
+            'npwp' => ['nullable', 'regex:/^[0-9]{1,16}$/'],
             'status_sertifikasi' => ['required', Rule::in(array_keys(DataPtk::statusSertifikasiOptions()))],
             'tahun_lulus_sertifikasi' => ['nullable', 'regex:/^([0-9]{4}|-)$/'],
             'nama_sekolah' => $this->sekolahDiperbolehkan === null
@@ -194,7 +195,7 @@ class DataPtkImport implements ToModel, WithHeadingRow, WithValidation
             'nuptk.regex' => 'NUPTK harus berupa 16 digit angka.',
             'nip.regex' => 'NIP harus berupa 18 digit angka.',
             'tahun_lulus_ijazah.regex' => 'Tahun Lulus Ijazah harus berupa 4 digit angka tahun.',
-            'npwp.regex' => 'NPWP harus berupa 15-16 digit angka.',
+            'npwp.regex' => 'NPWP harus berupa angka, maksimal 16 digit.',
             'tahun_lulus_sertifikasi.regex' => 'Tahun Lulus Sertifikasi harus berupa 4 digit angka tahun.',
             'nama_sekolah.exists' => 'Nama Sekolah tidak ditemukan di menu Data Sekolah.',
             'jabatan.in' => 'Jabatan harus dipilih dari daftar pilihan yang tersedia.',

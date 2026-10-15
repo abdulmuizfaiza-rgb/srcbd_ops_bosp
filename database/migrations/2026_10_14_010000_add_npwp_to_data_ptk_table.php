@@ -12,10 +12,13 @@ use Illuminate\Support\Facades\Schema;
  *
  * Nullable (opsional) - konsisten dengan field lain yang bersifat
  * biodata tambahan di tabel ini (nuptk, nip, dll), BUKAN field wajib
- * seperti nik. Validasi format (15-16 digit angka) ditempatkan di
- * App\Livewire\ProfilSekolah\Index::simpanPtk(), mengikuti regex yang
- * sudah dipakai NPWP pada Lampiran 2a
- * (App\Livewire\PendataanOps\Lampiran2a\Index).
+ * seperti nik. Validasi format ditempatkan di
+ * App\Livewire\ProfilSekolah\Index::simpanPtk() & App\Imports\
+ * DataPtkImport - AWALNYA 15-16 digit angka (mengikuti regex yang
+ * dipakai NPWP pada Lampiran 2a, App\Livewire\PendataanOps\Lampiran2a\
+ * Index), DIUBAH 2026-10-15 (permintaan user KHUSUS Data PTK) jadi
+ * maksimal 16 digit angka TANPA batas minimal. Lampiran 2a TIDAK ikut
+ * berubah (field NPWP-nya validasi & konteksnya terpisah).
  */
 return new class extends Migration
 {
