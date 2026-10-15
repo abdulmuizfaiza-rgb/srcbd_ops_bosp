@@ -173,6 +173,26 @@
         </form>
     </x-modal>
 
+    {{-- Modal Peringatan PTK Sudah Tersimpan di Triwulan Ini (permintaan
+         user 2026-10-16) - supaya 1 PTK tidak bisa tersimpan 2x pada
+         triwulan yang sama lewat Lampiran 2b, lihat updatedNamaPtk() &
+         simpan() pada Index.php. --}}
+    <x-modal name="lampiran-2b-ptk-sudah-ada" maxWidth="md">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900">PTK Sudah Tersimpan</h2>
+            <p class="mt-2 text-sm text-slate-600">
+                <strong>{{ $namaPtkSudahAda }}</strong> sudah tersimpan di Lampiran 2b pada {{ $triwulanOptions[$triwulan] }}. Data tidak bisa disimpan 2 kali untuk triwulan yang sama.
+            </p>
+            <p class="mt-2 text-sm text-slate-600">
+                Hapus dulu data riwayat yang sudah ada kalau ingin menginput ulang dari awal, atau gunakan tombol <strong>Edit</strong> pada baris tersebut kalau hanya ingin mengubah datanya.
+            </p>
+
+            <div class="mt-6 flex justify-end">
+                <x-secondary-button type="button" x-on:click="show = false" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Tutup</x-secondary-button>
+            </div>
+        </div>
+    </x-modal>
+
     {{-- Modal Konfirmasi Hapus --}}
     <x-modal name="lampiran-2b-hapus" :show="$confirmingDeleteId !== null" maxWidth="md">
         <div class="p-6">

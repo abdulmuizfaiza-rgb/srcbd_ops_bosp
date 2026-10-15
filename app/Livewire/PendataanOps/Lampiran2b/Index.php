@@ -80,6 +80,13 @@ class Index extends Component
 
     public string $tmt = '';
 
+    /**
+     * Nama PTK yang terdeteksi SUDAH tersimpan di Lampiran 2b pada
+     * triwulan yang sama (permintaan user 2026-10-16) - dipakai untuk
+     * menampilkan pop-up peringatan, lihat updatedNamaPtk() & simpan().
+     */
+    public string $namaPtkSudahAda = '';
+
     public bool $showForm = false;
 
     public ?int $confirmingDeleteId = null;
@@ -137,10 +144,34 @@ class Index extends Component
     /**
      * Nama PTK dipilih pada form - isi otomatis NRG & NUPTK dari Data PTK
      * (sekolah yang sama) - lihat docblock class di atas.
+     *
+     * Sejak permintaan user 2026-10-16: kalau NUPTK hasil isi otomatis
+     * ini SUDAH tersimpan di Lampiran 2b pada triwulan yang sama, pilihan
+     * dibatalkan lagi & pop-up peringatan ditampilkan (pola sama dengan
+     * Lampiran 2a) - lihat juga simpan() untuk penegakan sisi server.
      */
     public function updatedNamaPtk(): void
     {
         $this->isiOtomatisNrgNuptk();
+
+        if ($this->nuptk === '') {
+            return;
+        }
+
+        $sudahAda = Lampiran2b::where('profil_sekolah_id', $this->profil_sekolah_id)
+            ->where('triwulan', $this->triwulan)
+            ->where('tahun', now()->year)
+            ->where('nuptk', $this->nuptk)
+            ->when($this->editingId, fn ($q) => $q->where('id', '!=', $this->editingId))
+            ->exists();
+
+        if ($sudahAda) {
+            $this->namaPtkSudahAda = $this->nama_ptk;
+            $this->nama_ptk = '';
+            $this->nrg = '';
+            $this->nuptk = '';
+            $this->dispatch('open-modal', 'lampiran-2b-ptk-sudah-ada');
+        }
     }
 
     protected function isiOtomatisNrgNuptk(): void
@@ -225,6 +256,7 @@ class Index extends Component
     {
         $this->reset([
             'editingId', 'profil_sekolah_id', 'nrg', 'nuptk', 'nama_ptk', 'keterangan', 'tmt',
+            'namaPtkSudahAda',
         ]);
         $this->resetErrorBag();
     }
@@ -267,6 +299,27 @@ class Index extends Component
 
         if (! $sumber) {
             $this->addError('nama_ptk', 'Nama PTK tersebut tidak ditemukan di Data PTK dengan Status Keaktifan "Tidak Aktif" & Status Sertifikasi "Sudah" untuk sekolah ini. Silakan lengkapi/periksa kembali Data PTK terlebih dahulu.');
+
+            return;
+        }
+
+        // Sumber kebenaran tunggal aturan "1 PTK tidak bisa tersimpan 2x
+        // di triwulan yang sama" (permintaan user 2026-10-16) - dicek
+        // ulang di sini (bukan cuma di updatedNamaPtk()) supaya tidak
+        // bisa "dibengkokkan" lewat devtools.
+        $sudahAda = Lampiran2b::where('profil_sekolah_id', $validated['profil_sekolah_id'])
+            ->where('triwulan', $this->triwulan)
+            ->where('tahun', now()->year)
+            ->where('nuptk', $sumber->nuptk)
+            ->when($this->editingId, fn ($q) => $q->where('id', '!=', $this->editingId))
+            ->exists();
+
+        if ($sudahAda) {
+            $this->namaPtkSudahAda = $validated['nama_ptk'];
+            $this->nama_ptk = '';
+            $this->nrg = '';
+            $this->nuptk = '';
+            $this->dispatch('open-modal', 'lampiran-2b-ptk-sudah-ada');
 
             return;
         }
