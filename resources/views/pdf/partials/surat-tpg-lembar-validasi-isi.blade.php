@@ -132,58 +132,57 @@
     </tbody>
 </table>
 
-<div style="margin-top:14px;font-size:10.5pt;">
-    <div style="font-weight:bold;">CATATAN HASIL VERIFIKASI :</div>
-    @if ($editable)
-        <textarea wire:model.live="catatanHasilVerifikasi" rows="4" placeholder="(opsional)" class="mt-1 block w-full border-0 border-b border-slate-300 bg-transparent text-sm focus:ring-0 focus:border-blue-500 px-1 py-1"></textarea>
-    @else
-        @if ($catatanHasilVerifikasi)
-            <div style="margin-top:4px;white-space:pre-line;">{{ $catatanHasilVerifikasi }}</div>
-        @else
-            <div style="margin-top:10px;border-bottom:1px dotted #000;">&nbsp;</div>
-            <div style="margin-top:14px;border-bottom:1px dotted #000;">&nbsp;</div>
-            <div style="margin-top:14px;border-bottom:1px dotted #000;">&nbsp;</div>
-            <div style="margin-top:14px;border-bottom:1px dotted #000;">&nbsp;</div>
-        @endif
-    @endif
-</div>
-
-{{-- Blok tanda tangan 3 kolom: Kepala Seksi Tata Kelola Kelembagaan dan
-     Ketenagaan (kiri, dari field Nama/NIP Kasie KPML Profil Sekolah) /
-     Pengawas (tengah, otomatis) / Kepala Sekolah (kanan, otomatis) -
-     mengikuti tata letak gambar contoh yang diupload user. --}}
-<table style="width:100%;border-collapse:collapse;margin-top:30px;font-size:10.5pt;">
+{{-- CATATAN HASIL VERIFIKASI + Blok Tanda Tangan (BARU 2026-10-16,
+     koreksi ke-2 dari permintaan user: "garis dari isi Catatan sampai
+     tanda tangan secara full" - dikonfirmasi lewat AskUserQuestion:
+     "Seluruh blok Catatan+TTD dibingkai garis kotak penuh") - SEKARANG
+     1 TABEL UTUH dgn garis kotak PENUH (border:1px solid #000) di
+     SETIAP sel, meniru gaya grid pada gambar referensi Excel awal -
+     BUKAN LAGI 2 blok terpisah (div Catatan + table Tanda Tangan)
+     dengan garis parsial spt sebelumnya (horizontal 3-potong + vertikal
+     kiri/tengah/kanan saja). Placeholder "4 baris titik-titik kosong"
+     utk Catatan yg masih kosong (versi sebelumnya) DIHAPUS, diganti 1
+     sel kosong bergaris kotak dgn tinggi cukup utk ditulis tangan -
+     konsisten dgn gaya kotak baru ini. --}}
+<table style="width:100%;border-collapse:collapse;margin-top:14px;font-size:10.5pt;">
     <tr>
-        <td style="width:34%;vertical-align:top;">Mengetahui / Menyetujui,</td>
-        <td colspan="2" style="width:66%;vertical-align:top;text-align:center;">VERIFIKATOR :</td>
-    </tr>
-    {{-- Garis hitam SOLID (diperbaiki 2026-10-16 dari versi putus-putus
-         sebelumnya sesuai koreksi user): horizontal di bawah baris label
-         jabatan + vertikal pemisah antar 3 kolom tanda tangan (dari baris
-         label sampai baris nama/NIP paling bawah) - supaya setiap bagian
-         tanda tangan (Kepala Seksi Tata Kelola Kelembagaan dan Ketenagaan
-         / Pengawas / Kepala Sekolah) terlihat jelas terpisah satu sama
-         lain, meniru tata letak kotak/tabel. --}}
-    <tr>
-        <td style="vertical-align:top;padding-right:8px;padding-bottom:4px;border-bottom:1px solid #000;">Kepala Seksi Tata Kelola Kelembagaan dan Ketenagaan</td>
-        <td style="width:33%;vertical-align:top;text-align:center;padding:0 8px 4px;border-bottom:1px solid #000;border-left:1px solid #000;">Pengawas,</td>
-        <td style="width:33%;vertical-align:top;text-align:center;padding-left:8px;padding-bottom:4px;border-bottom:1px solid #000;border-left:1px solid #000;">Kepala {{ $namaSekolah ?: '............................' }}</td>
+        <td colspan="3" style="border:1px solid #000;padding:4px 6px;font-weight:bold;">CATATAN HASIL VERIFIKASI :</td>
     </tr>
     <tr>
-        <td style="height:56px;"></td>
-        <td style="height:56px;border-left:1px solid #000;"></td>
-        <td style="height:56px;border-left:1px solid #000;"></td>
+        <td colspan="3" style="border:1px solid #000;padding:4px 6px;height:70px;vertical-align:top;">
+            @if ($editable)
+                <textarea wire:model.live="catatanHasilVerifikasi" rows="4" placeholder="(opsional)" class="block w-full border-0 bg-transparent text-sm focus:ring-0 px-0 py-0" style="resize:vertical;"></textarea>
+            @else
+                @if ($catatanHasilVerifikasi)
+                    <div style="white-space:pre-line;">{{ $catatanHasilVerifikasi }}</div>
+                @endif
+            @endif
+        </td>
     </tr>
     <tr>
-        <td style="vertical-align:top;padding-right:8px;">
+        <td style="border:1px solid #000;padding:4px 6px;vertical-align:top;">Mengetahui / Menyetujui,</td>
+        <td colspan="2" style="border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:center;">VERIFIKATOR :</td>
+    </tr>
+    <tr>
+        <td style="border:1px solid #000;padding:4px 6px;vertical-align:top;">Kepala Seksi Tata Kelola Kelembagaan dan Ketenagaan</td>
+        <td style="width:33%;border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:center;">Pengawas,</td>
+        <td style="width:33%;border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:center;">Kepala {{ $namaSekolah ?: '............................' }}</td>
+    </tr>
+    <tr>
+        <td style="border:1px solid #000;height:56px;"></td>
+        <td style="border:1px solid #000;height:56px;"></td>
+        <td style="border:1px solid #000;height:56px;"></td>
+    </tr>
+    <tr>
+        <td style="border:1px solid #000;padding:4px 6px;vertical-align:top;">
             {{ $namaKasieKpml ?: '............................' }}<br>
             NIP. {{ $nipKasieKpml ?: '............................' }}
         </td>
-        <td style="vertical-align:top;text-align:center;padding:0 8px;border-left:1px solid #000;">
+        <td style="border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:center;">
             {{ $namaPengawas ?: '............................' }}<br>
             NIP. {{ $nipPengawas ?: '............................' }}
         </td>
-        <td style="vertical-align:top;text-align:center;padding-left:8px;border-left:1px solid #000;">
+        <td style="border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:center;">
             {{ $namaKepsek ?: '............................' }}<br>
             NIP. {{ $nipKepsek ?: '............................' }}
         </td>
