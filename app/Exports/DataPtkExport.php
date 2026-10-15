@@ -36,7 +36,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * aplikasi (lihat app/Livewire/ProfilSekolah/Index.php & permintaan user
  * 2026-10-01), DITAMBAH kolom "No" di paling depan (permintaan user
  * 2026-10-03, jawaban AskUserQuestion "Export Excel & Unduh, keduanya"):
- * No, NIK, NUPTK, NIP, Nama PTK, Tempat Lahir, Tanggal Lahir, Jabatan,
+ * No, NIK, NUPTK, Nama PTK, Tempat Lahir, Tanggal Lahir, Jabatan, NIP,
  * Pangkat/Golongan, Status Kepegawaian, Jenis PTK, TMT Di Sekolah Induk,
  * Pendidikan Terakhir, Jurusan/Prodi, Tahun Lulus Ijazah, NPWP, Status
  * Sertifikasi, Bidang Studi Sertifikasi, Tahun Lulus Sertifikasi, Nomor
@@ -52,6 +52,20 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Semua referensi kolom (huruf) di bawah untuk kolom-kolom SETELAH NPWP
  * bergeser satu huruf (P->Q, V->W, W->X, X->Y) - kolom SEBELUM NPWP
  * (termasuk G=Tanggal Lahir, H-M) TIDAK berubah.
+ *
+ * KOLOM NIP DIGESER 2026-10-16 (permintaan user: NIP mengikuti posisi
+ * field NIP di form aplikasi yang digeser ke setelah Jabatan - lihat
+ * app/Livewire/ProfilSekolah/Index.php & docblock DataPtk::
+ * terapkanAturanPangkatGolongan()). Posisi lama NIP (kolom D, sebelum
+ * Nama PTK) DIHAPUS lalu disisipkan kembali tepat setelah Jabatan.
+ * Karena 1 kolom dihapus di depan & 1 kolom disisipkan lagi sebelum
+ * Pangkat/Golongan, kolom I (Pangkat/Golongan) DAN SETERUSNYA (J-Y)
+ * TIDAK berubah huruf - HANYA kolom D-H yang berubah: D=Nama PTK (dari
+ * E), E=Tempat Lahir (dari F), F=Tanggal Lahir (dari G), G=Jabatan (dari
+ * H), H=NIP (posisi baru, dari D). KOLOM_TANGGAL_LAHIR berubah dari 'G'
+ * jadi 'F'. Dropdown Jabatan (lihat tulisDaftarPilihanTersembunyi())
+ * berubah dari kolom 'H' jadi 'G'. KOLOM_TMT_SEKOLAH_INDUK ('L') &
+ * KOLOM_STATUS_KEAKTIFAN ('Y') TIDAK berubah.
  *
  * SEJAK permintaan user 2026-10-03: ditambahkan 2 hal lagi -
  * 1) Format tanggal Excel asli (dd-mm-yyyy) pada kolom Tanggal Lahir &
@@ -73,7 +87,7 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithEvents, WithH
 {
     private const BARIS_HEADER_TABEL = 1;
 
-    private const KOLOM_TANGGAL_LAHIR = 'G';
+    private const KOLOM_TANGGAL_LAHIR = 'F';
 
     private const KOLOM_TMT_SEKOLAH_INDUK = 'L';
 
@@ -111,8 +125,8 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithEvents, WithH
     public function headings(): array
     {
         return [
-            'No', 'NIK', 'NUPTK', 'NIP', 'Nama PTK', 'Tempat Lahir', 'Tanggal Lahir',
-            'Jabatan', 'Pangkat / Golongan', 'Status Kepegawaian', 'Jenis PTK', 'TMT Di Sekolah Induk',
+            'No', 'NIK', 'NUPTK', 'Nama PTK', 'Tempat Lahir', 'Tanggal Lahir',
+            'Jabatan', 'NIP', 'Pangkat / Golongan', 'Status Kepegawaian', 'Jenis PTK', 'TMT Di Sekolah Induk',
             'Pendidikan Terakhir', 'Jurusan / Prodi Sesuai Ijazah Terakhir', 'Tahun Lulus Ijazah', 'NPWP',
             'Status Sertifikasi', 'Bidang Studi Sertifikasi', 'Tahun Lulus Sertifikasi',
             'Nomor Sertifikat Sertifikasi', 'Nomor Registrasi Guru', 'Nomor Peserta Sertifikasi',
@@ -131,11 +145,11 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithEvents, WithH
             $this->nomorBaris,
             $p->nik,
             $p->nuptk,
-            $p->nip,
             $p->nama_ptk,
             $p->tempat_lahir,
             null, // Tanggal Lahir - ditulis ulang sbg tanggal Excel asli di tulisTanggal()
             $p->jabatan,
+            $p->nip,
             $p->pangkat_golongan,
             $p->status_kepegawaian,
             $p->jenis_ptk,
@@ -248,7 +262,7 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithEvents, WithH
     private function tulisDaftarPilihanTersembunyi(Worksheet $sheet): void
     {
         $daftarPilihan = [
-            'H' => array_values(DataPtk::jabatanOptions()),
+            'G' => array_values(DataPtk::jabatanOptions()),
             'I' => array_values(DataPtk::pangkatGolonganOptions()),
             'J' => array_values(DataPtk::statusKepegawaianOptions()),
             'K' => array_values(DataPtk::jenisPtkOptions()),

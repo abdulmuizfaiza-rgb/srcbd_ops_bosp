@@ -778,23 +778,36 @@ class Index extends Component
 
     /**
      * Umpan balik langsung di form (sebelum simpan) - saat Jabatan
-     * diubah jadi Guru Honorer/GTY/GTT/PTT, Pangkat/Golongan langsung
-     * terlihat terisi tanda "-" (permintaan user 2026-10-15) supaya PTK
-     * tidak perlu pilih sendiri. Saat diubah balik ke jabatan lain,
-     * tanda "-" yang tersisa dari sebelumnya dikosongkan lagi supaya PTK
-     * bisa langsung memilih Pangkat/Golongan yang sebenarnya - nilai
-     * yang SUDAH dipilih manual sebelumnya (bukan "-") TIDAK ikut
-     * dikosongkan. Aturan yang SEBENARNYA mengikat tetap diterapkan
-     * ulang di simpanPtk() lewat DataPtk::terapkanAturanPangkatGolongan()
-     * (sumber kebenaran tunggal) - pola yang sama persis dengan
-     * updatedStatusSertifikasi() di atas.
+     * diubah jadi Guru Honorer/GTY/GTT/PTT, Pangkat/Golongan DAN NIP
+     * langsung terlihat terisi tanda "-" (Pangkat/Golongan: permintaan
+     * user 2026-10-15; NIP ditambahkan ke aturan yang sama 2026-10-16)
+     * supaya PTK tidak perlu mengetik sendiri. Saat diubah ke Jabatan
+     * "Guru Ahli Pertama/Muda/Madya/Utama" (fungsional ASN/PPPK), field
+     * NIP sebaliknya langsung TERBUKA (field Pangkat/Golongan memang
+     * tetap berupa pilihan dropdown, bukan dikunci - hanya NIP yang
+     * dikunci/dibuka, lihat :disabled="$nipTerkunci" di blade) dan
+     * harus diisi manual. Tanda "-" yang tersisa dari Jabatan
+     * sebelumnya dikosongkan lagi saat pindah ke Jabatan yang TIDAK
+     * memicu aturan ini - nilai yang SUDAH diisi manual sebelumnya
+     * (bukan "-") TIDAK ikut dikosongkan. Aturan yang SEBENARNYA
+     * mengikat tetap diterapkan ulang di simpanPtk() lewat
+     * DataPtk::terapkanAturanPangkatGolongan() (sumber kebenaran
+     * tunggal) - pola yang sama persis dengan updatedStatusSertifikasi()
+     * di atas.
      */
     public function updatedJabatan(): void
     {
         if (in_array($this->jabatan, DataPtk::jabatanTanpaPangkatGolongan(), true)) {
             $this->pangkat_golongan = DataPtk::TANDA_KOSONG;
-        } elseif ($this->pangkat_golongan === DataPtk::TANDA_KOSONG) {
-            $this->pangkat_golongan = '';
+            $this->nip = DataPtk::TANDA_KOSONG;
+        } else {
+            if ($this->pangkat_golongan === DataPtk::TANDA_KOSONG) {
+                $this->pangkat_golongan = '';
+            }
+
+            if ($this->nip === DataPtk::TANDA_KOSONG) {
+                $this->nip = '';
+            }
         }
     }
 
@@ -887,7 +900,7 @@ class Index extends Component
                 Rule::unique('data_ptk', 'nik')->ignore($this->editingPtkId),
             ],
             'nuptk' => ['nullable', 'regex:/^[0-9]{16}$/'],
-            'nip' => ['nullable', 'regex:/^[0-9]{18}$/'],
+            'nip' => ['nullable', 'regex:/^([0-9]{18}|-)$/'],
             'nama_ptk' => ['required', 'string', 'max:255'],
             'tempat_lahir' => ['nullable', 'string', 'max:255'],
             'tanggal_lahir' => ['nullable', 'date'],

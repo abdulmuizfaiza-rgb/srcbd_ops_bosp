@@ -39,6 +39,14 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Kepegawaian, dst) TIDAK perlu diubah apa pun - nilainya otomatis
  * ikut sinkron karena langsung membaca $p->field, dan laporan ini
  * SENGAJA tanpa dropdown Excel (lihat catatan di atas).
+ *
+ * KOLOM NIP DIGESER 2026-10-16 (permintaan user, sepasang dengan
+ * pergeseran yang sama di DataPtkExport - lihat catatan lengkap di
+ * sana): NIP pindah dari kolom D (sebelum Nama PTK) ke kolom H (tepat
+ * setelah Jabatan). Kolom I (Pangkat/Golongan) dan seterusnya TIDAK
+ * berubah huruf. KOLOM_TANGGAL_LAHIR berubah dari 'G' jadi 'F'.
+ * KOLOM_TMT_SEKOLAH_INDUK ('L') TIDAK berubah. JUMLAH_KOLOM tetap 25
+ * (jumlah kolom tidak berubah, hanya urutannya).
  */
 class DataPtkLaporanExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping, WithTitle
 {
@@ -48,7 +56,7 @@ class DataPtkLaporanExport implements FromCollection, ShouldAutoSize, WithCustom
 
     private const BARIS_HEADER_TABEL = 4;
 
-    private const KOLOM_TANGGAL_LAHIR = 'G';
+    private const KOLOM_TANGGAL_LAHIR = 'F';
 
     private const KOLOM_TMT_SEKOLAH_INDUK = 'L';
 
@@ -86,8 +94,8 @@ class DataPtkLaporanExport implements FromCollection, ShouldAutoSize, WithCustom
     public function headings(): array
     {
         return [
-            'No', 'NIK', 'NUPTK', 'NIP', 'Nama PTK', 'Tempat Lahir', 'Tanggal Lahir',
-            'Jabatan', 'Pangkat / Golongan', 'Status Kepegawaian', 'Jenis PTK', 'TMT Di Sekolah Induk',
+            'No', 'NIK', 'NUPTK', 'Nama PTK', 'Tempat Lahir', 'Tanggal Lahir',
+            'Jabatan', 'NIP', 'Pangkat / Golongan', 'Status Kepegawaian', 'Jenis PTK', 'TMT Di Sekolah Induk',
             'Pendidikan Terakhir', 'Jurusan / Prodi Sesuai Ijazah Terakhir', 'Tahun Lulus Ijazah', 'NPWP',
             'Status Sertifikasi', 'Bidang Studi Sertifikasi', 'Tahun Lulus Sertifikasi',
             'Nomor Sertifikat Sertifikasi', 'Nomor Registrasi Guru', 'Nomor Peserta Sertifikasi',
@@ -106,11 +114,11 @@ class DataPtkLaporanExport implements FromCollection, ShouldAutoSize, WithCustom
             $this->nomorBaris,
             $p->nik,
             $p->nuptk,
-            $p->nip,
             $p->nama_ptk,
             $p->tempat_lahir,
             null,
             $p->jabatan,
+            $p->nip,
             $p->pangkat_golongan,
             $p->status_kepegawaian,
             $p->jenis_ptk,

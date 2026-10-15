@@ -268,11 +268,11 @@
                                         <th class="px-3 py-2">No</th>
                                         <th class="px-3 py-2">NIK</th>
                                         <th class="px-3 py-2">NUPTK</th>
-                                        <th class="px-3 py-2">NIP</th>
                                         <th class="px-3 py-2">Nama PTK</th>
                                         <th class="px-3 py-2">Tempat Lahir</th>
                                         <th class="px-3 py-2">Tanggal Lahir</th>
                                         <th class="px-3 py-2">Jabatan</th>
+                                        <th class="px-3 py-2">NIP</th>
                                         <th class="px-3 py-2">Pangkat / Golongan</th>
                                         <th class="px-3 py-2">Status Kepegawaian</th>
                                         <th class="px-3 py-2">Jenis PTK</th>
@@ -316,11 +316,11 @@
                                             </td>
                                             <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->nik }}</td>
                                             <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->nuptk ?: '-' }}</td>
-                                            <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->nip ?: '-' }}</td>
                                             <td class="px-3 py-2 whitespace-nowrap font-medium text-slate-800">{{ $baris->nama_ptk }}</td>
                                             <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->tempat_lahir ?: '-' }}</td>
                                             <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->tanggal_lahir?->format('d-m-Y') ?: '-' }}</td>
                                             <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->jabatan }}</td>
+                                            <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->nip ?: '-' }}</td>
                                             <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->pangkat_golongan ?: '-' }}</td>
                                             <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->status_kepegawaian }}</td>
                                             <td class="px-3 py-2 whitespace-nowrap text-slate-600">{{ $baris->jenis_ptk }}</td>
@@ -723,12 +723,6 @@
                     <x-input-error :messages="$errors->get('nuptk')" class="mt-2" />
                 </div>
 
-                <div>
-                    <x-input-label for="nip" value="NIP" />
-                    <x-text-input wire:model="nip" id="nip" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="18" />
-                    <x-input-error :messages="$errors->get('nip')" class="mt-2" />
-                </div>
-
                 <div class="sm:col-span-2">
                     <x-input-label for="nama_ptk" value="Nama PTK" />
                     <x-text-input wire:model="nama_ptk" id="nama_ptk" class="block mt-1 w-full" type="text" />
@@ -756,6 +750,31 @@
                         @endforeach
                     </select>
                     <x-input-error :messages="$errors->get('jabatan')" class="mt-2" />
+                </div>
+
+                {{--
+                    NIP (permintaan user 2026-10-16: digeser ke sini,
+                    tepat setelah Jabatan, dari posisi sebelumnya setelah
+                    NUPTK) - field ini SEKARANG bergantung pada Jabatan:
+                    Jabatan Guru Honorer/GTY/GTT/PTT (PTK non-ASN, TIDAK
+                    punya NIP) -> otomatis terisi "-" & terkunci; Jabatan
+                    Guru Ahli Pertama/Muda/Madya/Utama (fungsional
+                    ASN/PPPK) -> langsung terbuka, wajib diisi manual.
+                    Logika umpan-balik langsungnya ada di
+                    updatedJabatan() (app/Livewire/ProfilSekolah/Index.php)
+                    - aturan yang SEBENARNYA mengikat tetap diterapkan
+                    ulang saat simpan lewat
+                    DataPtk::terapkanAturanPangkatGolongan(). Dipakai
+                    binding :disabled="..." (BUKAN directive
+                    @disabled(...) langsung di tag komponen x-text-input)
+                    - lihat catatan panjang di field Nama Yayasan &
+                    Status Sertifikasi pada file ini soal bug yang sama.
+                --}}
+                @php $nipTerkunci = in_array($jabatan, \App\Models\DataPtk::jabatanTanpaPangkatGolongan(), true); @endphp
+                <div>
+                    <x-input-label for="nip" value="NIP" />
+                    <x-text-input wire:model="nip" id="nip" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="18" :disabled="$nipTerkunci" />
+                    <x-input-error :messages="$errors->get('nip')" class="mt-2" />
                 </div>
 
                 <div>

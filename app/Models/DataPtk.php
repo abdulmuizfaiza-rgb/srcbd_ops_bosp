@@ -228,10 +228,19 @@ class DataPtk extends Model
 
     /**
      * Terapkan aturan "Jabatan = Guru Honorer/GTY/GTT/PTT -> Pangkat/
-     * Golongan otomatis diisi tanda '-'" pada sebuah array data (dipakai
-     * bersama oleh Livewire component & Import Excel supaya aturannya
-     * satu sumber kebenaran - permintaan user 2026-10-15). Daftar
-     * Jabatan pemicunya lihat jabatanTanpaPangkatGolongan().
+     * Golongan DAN NIP otomatis diisi tanda '-'" pada sebuah array data
+     * (dipakai bersama oleh Livewire component & Import Excel supaya
+     * aturannya satu sumber kebenaran - permintaan user 2026-10-15).
+     * Daftar Jabatan pemicunya lihat jabatanTanpaPangkatGolongan().
+     *
+     * NIP ditambahkan ke aturan ini 2026-10-16 (permintaan user) - PTK
+     * non-ASN (Guru Honorer/GTY/GTT/PTT) TIDAK memiliki NIP, sama
+     * seperti tidak memiliki jenjang Pangkat/Golongan. Sebaliknya,
+     * utk Jabatan "Guru Ahli Pertama/Muda/Madya/Utama" (fungsional
+     * ASN/PPPK), NIP WAJIB diisi manual (lihat validasi 'nip' di
+     * app/Livewire/ProfilSekolah/Index.php & DataPtkImport, yang
+     * SEKARANG menerima nilai "-" sbg pengecualian - pola sama persis
+     * dengan tahun_lulus_sertifikasi).
      *
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
@@ -240,6 +249,7 @@ class DataPtk extends Model
     {
         if (in_array($data['jabatan'] ?? null, self::jabatanTanpaPangkatGolongan(), true)) {
             $data['pangkat_golongan'] = self::TANDA_KOSONG;
+            $data['nip'] = self::TANDA_KOSONG;
         }
 
         return $data;

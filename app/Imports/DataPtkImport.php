@@ -17,13 +17,18 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
  * Import Data PTK dari Excel/CSV (menu Data Sekolah > tab Data PTK).
  *
  * Kolom yang diharapkan (sesuai hasil "Export Excel" - lihat
- * DataPtkExport): NIK, NUPTK, NIP, Nama PTK, Tempat Lahir, Tanggal
- * Lahir, Jabatan, Pangkat / Golongan, Status Kepegawaian, Jenis PTK,
+ * DataPtkExport): NIK, NUPTK, Nama PTK, Tempat Lahir, Tanggal
+ * Lahir, Jabatan, NIP, Pangkat / Golongan, Status Kepegawaian, Jenis PTK,
  * TMT Di Sekolah Induk, Pendidikan Terakhir, Jurusan / Prodi Sesuai
  * Ijazah Terakhir, Tahun Lulus Ijazah, NPWP, Status Sertifikasi, Bidang
  * Studi Sertifikasi, Tahun Lulus Sertifikasi, Nomor Sertifikat
  * Sertifikasi, Nomor Registrasi Guru, Nomor Peserta Sertifikasi, Nama
- * Sekolah, Status Dapodik, Status Keaktifan.
+ * Sekolah, Status Dapodik, Status Keaktifan. Urutan kolom di atas HANYA
+ * dokumentasi - import ini memakai WithHeadingRow + nama kolom (bukan
+ * posisi), jadi TIDAK terpengaruh urutan kolom aktual pada file yang
+ * diupload (permintaan user 2026-10-16: NIP digeser ke setelah Jabatan
+ * di DataPtkExport & form aplikasi - lihat
+ * app/Livewire/ProfilSekolah/Index.php).
  *
  * KOLOM NPWP ditambahkan 2026-10-15 (permintaan user, sepasang dengan
  * penambahan kolom NPWP di DataPtkExport - supaya nilai NPWP yang
@@ -48,7 +53,10 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
  * Aturan "Status Sertifikasi = Belum -> field rincian sertifikasi
  * otomatis '-'" diterapkan ulang di sini lewat
  * DataPtk::terapkanAturanSertifikasi() - sumber kebenaran tunggal yang
- * sama dipakai oleh Livewire component saat simpan manual.
+ * sama dipakai oleh Livewire component saat simpan manual. Aturan
+ * "Jabatan = Guru Honorer/GTY/GTT/PTT -> Pangkat/Golongan DAN NIP
+ * otomatis '-'" (NIP ditambahkan 2026-10-16) diterapkan ulang dengan
+ * cara yang sama lewat DataPtk::terapkanAturanPangkatGolongan().
  */
 class DataPtkImport implements ToModel, WithHeadingRow, WithValidation
 {
@@ -168,7 +176,7 @@ class DataPtkImport implements ToModel, WithHeadingRow, WithValidation
         return [
             'nik' => ['required', 'regex:/^[0-9]{16}$/'],
             'nuptk' => ['nullable', 'regex:/^[0-9]{16}$/'],
-            'nip' => ['nullable', 'regex:/^[0-9]{18}$/'],
+            'nip' => ['nullable', 'regex:/^([0-9]{18}|-)$/'],
             'nama_ptk' => ['required', 'string', 'max:255'],
             'jabatan' => ['required', Rule::in(array_keys(DataPtk::jabatanOptions()))],
             'pangkat_golongan' => ['nullable', Rule::in(array_keys(DataPtk::pangkatGolonganOptions()))],
