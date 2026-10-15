@@ -86,6 +86,18 @@ class SuratTpg extends Model
     public const JENIS_LEMBAR_VALIDASI = 'lembar_validasi_tpg';
 
     /**
+     * Tab "Data Cair/Belum TPG" (BARU 2026-10-16, permintaan user,
+     * format sesuai gambar contoh "REKAPITULASI DATA PTK YANG SUDAH /
+     * BELUM CAIR TPG") - SAMA pola dgn JENIS_LEMBAR_VALIDASI di atas:
+     * konstanta ini HANYA identitas tab, BUKAN nilai kolom `jenis` pada
+     * `surat_tpg` - data tab ini (ceklist status cair 12 bulan per-PTK,
+     * Catatan Hasil Verifikasi) tersimpan di tabel TERPISAH
+     * `rekap_cair_tpg`/`rekap_cair_tpg_bulan` (lihat App\Models\
+     * RekapCairTpg/RekapCairTpgBulan).
+     */
+    public const JENIS_REKAP_CAIR_TPG = 'rekap_cair_tpg';
+
+    /**
      * Daftar kolom "data" surat_tpg - dipakai semuaFieldDataKosong() utk
      * mendeteksi baris yang seluruh field datanya sudah kosong (mis.
      * user isi lalu hapus lagi lewat auto-save per keystroke), supaya

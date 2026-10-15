@@ -19,6 +19,8 @@ use App\Models\PendataanBosp;
 use App\Models\PendataanOps;
 use App\Models\PenerimaanHonorPtk;
 use App\Models\ProfilSekolah;
+use App\Models\RekapCairTpg;
+use App\Models\RekapCairTpgBulan;
 use App\Models\RekapRkas;
 use App\Models\RincianBelanjaBarangHabisPakai;
 use App\Models\RincianBelanjaModal;
@@ -60,6 +62,8 @@ class RegistriModulSekolah
             'Surat TPG' => SuratTpg::class,
             'Lembar Validasi TPG' => LembarValidasiTpg::class,
             'Lembar Validasi TPG Ceklist' => LembarValidasiTpgCeklist::class,
+            'Rekap Cair TPG' => RekapCairTpg::class,
+            'Rekap Cair TPG Bulan' => RekapCairTpgBulan::class,
             'Rekap RKAS' => RekapRkas::class,
             'Dana BOSP Tahap' => DanaBospTahap::class,
             'Penerimaan Honor PTK' => PenerimaanHonorPtk::class,
@@ -101,6 +105,8 @@ class RegistriModulSekolah
             'Surat TPG' => [SuratTpg::class, ['profil_sekolah_id', 'tahun', 'triwulan', 'jenis']],
             'Lembar Validasi TPG' => [LembarValidasiTpg::class, ['profil_sekolah_id', 'tahun', 'triwulan']],
             'Lembar Validasi TPG Ceklist' => [LembarValidasiTpgCeklist::class, ['profil_sekolah_id', 'tahun', 'triwulan', 'nuptk']],
+            'Rekap Cair TPG' => [RekapCairTpg::class, ['profil_sekolah_id', 'tahun', 'triwulan']],
+            'Rekap Cair TPG Bulan' => [RekapCairTpgBulan::class, ['profil_sekolah_id', 'tahun', 'triwulan', 'nuptk']],
             'Pendataan OPS (Identitas)' => [PendataanOps::class, ['profil_sekolah_id']],
             'Pendataan BOSP (Identitas)' => [PendataanBosp::class, ['profil_sekolah_id']],
             'Data PTK' => [DataPtk::class, ['nik']],

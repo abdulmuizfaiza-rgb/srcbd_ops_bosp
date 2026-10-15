@@ -123,6 +123,25 @@
                         >
                             Lembar Validasi TPG
                         </button>
+                        {{--
+                            Tab "Data Cair/Belum TPG" (BARU 2026-10-16,
+                            permintaan user, format sesuai gambar contoh
+                            "REKAPITULASI DATA PTK YANG SUDAH / BELUM CAIR
+                            TPG" yang diupload) - warna violet supaya beda
+                            dari tab2 lain. Selalu ditampilkan (tidak
+                            tergantung Status sekolah spt tab Cover).
+                        --}}
+                        <button
+                            type="button"
+                            wire:click="pindahTab('rekap_cair_tpg')"
+                            @class([
+                                'px-4 py-2.5 rounded-t-xl text-sm font-bold tracking-wide transition-all duration-150 border-b-4',
+                                'bg-white text-violet-700 border-violet-500 shadow-sm' => $tabAktif === 'rekap_cair_tpg',
+                                'bg-slate-50 text-slate-500 border-transparent hover:bg-slate-100 hover:text-slate-700' => $tabAktif !== 'rekap_cair_tpg',
+                            ])
+                        >
+                            Data Cair/Belum TPG
+                        </button>
                     </nav>
                 </div>
 
@@ -270,6 +289,13 @@
                                      tersendiri (lihat surat-tpg-lembar-validasi-isi). --}}
                                 @include('pdf.partials.surat-tpg-kop')
                                 @include('pdf.partials.surat-tpg-lembar-validasi-isi', ['editable' => true])
+                            @elseif ($tabAktif === 'rekap_cair_tpg')
+                                {{-- Data Cair/Belum TPG (BARU 2026-10-16) - pakai Kop
+                                     Surat (sama spt tab Lembar Validasi TPG), isi
+                                     tabel 12 bulan & blok Catatan+TTD ada di partial
+                                     tersendiri (lihat surat-tpg-rekap-cair-isi). --}}
+                                @include('pdf.partials.surat-tpg-kop')
+                                @include('pdf.partials.surat-tpg-rekap-cair-isi', ['editable' => true])
                             @else
                                 @include('pdf.partials.surat-tpg-kop')
                                 @include('pdf.partials.surat-tpg-rekomendasi-isi', ['editable' => true])

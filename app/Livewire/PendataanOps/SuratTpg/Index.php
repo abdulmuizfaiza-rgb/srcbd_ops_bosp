@@ -4,10 +4,13 @@ namespace App\Livewire\PendataanOps\SuratTpg;
 
 use App\Models\AksesDataLog;
 use App\Livewire\Concerns\HasZoomTampilan;
+use App\Models\DataPtk;
 use App\Models\Lampiran2a;
 use App\Models\LembarValidasiTpg;
 use App\Models\LembarValidasiTpgCeklist;
 use App\Models\ProfilSekolah;
+use App\Models\RekapCairTpg;
+use App\Models\RekapCairTpgBulan;
 use App\Models\SuratTpg;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Carbon;
@@ -151,6 +154,32 @@ class Index extends Component
      */
     public array $daftarPtk = [];
 
+    /**
+     * Tab "Data Cair/Belum TPG" (BARU 2026-10-16, permintaan user,
+     * format sesuai gambar contoh "REKAPITULASI DATA PTK YANG SUDAH /
+     * BELUM CAIR TPG") - Catatan Hasil Verifikasi diketik manual &
+     * tersimpan otomatis ke App\Models\RekapCairTpg (properti terpisah
+     * dari $catatanHasilVerifikasi di atas, krn beda tabel/model & tab).
+     */
+    public ?string $catatanCairTpg = null;
+
+    /**
+     * Daftar PTK utk tab "Data Cair/Belum TPG", dikunci (keyed) oleh
+     * NUPTK - tiap elemen: ['nama_ptk' => string, 'nip' => string|null]
+     * + 12 kolom status bulan (lihat App\Models\RekapCairTpgBulan::
+     * KOLOM_BULAN), nilai null/string sesuai App\Models\
+     * RekapCairTpgBulan::STATUS_OPTIONS. Dikonfirmasi AskUserQuestion
+     * 2026-10-16: daftar PTK = GABUNGAN Lampiran 2a SEMUA Triwulan 1-4
+     * dalam Tahun aktif, TAPI isian 12 bulan tetap tersimpan TERPISAH
+     * per Triwulan yang sedang difilter - lihat muatRekapCairTpg().
+     * wire:model.live pada <select> Blade memakai dot-notation
+     * "daftarPtkCairTpg.{nuptk}.{kolom}" - ditangkap lewat hook
+     * updated() di bawah (pola sama dgn $daftarPtk/Lembar Validasi TPG).
+     *
+     * @var array<string, array<string, mixed>>
+     */
+    public array $daftarPtkCairTpg = [];
+
     /** File kop surat yang baru dipilih di kotak upload (belum disimpan sampai updatedKopSuratBaru() jalan). */
     public $kopSuratBaru = null;
 
@@ -191,6 +220,7 @@ class Index extends Component
 
         $this->muatSurat();
         $this->muatLembarValidasi();
+        $this->muatRekapCairTpg();
     }
 
     protected function bolehKelolaSemua(): bool
@@ -218,6 +248,7 @@ class Index extends Component
         $tabValid = [
             SuratTpg::JENIS_REKOMENDASI, SuratTpg::JENIS_PENGHENTIAN, SuratTpg::JENIS_PERNYATAAN,
             SuratTpg::JENIS_COVER_SMPN, SuratTpg::JENIS_COVER_SMP_S, SuratTpg::JENIS_LEMBAR_VALIDASI,
+            SuratTpg::JENIS_REKAP_CAIR_TPG,
         ];
 
         if (! in_array($tab, $tabValid, true)) {
@@ -250,6 +281,7 @@ class Index extends Component
         $this->tabAktif = $tab;
         $this->muatSurat();
         $this->muatLembarValidasi();
+        $this->muatRekapCairTpg();
     }
 
     public function pilihSekolah(?int $id): void
@@ -267,6 +299,7 @@ class Index extends Component
         $this->sinkronkanTabCoverDenganStatusSekolah();
         $this->muatSurat();
         $this->muatLembarValidasi();
+        $this->muatRekapCairTpg();
     }
 
     /**
@@ -297,12 +330,14 @@ class Index extends Component
     {
         $this->muatSurat();
         $this->muatLembarValidasi();
+        $this->muatRekapCairTpg();
     }
 
     public function updatedTriwulan(): void
     {
         $this->muatSurat();
         $this->muatLembarValidasi();
+        $this->muatRekapCairTpg();
     }
 
     /** @return array<string, string> */
@@ -496,6 +531,12 @@ class Index extends Component
         return LembarValidasiTpgCeklist::KOLOM_CEKLIST;
     }
 
+    /** @return array<int, string> 12 nama kolom bulan (Januari-Desember) utk tab "Data Cair/Belum TPG" - lihat App\Models\RekapCairTpgBulan::KOLOM_BULAN. */
+    protected function daftarKolomBulan(): array
+    {
+        return RekapCairTpgBulan::KOLOM_BULAN;
+    }
+
     /**
      * Memuat Tanggal Verifikasi & Validasi + Catatan Hasil Verifikasi
      * (App\Models\LembarValidasiTpg) + daftar PTK dari Lampiran 2a
@@ -563,6 +604,94 @@ class Index extends Component
     }
 
     /**
+     * Memuat Catatan Hasil Verifikasi (App\Models\RekapCairTpg, scoped
+     * sekolah+tahun+triwulan aktif) + daftar PTK utk tab "Data Cair/
+     * Belum TPG" - BEDA dgn muatLembarValidasi(): daftar PTK di sini
+     * adalah GABUNGAN Lampiran 2a dari SEMUA Triwulan (1-4) dalam Tahun
+     * aktif (dikonfirmasi AskUserQuestion 2026-10-16, krn tabel ini
+     * merekap 12 bulan penuh = 1 tahun), TAPI ceklist status 12 bulan
+     * yang ditampilkan/disimpan tetap scoped ke Triwulan yang sedang
+     * difilter di atas (sama seperti tab2 lain di menu ini - laporan
+     * diperbarui tiap checkpoint Triwulan). NIP PTK diambil dari
+     * App\Models\DataPtk (dicocokkan lewat NUPTK, bukan dari Lampiran2a
+     * yang tidak punya field NIP - dikonfirmasi AskUserQuestion
+     * 2026-10-16).
+     */
+    protected function muatRekapCairTpg(): void
+    {
+        $sekolahId = $this->sekolahAktifId();
+
+        $header = $sekolahId
+            ? RekapCairTpg::query()
+                ->where('profil_sekolah_id', $sekolahId)
+                ->where('tahun', $this->tahun)
+                ->where('triwulan', $this->triwulan)
+                ->first()
+            : null;
+
+        $this->catatanCairTpg = $header->catatan_hasil_verifikasi ?? null;
+
+        $this->daftarPtkCairTpg = [];
+
+        if (! $sekolahId) {
+            return;
+        }
+
+        // Gabungan Lampiran 2a SEMUA Triwulan (1-4) dalam Tahun aktif -
+        // PTK yang sama (NUPTK sama) di triwulan berbeda digabung jadi 1
+        // baris; kalau nama_ptk-nya beda antar triwulan (jarang terjadi),
+        // yang dipakai adalah ejaan dari triwulan TERAKHIR (orderBy
+        // triwulan ascending, baris berikutnya menimpa array $namaPerNuptk).
+        $daftarLampiran = Lampiran2a::query()
+            ->where('profil_sekolah_id', $sekolahId)
+            ->where('tahun', $this->tahun)
+            ->orderBy('triwulan')
+            ->orderBy('id')
+            ->get(['nuptk', 'nama_ptk']);
+
+        if ($daftarLampiran->isEmpty()) {
+            return;
+        }
+
+        $namaPerNuptk = [];
+
+        foreach ($daftarLampiran as $ptk) {
+            $namaPerNuptk[$ptk->nuptk] = $ptk->nama_ptk;
+        }
+
+        $nipPerNuptk = DataPtk::query()
+            ->where('profil_sekolah_id', $sekolahId)
+            ->whereIn('nuptk', array_keys($namaPerNuptk))
+            ->whereNotNull('nuptk')
+            ->get(['nuptk', 'nip'])
+            ->keyBy('nuptk')
+            ->map(fn ($ptk) => $ptk->nip);
+
+        $bulanTersimpan = RekapCairTpgBulan::query()
+            ->where('profil_sekolah_id', $sekolahId)
+            ->where('tahun', $this->tahun)
+            ->where('triwulan', $this->triwulan)
+            ->whereIn('nuptk', array_keys($namaPerNuptk))
+            ->get()
+            ->keyBy('nuptk');
+
+        foreach ($namaPerNuptk as $nuptk => $namaPtk) {
+            $dataBulan = $bulanTersimpan->get($nuptk);
+
+            $baris = [
+                'nama_ptk' => $namaPtk,
+                'nip' => $nipPerNuptk->get($nuptk),
+            ];
+
+            foreach ($this->daftarKolomBulan() as $kolom) {
+                $baris[$kolom] = $dataBulan->{$kolom} ?? null;
+            }
+
+            $this->daftarPtkCairTpg[$nuptk] = $baris;
+        }
+    }
+
+    /**
      * Hook Livewire 3 generik yang terpanggil SETIAP properti publik
      * berubah (termasuk path bertitik pada array, mis.
      * "daftarPtk.1234567890123456.memiliki_sertifikat_pendidik") -
@@ -575,23 +704,88 @@ class Index extends Component
      */
     public function updated(string $name, mixed $value): void
     {
-        if (! str_starts_with($name, 'daftarPtk.')) {
+        if (str_starts_with($name, 'daftarPtk.')) {
+            $bagian = explode('.', $name);
+
+            if (count($bagian) !== 3) {
+                return;
+            }
+
+            [, $nuptk, $kolom] = $bagian;
+
+            if (! in_array($kolom, $this->daftarKolomCeklist(), true)) {
+                return;
+            }
+
+            $this->simpanCeklist($nuptk, $kolom, (bool) $value);
+
             return;
         }
 
-        $bagian = explode('.', $name);
+        // Tab "Data Cair/Belum TPG" (BARU 2026-10-16) - path dinamis
+        // "daftarPtkCairTpg.{nuptk}.{kolom}" dari <select> status cair
+        // per bulan (pola sama dgn daftarPtk./Lembar Validasi TPG di
+        // atas, TIDAK bentrok krn awalan "daftarPtk." vs
+        // "daftarPtkCairTpg." beda persis pada karakter setelah
+        // "daftarPtk").
+        if (str_starts_with($name, 'daftarPtkCairTpg.')) {
+            $bagian = explode('.', $name);
 
-        if (count($bagian) !== 3) {
+            if (count($bagian) !== 3) {
+                return;
+            }
+
+            [, $nuptk, $kolom] = $bagian;
+
+            if (! in_array($kolom, $this->daftarKolomBulan(), true)) {
+                return;
+            }
+
+            $this->simpanBulanCairTpg($nuptk, $kolom, $value === '' ? null : (string) $value);
+        }
+    }
+
+    /**
+     * Simpan 1 nilai status cair TPG bulan tertentu (find-or-create
+     * baris RekapCairTpgBulan utk kombinasi sekolah+tahun+triwulan+
+     * nuptk aktif) - dipanggil dari updated() saat <select> bulan
+     * diganti. Pola sama persis dgn simpanCeklist() di atas.
+     */
+    protected function simpanBulanCairTpg(string $nuptk, string $kolom, ?string $nilai): void
+    {
+        $sekolahId = $this->sekolahAktifId();
+
+        if (! $sekolahId || ! $this->bolehKelola($sekolahId)) {
             return;
         }
 
-        [, $nuptk, $kolom] = $bagian;
+        // Jaga-jaga: pastikan NUPTK ini memang ada di Lampiran 2a
+        // (triwulan manapun) utk sekolah+tahun aktif sebelum menyimpan
+        // (daftar PTK tab ini = gabungan semua triwulan, bukan hanya
+        // triwulan yang sedang difilter).
+        $adaDiLampiran2a = Lampiran2a::query()
+            ->where('profil_sekolah_id', $sekolahId)
+            ->where('tahun', $this->tahun)
+            ->where('nuptk', $nuptk)
+            ->exists();
 
-        if (! in_array($kolom, $this->daftarKolomCeklist(), true)) {
+        if (! $adaDiLampiran2a) {
             return;
         }
 
-        $this->simpanCeklist($nuptk, $kolom, (bool) $value);
+        if ($nilai !== null && ! array_key_exists($nilai, RekapCairTpgBulan::STATUS_OPTIONS)) {
+            return;
+        }
+
+        RekapCairTpgBulan::updateOrCreate(
+            [
+                'profil_sekolah_id' => $sekolahId,
+                'tahun' => $this->tahun,
+                'triwulan' => $this->triwulan,
+                'nuptk' => $nuptk,
+            ],
+            [$kolom => $nilai]
+        );
     }
 
     /**
@@ -710,6 +904,48 @@ class Index extends Component
         }
     }
 
+    public function updatedCatatanCairTpg(): void
+    {
+        $this->simpanRekapCairTpg($this->catatanCairTpg === '' ? null : $this->catatanCairTpg);
+    }
+
+    /** Simpan Catatan Hasil Verifikasi tab "Data Cair/Belum TPG" - pola sama persis dgn simpanLembarValidasi() di atas. */
+    protected function simpanRekapCairTpg(?string $catatan): void
+    {
+        $sekolahId = $this->sekolahAktifId();
+
+        if (! $sekolahId) {
+            return;
+        }
+
+        abort_unless($this->bolehKelola($sekolahId), 403);
+
+        $header = RekapCairTpg::where('profil_sekolah_id', $sekolahId)
+            ->where('tahun', $this->tahun)
+            ->where('triwulan', $this->triwulan)
+            ->first();
+
+        if ($header) {
+            $header->update(['catatan_hasil_verifikasi' => $catatan]);
+        } else {
+            RekapCairTpg::create([
+                'profil_sekolah_id' => $sekolahId,
+                'tahun' => $this->tahun,
+                'triwulan' => $this->triwulan,
+                'catatan_hasil_verifikasi' => $catatan,
+            ]);
+        }
+
+        $headerTerbaru = RekapCairTpg::where('profil_sekolah_id', $sekolahId)
+            ->where('tahun', $this->tahun)
+            ->where('triwulan', $this->triwulan)
+            ->first();
+
+        if ($headerTerbaru && $headerTerbaru->semuaFieldDataKosong()) {
+            $headerTerbaru->delete();
+        }
+    }
+
     /**
      * Konfirmasi hapus manual SELURUH data surat aktif (sekolah+tahun+
      * triwulan+jenis tab yang sedang dibuka) - permintaan user
@@ -755,6 +991,25 @@ class Index extends Component
                     ->delete();
 
                 $this->muatLembarValidasi();
+            } elseif ($this->tabAktif === SuratTpg::JENIS_REKAP_CAIR_TPG) {
+                // Tab "Data Cair/Belum TPG" (BARU 2026-10-16) - datanya
+                // BUKAN di tabel surat_tpg (lihat SuratTpg::
+                // JENIS_REKAP_CAIR_TPG docblock) - hapus header +
+                // SELURUH baris ceklist bulan utk sekolah+tahun+triwulan
+                // aktif SAJA (bukan seluruh tahun - daftar PTK memang
+                // gabungan 1 tahun, tapi isiannya tetap per-triwulan,
+                // lihat muatRekapCairTpg()).
+                RekapCairTpg::where('profil_sekolah_id', $sekolahId)
+                    ->where('tahun', $this->tahun)
+                    ->where('triwulan', $this->triwulan)
+                    ->delete();
+
+                RekapCairTpgBulan::where('profil_sekolah_id', $sekolahId)
+                    ->where('tahun', $this->tahun)
+                    ->where('triwulan', $this->triwulan)
+                    ->delete();
+
+                $this->muatRekapCairTpg();
             } else {
                 SuratTpg::where('profil_sekolah_id', $sekolahId)
                     ->where('tahun', $this->tahun)
@@ -945,6 +1200,11 @@ class Index extends Component
             'labelTpgStatus' => $sekolah
                 ? ($sekolah->status === ProfilSekolah::STATUS_NEGERI ? 'TPGASN' : 'TPGNON-ASN')
                 : null,
+            // Tab "Data Cair/Belum TPG" (BARU 2026-10-16) - SELALU
+            // disertakan juga di sini, pola sama dgn tanggalVerifikasi/
+            // daftarPtkValidasi di atas.
+            'catatanCairTpg' => $this->catatanCairTpg,
+            'daftarPtkCairTpg' => $this->daftarPtkCairTpg,
         ];
     }
 
@@ -958,6 +1218,7 @@ class Index extends Component
             SuratTpg::JENIS_COVER_SMPN => 'surat-tpg-cover-smpn',
             SuratTpg::JENIS_COVER_SMP_S => 'surat-tpg-cover-smp-s',
             SuratTpg::JENIS_LEMBAR_VALIDASI => 'surat-tpg-lembar-validasi',
+            SuratTpg::JENIS_REKAP_CAIR_TPG => 'surat-tpg-rekap-cair',
         ];
     }
 
@@ -986,7 +1247,7 @@ class Index extends Component
 
         // Lembar Validasi TPG dicetak LANDSCAPE (permintaan user
         // 2026-10-16) - jenis/tab lainnya tetap portrait.
-        $orientasiKertas = $this->tabAktif === SuratTpg::JENIS_LEMBAR_VALIDASI ? 'landscape' : 'portrait';
+        $orientasiKertas = in_array($this->tabAktif, [SuratTpg::JENIS_LEMBAR_VALIDASI, SuratTpg::JENIS_REKAP_CAIR_TPG], true) ? 'landscape' : 'portrait';
 
         $pdf = Pdf::loadView($view, $data)->setPaper($ukuranKertas, $orientasiKertas);
 

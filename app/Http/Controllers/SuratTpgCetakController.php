@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\AksesDataLog;
+use App\Models\DataPtk;
 use App\Models\Lampiran2a;
 use App\Models\LembarValidasiTpg;
 use App\Models\LembarValidasiTpgCeklist;
 use App\Models\ProfilSekolah;
+use App\Models\RekapCairTpg;
+use App\Models\RekapCairTpgBulan;
 use App\Models\SuratTpg;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -41,6 +44,7 @@ class SuratTpgCetakController extends Controller
             SuratTpg::JENIS_COVER_SMPN => SuratTpg::JENIS_COVER_SMPN,
             SuratTpg::JENIS_COVER_SMP_S => SuratTpg::JENIS_COVER_SMP_S,
             SuratTpg::JENIS_LEMBAR_VALIDASI => SuratTpg::JENIS_LEMBAR_VALIDASI,
+            SuratTpg::JENIS_REKAP_CAIR_TPG => SuratTpg::JENIS_REKAP_CAIR_TPG,
             default => SuratTpg::JENIS_REKOMENDASI,
         };
 
@@ -145,20 +149,82 @@ class SuratTpgCetakController extends Controller
             $data['labelTpgStatus'] = $sekolah->status === ProfilSekolah::STATUS_NEGERI ? 'TPGASN' : 'TPGNON-ASN';
         }
 
+        // Data tambahan khusus tab "Data Cair/Belum TPG" (BARU
+        // 2026-10-16) - $surat di atas TETAP null utk jenis ini (sama
+        // spt Lembar Validasi TPG, lihat SuratTpg::JENIS_REKAP_CAIR_TPG
+        // docblock). Logika query SENGAJA diduplikasi dari
+        // App\Livewire\PendataanOps\SuratTpg\Index::muatRekapCairTpg()
+        // (method protected, tidak bisa dipanggil dari controller
+        // terpisah ini). Daftar PTK = gabungan Lampiran 2a SEMUA
+        // Triwulan (1-4) dalam Tahun aktif (dikonfirmasi AskUserQuestion
+        // 2026-10-16), TAPI isian 12 bulan tetap diambil dari Triwulan
+        // yang sedang dipilih SAJA.
+        if ($jenis === SuratTpg::JENIS_REKAP_CAIR_TPG) {
+            $headerCair = RekapCairTpg::query()
+                ->where('profil_sekolah_id', $sekolah->id)
+                ->where('tahun', $tahun)
+                ->where('triwulan', $triwulan)
+                ->first();
+
+            $daftarLampiranCair = Lampiran2a::query()
+                ->where('profil_sekolah_id', $sekolah->id)
+                ->where('tahun', $tahun)
+                ->orderBy('triwulan')
+                ->orderBy('id')
+                ->get(['nuptk', 'nama_ptk']);
+
+            $namaPerNuptk = [];
+            foreach ($daftarLampiranCair as $ptk) {
+                $namaPerNuptk[$ptk->nuptk] = $ptk->nama_ptk;
+            }
+
+            $nipPerNuptk = DataPtk::query()
+                ->where('profil_sekolah_id', $sekolah->id)
+                ->whereIn('nuptk', array_keys($namaPerNuptk))
+                ->whereNotNull('nuptk')
+                ->get(['nuptk', 'nip'])
+                ->keyBy('nuptk')
+                ->map(fn ($ptk) => $ptk->nip);
+
+            $bulanTersimpan = RekapCairTpgBulan::query()
+                ->where('profil_sekolah_id', $sekolah->id)
+                ->where('tahun', $tahun)
+                ->where('triwulan', $triwulan)
+                ->whereIn('nuptk', array_keys($namaPerNuptk))
+                ->get()
+                ->keyBy('nuptk');
+
+            $daftarPtkCairTpg = [];
+            foreach ($namaPerNuptk as $nuptk => $namaPtk) {
+                $dataBulan = $bulanTersimpan->get($nuptk);
+                $baris = ['nama_ptk' => $namaPtk, 'nip' => $nipPerNuptk->get($nuptk)];
+                foreach (RekapCairTpgBulan::KOLOM_BULAN as $kolom) {
+                    $baris[$kolom] = $dataBulan->{$kolom} ?? null;
+                }
+                $daftarPtkCairTpg[$nuptk] = $baris;
+            }
+
+            $data['catatanCairTpg'] = $headerCair->catatan_hasil_verifikasi ?? null;
+            $data['daftarPtkCairTpg'] = $daftarPtkCairTpg;
+            $data['namaKasieKpml'] = $sekolah->nama_kasie_kpml;
+            $data['nipKasieKpml'] = $sekolah->nip_kasie_kpml;
+        }
+
         $view = match ($jenis) {
             SuratTpg::JENIS_PENGHENTIAN => 'pdf.surat-tpg-penghentian',
             SuratTpg::JENIS_PERNYATAAN => 'pdf.surat-tpg-pernyataan',
             SuratTpg::JENIS_COVER_SMPN => 'pdf.surat-tpg-cover-smpn',
             SuratTpg::JENIS_COVER_SMP_S => 'pdf.surat-tpg-cover-smp-s',
             SuratTpg::JENIS_LEMBAR_VALIDASI => 'pdf.surat-tpg-lembar-validasi',
+            SuratTpg::JENIS_REKAP_CAIR_TPG => 'pdf.surat-tpg-rekap-cair',
             default => 'pdf.surat-tpg-rekomendasi',
         };
         $ukuranKertas = $kertas === 'f4' ? 'folio' : 'a4';
 
-        // Lembar Validasi TPG dicetak LANDSCAPE (permintaan user
-        // 2026-10-16, supaya 8 kolom ceklist lebih lega/rapi) - jenis
-        // surat TPG lainnya tetap portrait seperti sebelumnya.
-        $orientasiKertas = $jenis === SuratTpg::JENIS_LEMBAR_VALIDASI ? 'landscape' : 'portrait';
+        // Lembar Validasi TPG & Data Cair/Belum TPG dicetak LANDSCAPE
+        // (permintaan user 2026-10-16, supaya kolom ceklist/bulan lebih
+        // lega/rapi) - jenis surat TPG lainnya tetap portrait.
+        $orientasiKertas = in_array($jenis, [SuratTpg::JENIS_LEMBAR_VALIDASI, SuratTpg::JENIS_REKAP_CAIR_TPG], true) ? 'landscape' : 'portrait';
 
         $pdf = Pdf::loadView($view, $data)->setPaper($ukuranKertas, $orientasiKertas);
 

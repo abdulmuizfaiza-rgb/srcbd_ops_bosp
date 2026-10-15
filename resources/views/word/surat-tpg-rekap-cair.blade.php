@@ -1,0 +1,42 @@
+{{--
+    "Unduh Word" tab Data Cair/Belum TPG (BARU 2026-10-16) - mengikuti
+    pola persis word/surat-tpg-lembar-validasi.blade.php (HTML disimpan
+    dgn ekstensi .doc, Content-Type application/msword, BUKAN docx
+    biner sungguhan). Margin halaman Word diatur lewat @page bergaya
+    mso, mengikuti nilai margin yang sama dgn PDF/preview layar.
+--}}
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+    <meta charset="utf-8">
+    <meta name="ProgId" content="Word.Document">
+    <!--[if gte mso 9]>
+    <xml>
+        <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>100</w:Zoom>
+        </w:WordDocument>
+    </xml>
+    <![endif]-->
+    <style>
+        @php
+            $m = $margin ?? ['atas' => 3, 'kanan' => 2.5, 'bawah' => 2.5, 'kiri' => 2.5];
+        @endphp
+        {{-- Landscape (permintaan user, 15 kolom tabel supaya lebih
+             lega) - ukuran kertas ditukar lebar<->tinggi drpd wrapper
+             Word lainnya yg portrait, sama pola dgn Lembar Validasi TPG. --}}
+        @page Section1 {
+            size: 29.7cm 21cm;
+            margin: {{ $m['atas'] }}cm {{ $m['kanan'] }}cm {{ $m['bawah'] }}cm {{ $m['kiri'] }}cm;
+            mso-page-orientation: landscape;
+        }
+        div.Section1 { page: Section1; }
+        body { font-family: 'Calibri', sans-serif; font-size: 11pt; color: #000; }
+    </style>
+</head>
+<body>
+    <div class="Section1">
+        @include('pdf.partials.surat-tpg-kop')
+        @include('pdf.partials.surat-tpg-rekap-cair-isi', ['editable' => false])
+    </div>
+</body>
+</html>
