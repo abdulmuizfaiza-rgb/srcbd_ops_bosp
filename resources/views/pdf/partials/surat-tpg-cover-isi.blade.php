@@ -40,40 +40,40 @@
       TAMBAHAN baris Nama Yayasan (dari Profil Sekolah) SEBELUM Nama
       Sekolah, baru Alamat Sekolah, Tahun.
 
-    TATA LETAK (diperbarui 2026-10-15 sore, permintaan user kedua):
+    TATA LETAK (diperbarui 2026-10-15 malam, permintaan user ketiga -
+    revisi dari versi "simetris di sisa ruang" sebelumnya yang masih
+    dianggap belum pas oleh user):
     - Blok tulisan Nama Yayasan/Nama Sekolah/Alamat/Tahun SELALU berjarak
       PERSIS 2,5cm dari tepi bawah kertas fisik (A4 = 29,7cm), TIDAK
       terpengaruh berapa pun nilai Margin Bawah yang diatur user lewat
-      panel "Setting Margin" - dikonfirmasi lewat AskUserQuestion.
-    - Logo diposisikan di tengah SECARA SIMETRIS di antara batas bawah
-      blok judul & batas atas blok tulisan bawah tsb.
+      panel "Setting Margin" - dikonfirmasi lewat AskUserQuestion
+      (TIDAK berubah dari versi sebelumnya).
+    - Logo SEKARANG diposisikan PERSIS DI TENGAH-TENGAH HALAMAN KERTAS
+      (titik tengah vertikal kertas A4 = 29,7cm / 2 dari tepi atas
+      kertas), BUKAN LAGI di tengah sisa ruang setelah judul seperti
+      versi sebelumnya - permintaan eksplisit user 2026-10-15 malam.
+      Posisi judul di bagian atas TIDAK berubah (tetap mulai tepat di
+      garis margin atas, rata atas).
     - Dicapai TANPA position:absolute/fixed (yang perilakunya beda-beda
-      antara dompdf/browser/Word) & TANPA calc() di CSS (dukungan dompdf
-      utk calc() tidak konsisten) - dipakai <table> dgn tinggi (height)
-      yang DIHITUNG LANGSUNG DI PHP ($tinggiKontenCm di bawah, bukan di
-      CSS), lalu baris logo (tengah) diberi vertical-align:middle supaya
-      otomatis mengisi & membagi rata sisa ruang vertikal antara baris
-      judul (atas, vertical-align:top) & baris tulisan bawah (bawah,
-      vertical-align:bottom) - teknik HTML table klasik utk centering
-      vertikal yang presisi & konsisten di dompdf/browser/Word, lebih
-      bisa diandalkan drpd flexbox (TIDAK didukung dompdf sama sekali)
-      maupun position:absolute+calc(). Baris judul & baris bawah dibiarkan
-      height:auto (menyesuaikan isi), sehingga SISA tinggi tabel otomatis
-      jadi milik baris logo di tengah.
+      antara dompdf/browser/Word, terutama Word yg exportnya berupa HTML
+      disimpan sbg .doc - lihat App\Livewire\PendataanOps\SuratTpg\
+      Index::exportWord()) & TANPA calc() di CSS (dukungan dompdf utk
+      calc() tidak konsisten) - tetap dipakai teknik <table> dgn tinggi
+      yang DIHITUNG LANGSUNG DI PHP, TAPI sekarang baris judul (baris 1)
+      & baris logo (baris 2) SAMA-SAMA diberi tinggi TETAP (dihitung di
+      PHP, bukan otomatis mengikuti isi): tinggi baris judul dihitung
+      sedemikian rupa supaya titik tengah baris logo PERSIS jatuh di
+      titik tengah kertas, berapa pun panjang teks judul atau margin
+      atas yang sedang diatur. Baris tulisan bawah (baris 3) tetap
+      height:auto + vertical-align:bottom seperti sebelumnya (TIDAK
+      berubah), supaya tetap presisi 2,5cm dari tepi bawah kertas.
 --}}
 @php
-    // PENTING: hanya SATU blok directive php di sini (bukan 2 directive
-    // php terpisah berurutan seperti versi sebelumnya yang bikin error
-    // "Undefined variable $tinggiKontenCm" yang dilaporkan user
-    // 2026-10-15). CATATAN TAMBAHAN yang SAMA PENTINGNYA: komentar ini
-    // SENGAJA ditulis TANPA karakter "at"+"php" ataupun "at"+"endphp"
-    // sama sekali di dalamnya - menulis kata semacam itu literal di
-    // dalam komentar (walau cuma teks penjelasan, bukan bermaksud jadi
-    // directive sungguhan) ternyata membuat Blade salah mengira teks
-    // komentar itu sbg penutup blok directive-nya sendiri, memicu ulang
-    // bug yang sama persis. Jangan tulis kata directive Blade apa pun
-    // (diawali tanda "at") secara harfiah di dalam komentar manapun yang
-    // berada DI DALAM blok directive tsb.
+    // Catatan penulisan komentar: hindari menulis kata directive Blade
+    // apa pun (diawali tanda "at", mis. kata "php"/"endphp"/"if") secara
+    // harfiah di dalam komentar manapun yang berada di dalam blok
+    // directive ini - pernah memicu bug teks komentar bocor tampil di
+    // halaman (dilaporkan user 2026-10-15).
     $isNegeri = $sekolah->status === \App\Models\ProfilSekolah::STATUS_NEGERI;
 
     $m = $margin ?? [
@@ -95,11 +95,32 @@
     $tinggiHalamanCm = 29.7;
     $jarakTetapDariBawahCm = 2.5;
     $tinggiKontenCm = $tinggiHalamanCm - (float) $m['atas'] - $jarakTetapDariBawahCm;
+
+    // Ukuran tampil Logo Sekolah di halaman cover: 160px, dikonversi ke
+    // cm memakai patokan 96 dpi (dipakai jg sbg width/height eksplisit
+    // pada tag img di bawah, BUKAN cuma max-width/max-height, supaya
+    // ukuran yg dipakai utk perhitungan tinggi baris tabel PASTI sama
+    // dgn ukuran tampil sungguhan - Logo Sekolah selalu persegi krn
+    // sudah di-crop 450x450px otomatis saat upload, lihat
+    // App\Livewire\ProfilSekolah\Index::simpanLogoSekolah()).
+    $logoPx = 160;
+    $logoUkuranCm = $logoPx / 96 * 2.54;
+
+    // Supaya logo PERSIS di tengah-tengah HALAMAN KERTAS (bukan cuma di
+    // tengah sisa ruang setelah judul seperti versi sebelumnya) - baris
+    // judul diberi tinggi TETAP (dihitung, bukan otomatis mengikuti
+    // panjang teks judul) sebesar jarak dari batas atas tabel (= garis
+    // margin atas) sampai batas atas logo, sehingga titik tengah baris
+    // logo (baris ke-2 tabel) jatuh PERSIS di titik tengah kertas
+    // (29,7cm dibagi 2), berapa pun panjang teks judul atau margin atas
+    // yang sedang diatur. Dibatasi minimal 0 (jaga-jaga kalau margin
+    // atas diatur sangat besar).
+    $tinggiBarisJudulCm = max(0, ($tinggiHalamanCm / 2) - (float) $m['atas'] - ($logoUkuranCm / 2));
 @endphp
 
 <table style="width:100%; height: {{ $tinggiKontenCm }}cm; border-collapse:collapse;">
     <tr>
-        <td style="text-align:center; vertical-align:top;">
+        <td style="height: {{ $tinggiBarisJudulCm }}cm; text-align:center; vertical-align:top;">
             <div style="font-weight:bold;font-size:13pt;line-height:1.5;text-transform:uppercase;">
                 Verifikasi dan Validasi<br>
                 Tunjangan Profesi Guru<br>
@@ -109,9 +130,9 @@
         </td>
     </tr>
     <tr>
-        <td style="text-align:center; vertical-align:middle;">
+        <td style="height: {{ $logoUkuranCm }}cm; text-align:center; vertical-align:middle;">
             @if ($logoSekolahSrc)
-                <img src="{{ $logoSekolahSrc }}" style="max-width:160px;max-height:160px;">
+                <img src="{{ $logoSekolahSrc }}" style="width:{{ $logoPx }}px;height:{{ $logoPx }}px;">
             @else
                 <p style="color:#94a3b8;font-size:9pt;">(Logo Sekolah belum diupload - lengkapi lewat menu Profil Sekolah)</p>
             @endif

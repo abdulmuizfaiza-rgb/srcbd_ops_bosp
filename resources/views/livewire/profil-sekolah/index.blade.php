@@ -551,6 +551,20 @@
                     </div>
                 </div>
 
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <x-input-label for="nama_kasie_kpml" value="Nama Kasie KPML" />
+                        <x-text-input wire:model="nama_kasie_kpml" id="nama_kasie_kpml" class="block mt-1 w-full" type="text" />
+                        <x-input-error :messages="$errors->get('nama_kasie_kpml')" class="mt-2" />
+                    </div>
+
+                    <div>
+                        <x-input-label for="nip_kasie_kpml" value="NIP Kasie KPML" />
+                        <x-text-input wire:model="nip_kasie_kpml" id="nip_kasie_kpml" class="block mt-1 w-full" type="text" />
+                        <x-input-error :messages="$errors->get('nip_kasie_kpml')" class="mt-2" />
+                    </div>
+                </div>
+
                 <hr class="border-slate-200">
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

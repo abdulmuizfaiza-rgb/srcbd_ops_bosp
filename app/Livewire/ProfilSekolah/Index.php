@@ -123,6 +123,10 @@ class Index extends Component
 
     public string $nip_pengawas = '';
 
+    public string $nama_kasie_kpml = '';
+
+    public string $nip_kasie_kpml = '';
+
     public string $nama_bendahara = '';
 
     public string $nip_bendahara = '';
@@ -223,6 +227,8 @@ class Index extends Component
         $this->status_kepegawaian_kepsek = (string) $sekolah->status_kepegawaian_kepsek;
         $this->nama_pengawas = (string) $sekolah->nama_pengawas;
         $this->nip_pengawas = (string) $sekolah->nip_pengawas;
+        $this->nama_kasie_kpml = (string) $sekolah->nama_kasie_kpml;
+        $this->nip_kasie_kpml = (string) $sekolah->nip_kasie_kpml;
         $this->nama_bendahara = (string) $sekolah->nama_bendahara;
         $this->nip_bendahara = (string) $sekolah->nip_bendahara;
         $this->status_kepegawaian_bendahara = (string) $sekolah->status_kepegawaian_bendahara;
@@ -238,6 +244,7 @@ class Index extends Component
             'editingId', 'npsn', 'kode_upb', 'nama_sekolah', 'status', 'kecamatan', 'subrayon',
             'nama_kepala_sekolah', 'nip_kepala_sekolah', 'no_whatsapp_kepala_sekolah', 'status_kepegawaian_kepsek',
             'nama_pengawas', 'nip_pengawas',
+            'nama_kasie_kpml', 'nip_kasie_kpml',
             'nama_bendahara', 'nip_bendahara', 'status_kepegawaian_bendahara',
             'alamat_sekolah', 'nama_yayasan', 'logoSekolahBaru',
         ]);
@@ -278,6 +285,8 @@ class Index extends Component
             'status_kepegawaian_kepsek' => ['nullable', Rule::in(array_keys(ProfilSekolah::statusKepegawaianKepsekOptions()))],
             'nama_pengawas' => ['nullable', 'string', 'max:255'],
             'nip_pengawas' => ['nullable', 'string', 'max:50'],
+            'nama_kasie_kpml' => ['nullable', 'string', 'max:255'],
+            'nip_kasie_kpml' => ['nullable', 'string', 'max:50'],
             'nama_bendahara' => ['nullable', 'string', 'max:255'],
             'nip_bendahara' => $bendaharaAsn
                 ? ['nullable', 'regex:/^[0-9]{18}$/']
@@ -314,6 +323,8 @@ class Index extends Component
             'status_kepegawaian_kepsek' => $validated['status_kepegawaian_kepsek'] ?: null,
             'nama_pengawas' => $validated['nama_pengawas'] ?: null,
             'nip_pengawas' => $validated['nip_pengawas'] ?: null,
+            'nama_kasie_kpml' => $validated['nama_kasie_kpml'] ?: null,
+            'nip_kasie_kpml' => $validated['nip_kasie_kpml'] ?: null,
             'nama_bendahara' => $validated['nama_bendahara'] ?: null,
             'nip_bendahara' => $validated['nip_bendahara'] ?: null,
             'status_kepegawaian_bendahara' => $validated['status_kepegawaian_bendahara'] ?: null,
