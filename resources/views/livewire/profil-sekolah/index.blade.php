@@ -839,35 +839,52 @@
                     <x-input-error :messages="$errors->get('status_sertifikasi')" class="mt-2" />
                 </div>
 
+                {{--
+                    PERBAIKAN (permintaan user 2026-10-16): field rincian
+                    sertifikasi di bawah SELALU non-aktif apapun isi
+                    $status_sertifikasi - sebab sama persis dgn bug "Nama
+                    Yayasan selalu non-aktif" (lihat komentar di atas,
+                    sekitar field nama_yayasan): @disabled(...) dipakai
+                    LANGSUNG sbg directive di tag komponen x-text-input,
+                    yang rusak saat dikompilasi Blade tepat di dalam tag
+                    komponen x-... (bukan tag HTML native). Diganti ke
+                    binding :disabled="..." (cara yang benar utk nge-bind
+                    boolean ke prop komponen, lihat
+                    @props(['disabled' => false]) di
+                    resources/views/components/text-input.blade.php) -
+                    perhitungan $rincianSertifikasiTerkunci itu sendiri
+                    (Belum = terkunci, Sudah = terbuka) TIDAK berubah,
+                    cuma cara memakainya di tag komponen yang diperbaiki.
+                --}}
                 @php $rincianSertifikasiTerkunci = $status_sertifikasi === \App\Models\DataPtk::STATUS_SERTIFIKASI_BELUM; @endphp
 
                 <div>
                     <x-input-label for="bidang_studi_sertifikasi" value="Bidang Studi Sertifikasi" />
-                    <x-text-input wire:model="bidang_studi_sertifikasi" id="bidang_studi_sertifikasi" class="block mt-1 w-full" type="text" @disabled($rincianSertifikasiTerkunci) />
+                    <x-text-input wire:model="bidang_studi_sertifikasi" id="bidang_studi_sertifikasi" class="block mt-1 w-full" type="text" :disabled="$rincianSertifikasiTerkunci" />
                     <x-input-error :messages="$errors->get('bidang_studi_sertifikasi')" class="mt-2" />
                 </div>
 
                 <div>
                     <x-input-label for="tahun_lulus_sertifikasi" value="Tahun Lulus Sertifikasi" />
-                    <x-text-input wire:model="tahun_lulus_sertifikasi" id="tahun_lulus_sertifikasi" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="4" @disabled($rincianSertifikasiTerkunci) />
+                    <x-text-input wire:model="tahun_lulus_sertifikasi" id="tahun_lulus_sertifikasi" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="4" :disabled="$rincianSertifikasiTerkunci" />
                     <x-input-error :messages="$errors->get('tahun_lulus_sertifikasi')" class="mt-2" />
                 </div>
 
                 <div>
                     <x-input-label for="nomor_sertifikat_sertifikasi" value="Nomor Sertifikat Sertifikasi" />
-                    <x-text-input wire:model="nomor_sertifikat_sertifikasi" id="nomor_sertifikat_sertifikasi" class="block mt-1 w-full" type="text" @disabled($rincianSertifikasiTerkunci) />
+                    <x-text-input wire:model="nomor_sertifikat_sertifikasi" id="nomor_sertifikat_sertifikasi" class="block mt-1 w-full" type="text" :disabled="$rincianSertifikasiTerkunci" />
                     <x-input-error :messages="$errors->get('nomor_sertifikat_sertifikasi')" class="mt-2" />
                 </div>
 
                 <div>
                     <x-input-label for="nomor_registrasi_guru" value="Nomor Registrasi Guru" />
-                    <x-text-input wire:model="nomor_registrasi_guru" id="nomor_registrasi_guru" class="block mt-1 w-full" type="text" @disabled($rincianSertifikasiTerkunci) />
+                    <x-text-input wire:model="nomor_registrasi_guru" id="nomor_registrasi_guru" class="block mt-1 w-full" type="text" :disabled="$rincianSertifikasiTerkunci" />
                     <x-input-error :messages="$errors->get('nomor_registrasi_guru')" class="mt-2" />
                 </div>
 
                 <div class="sm:col-span-2">
                     <x-input-label for="nomor_peserta_sertifikasi" value="Nomor Peserta Sertifikasi" />
-                    <x-text-input wire:model="nomor_peserta_sertifikasi" id="nomor_peserta_sertifikasi" class="block mt-1 w-full" type="text" @disabled($rincianSertifikasiTerkunci) />
+                    <x-text-input wire:model="nomor_peserta_sertifikasi" id="nomor_peserta_sertifikasi" class="block mt-1 w-full" type="text" :disabled="$rincianSertifikasiTerkunci" />
                     <x-input-error :messages="$errors->get('nomor_peserta_sertifikasi')" class="mt-2" />
                 </div>
 
