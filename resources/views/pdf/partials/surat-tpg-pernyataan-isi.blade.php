@@ -7,11 +7,29 @@
     $editable=true), PDF (dompdf, $editable=false), Word/.doc
     ($editable=false) - sama seperti 2 partial isi surat lainnya.
 
-    Field Nama/Unit Kerja/Alamat Kantor SELALU diambil otomatis
-    (permintaan user eksplisit): Nama <- ProfilSekolah::nama_kepala_sekolah,
-    Unit Kerja <- nama_sekolah, Alamat Kantor <- alamat_sekolah. Jabatan
-    SELALU teks tetap "Kepala Sekolah" (sama seperti pola Jabatan pada
-    surat-tpg-penghentian-isi.blade.php).
+    Field Nama/Jabatan/Unit Kerja/Alamat Kantor SELALU diambil otomatis.
+
+    UPDATE 2026-10-15 (permintaan user eksplisit): identitas penanda
+    tangan pada tab ini DIGANTI dari Kepala Sekolah menjadi Pengawas
+    Pembina - Nama <- ProfilSekolah::nama_pengawas (sebelumnya
+    nama_kepala_sekolah), Jabatan SELALU teks tetap "Pengawas Pembina"
+    (sebelumnya "Kepala Sekolah"), Unit Kerja SELALU teks tetap "Dinas
+    Pendidikan Kabupaten Sukabumi" (sebelumnya <- nama_sekolah, data per
+    sekolah), Alamat Kantor SELALU teks tetap "Jl. Pelabuhan II Km. 22
+    Cikembang-Cikembar Kab. Sukabumi" (sebelumnya <- alamat_sekolah, data
+    per sekolah) - Unit Kerja & Alamat Kantor SEKARANG teks tetap (bukan
+    lagi data per sekolah) krn ini alamat kantor Dinas, sama utk semua
+    pengawas/sekolah. $namaPengawas SUDAH tersedia di partial ini tanpa
+    perlu ubah controller/komponen apa pun - variabel ini sudah dikirim
+    dari App\Http\Controllers\SuratTpgCetakController,
+    App\Livewire\PendataanOps\SuratTpg\Index, &
+    App\Support\SuratTpgGabunganData sejak sebelumnya (dipakai partial
+    pdf.partials.surat-tpg-ttd untuk blok tanda tangan Pengawas pada tab
+    Rekomendasi/Penghentian) - TIDAK ADA perubahan di file manapun selain
+    partial ini. Tab Rekomendasi & Penghentian (surat-tpg-rekomendasi-isi,
+    surat-tpg-penghentian-isi) TIDAK ikut berubah - identitas Kepala
+    Sekolah di kedua tab itu TETAP seperti semula, permintaan user HANYA
+    untuk tab Surat Pernyataan ini.
 
     Tahun Pelajaran ("2025/2026" dst) diketik MANUAL oleh Admin OPS &
     tersimpan otomatis ($tahunPelajaran, App\Models\SuratTpg::tahun_pelajaran) -
@@ -48,10 +66,11 @@
       TIDAK berlaku utk tab Rekomendasi/Penghentian (kop surat tetap
       tampil di kedua tab itu).
 
-    Blok tanda tangan (single kolom) - Nama & NIP Kepala Sekolah SAMA
-    persis dgn di identitas atas (permintaan user: "untuk tanda tangan
-    Kepala Sekolah dan NIp kepala Sekolah diambil dari field Nama Kepala
-    Sekolah dan NIP kepala Sekolah").
+    Blok tanda tangan (single kolom) - Nama & NIP SAMA persis dgn di
+    identitas atas, SEKARANG Nama & NIP Pengawas (lihat UPDATE 2026-10-15
+    di atas) - sebelumnya (s.d. 2026-09-24): "untuk tanda tangan Kepala
+    Sekolah dan NIp kepala Sekolah diambil dari field Nama Kepala Sekolah
+    dan NIP kepala Sekolah".
 
     Perbaikan 2026-09-24 (round kedua puluh tiga, poin 1): "Materai"
     diberi ruang kosong DI ATAS *dan* DI BAWAH tulisannya (sebelumnya
@@ -71,7 +90,12 @@
     - $tahunPelajaran (string|null)
     - $tanggalSurat (\Illuminate\Support\Carbon|null)
     - $triwulan (int), $tahun (int)
-    - $namaKepsek, $nipKepsek, $namaSekolah, $alamatSekolah (string|null)
+    - $namaPengawas, $nipPengawas (string|null) - sejak 2026-10-15, dipakai
+      utk identitas atas & blok tanda tangan (lihat UPDATE di atas)
+    - $namaKepsek, $nipKepsek, $namaSekolah, $alamatSekolah (string|null) -
+      TIDAK LAGI dipakai di partial ini sejak 2026-10-15, dibiarkan di
+      sini krn variabel ini tetap dikirim oleh pemanggil (dipakai tab
+      Rekomendasi/Penghentian lain), bukan error kalau tidak terpakai
 --}}
 @php($editable = $editable ?? false)
 @php($romawiTriwulan = \App\Models\SuratTpg::labelTriwulanRomawi($triwulan))
@@ -89,22 +113,22 @@
     <tr>
         <td style="padding:2px 6px 2px 20px;vertical-align:top;">Nama</td>
         <td style="padding:2px 6px;vertical-align:top;">:</td>
-        <td style="padding:2px 0;vertical-align:top;">{{ $namaKepsek ?: '............................' }}</td>
+        <td style="padding:2px 0;vertical-align:top;">{{ $namaPengawas ?: '............................' }}</td>
     </tr>
     <tr>
         <td style="padding:2px 6px 2px 20px;vertical-align:top;">Jabatan</td>
         <td style="padding:2px 6px;vertical-align:top;">:</td>
-        <td style="padding:2px 0;vertical-align:top;">Kepala Sekolah</td>
+        <td style="padding:2px 0;vertical-align:top;">Pengawas Pembina</td>
     </tr>
     <tr>
         <td style="padding:2px 6px 2px 20px;vertical-align:top;">Unit Kerja</td>
         <td style="padding:2px 6px;vertical-align:top;">:</td>
-        <td style="padding:2px 0;vertical-align:top;">{{ $namaSekolah ?: '............................' }}</td>
+        <td style="padding:2px 0;vertical-align:top;">Dinas Pendidikan Kabupaten Sukabumi</td>
     </tr>
     <tr>
         <td style="padding:2px 6px 2px 20px;vertical-align:top;">Alamat Kantor</td>
         <td style="padding:2px 6px;vertical-align:top;">:</td>
-        <td style="padding:2px 0;vertical-align:top;">{{ $alamatSekolah ?: '............................' }}</td>
+        <td style="padding:2px 0;vertical-align:top;">Jl. Pelabuhan II Km. 22 Cikembang-Cikembar Kab. Sukabumi</td>
     </tr>
 </table>
 
@@ -174,8 +198,8 @@
                 <div style="text-align:center;margin-left:-40px;">Materai</div>
                 {{-- Round kedua puluh empat, poin 1: Nama & NIP Kepala Sekolah digeser ke bawah 3 baris tambahan dari posisi round 23 (40px -> 106px, ekuivalen +/- 3 baris teks 11pt/line-height 1.5 = 3 x ~22px = 66px). --}}
                 <div style="height:106px;"></div>
-                {{ $namaKepsek ?: '............................' }}<br>
-                NIP. {{ $nipKepsek ?: '............................' }}
+                {{ $namaPengawas ?: '............................' }}<br>
+                NIP. {{ $nipPengawas ?: '............................' }}
             </div>
         </td>
     </tr>
