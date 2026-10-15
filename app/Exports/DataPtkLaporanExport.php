@@ -29,6 +29,16 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Urutan kolom SAMA PERSIS dengan DataPtkExport (lihat catatan di sana),
  * TERMASUK kolom "No" di paling depan (permintaan user 2026-10-03,
  * jawaban AskUserQuestion "Export Excel & Unduh, keduanya").
+ *
+ * KOLOM NPWP ditambahkan 2026-10-15 (permintaan user: supaya file
+ * "Unduh" juga sama dengan "Export Excel" yang sudah ditambahkan NPWP
+ * di round sebelumnya hari ini) - posisi SAMA PERSIS dengan
+ * DataPtkExport: setelah Tahun Lulus Ijazah, sebelum Status
+ * Sertifikasi. JUMLAH_KOLOM berubah dari 24 jadi 25 (kolom terakhir
+ * X -> Y). Field "pilihan" lain (Jabatan, Pangkat/Golongan, Status
+ * Kepegawaian, dst) TIDAK perlu diubah apa pun - nilainya otomatis
+ * ikut sinkron karena langsung membaca $p->field, dan laporan ini
+ * SENGAJA tanpa dropdown Excel (lihat catatan di atas).
  */
 class DataPtkLaporanExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping, WithTitle
 {
@@ -42,7 +52,7 @@ class DataPtkLaporanExport implements FromCollection, ShouldAutoSize, WithCustom
 
     private const KOLOM_TMT_SEKOLAH_INDUK = 'L';
 
-    private const JUMLAH_KOLOM = 24;
+    private const JUMLAH_KOLOM = 25;
 
     /**
      * Penghitung nomor urut baris untuk kolom "No" - diincrement tiap
@@ -78,7 +88,7 @@ class DataPtkLaporanExport implements FromCollection, ShouldAutoSize, WithCustom
         return [
             'No', 'NIK', 'NUPTK', 'NIP', 'Nama PTK', 'Tempat Lahir', 'Tanggal Lahir',
             'Jabatan', 'Pangkat / Golongan', 'Status Kepegawaian', 'Jenis PTK', 'TMT Di Sekolah Induk',
-            'Pendidikan Terakhir', 'Jurusan / Prodi Sesuai Ijazah Terakhir', 'Tahun Lulus Ijazah',
+            'Pendidikan Terakhir', 'Jurusan / Prodi Sesuai Ijazah Terakhir', 'Tahun Lulus Ijazah', 'NPWP',
             'Status Sertifikasi', 'Bidang Studi Sertifikasi', 'Tahun Lulus Sertifikasi',
             'Nomor Sertifikat Sertifikasi', 'Nomor Registrasi Guru', 'Nomor Peserta Sertifikasi',
             'Nama Sekolah', 'Status Dapodik', 'Status Keaktifan',
@@ -108,6 +118,7 @@ class DataPtkLaporanExport implements FromCollection, ShouldAutoSize, WithCustom
             $p->pendidikan_terakhir,
             $p->jurusan_prodi,
             $p->tahun_lulus_ijazah,
+            $p->npwp,
             $p->status_sertifikasi,
             $p->bidang_studi_sertifikasi,
             $p->tahun_lulus_sertifikasi,
