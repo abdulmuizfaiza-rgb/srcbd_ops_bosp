@@ -61,8 +61,16 @@
       height:auto (menyesuaikan isi), sehingga SISA tinggi tabel otomatis
       jadi milik baris logo di tengah.
 --}}
-@php($isNegeri = $sekolah->status === \App\Models\ProfilSekolah::STATUS_NEGERI)
 @php
+    // PENTING: digabung jadi SATU blok @php (bukan 2 directive @php
+    // terpisah berurutan) - penulisan sebelumnya (@php(...) bentuk
+    // inline, langsung disusul @php...@endphp bentuk blok) ternyata
+    // salah dikompilasi Blade (jadi PHP rusak, memicu error "Undefined
+    // variable $tinggiKontenCm" yang dilaporkan user 2026-10-15 - 2 @php
+    // beruntun TIDAK boleh dipakai di partial ini / sebaiknya dihindari
+    // secara umum di aplikasi ini).
+    $isNegeri = $sekolah->status === \App\Models\ProfilSekolah::STATUS_NEGERI;
+
     $m = $margin ?? [
         'atas' => $marginAtas ?? 3,
         'kanan' => $marginKanan ?? 2.5,
