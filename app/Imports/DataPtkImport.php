@@ -20,10 +20,17 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
  * DataPtkExport): NIK, NUPTK, NIP, Nama PTK, Tempat Lahir, Tanggal
  * Lahir, Jabatan, Pangkat / Golongan, Status Kepegawaian, Jenis PTK,
  * TMT Di Sekolah Induk, Pendidikan Terakhir, Jurusan / Prodi Sesuai
- * Ijazah Terakhir, Tahun Lulus Ijazah, Status Sertifikasi, Bidang Studi
- * Sertifikasi, Tahun Lulus Sertifikasi, Nomor Sertifikat Sertifikasi,
- * Nomor Registrasi Guru, Nomor Peserta Sertifikasi, Nama Sekolah,
- * Status Dapodik, Status Keaktifan.
+ * Ijazah Terakhir, Tahun Lulus Ijazah, NPWP, Status Sertifikasi, Bidang
+ * Studi Sertifikasi, Tahun Lulus Sertifikasi, Nomor Sertifikat
+ * Sertifikasi, Nomor Registrasi Guru, Nomor Peserta Sertifikasi, Nama
+ * Sekolah, Status Dapodik, Status Keaktifan.
+ *
+ * KOLOM NPWP ditambahkan 2026-10-15 (permintaan user, sepasang dengan
+ * penambahan kolom NPWP di DataPtkExport - supaya nilai NPWP yang
+ * diisi/diedit di Excel benar-benar tersimpan saat diimport kembali,
+ * bukan cuma tampil di hasil export). Validasi regex 15-16 digit angka
+ * SAMA PERSIS dengan validasi di app/Livewire/ProfilSekolah/Index.php
+ * (field NPWP pada form tambah/edit PTK).
  *
  * NIK dipakai sebagai KUNCI: baris dengan NIK yang SUDAH ADA di database
  * akan MENIMPA/memperbarui data lama (bukan menambah duplikat) - sesuai
@@ -125,6 +132,7 @@ class DataPtkImport implements ToModel, WithHeadingRow, WithValidation
             'pendidikan_terakhir' => (string) ($row['pendidikan_terakhir'] ?? ''),
             'jurusan_prodi' => $this->kosongkanJikaKosong($row['jurusan_prodi_sesuai_ijazah_terakhir'] ?? null),
             'tahun_lulus_ijazah' => $this->kosongkanJikaKosong($row['tahun_lulus_ijazah'] ?? null),
+            'npwp' => $this->kosongkanJikaKosong($row['npwp'] ?? null),
             'status_sertifikasi' => (string) ($row['status_sertifikasi'] ?? ''),
             'bidang_studi_sertifikasi' => $this->kosongkanJikaKosong($row['bidang_studi_sertifikasi'] ?? null),
             'tahun_lulus_sertifikasi' => $this->kosongkanJikaKosong($row['tahun_lulus_sertifikasi'] ?? null),
@@ -167,6 +175,7 @@ class DataPtkImport implements ToModel, WithHeadingRow, WithValidation
             'jenis_ptk' => ['required', Rule::in(array_keys(DataPtk::jenisPtkOptions()))],
             'pendidikan_terakhir' => ['required', Rule::in(array_keys(DataPtk::pendidikanTerakhirOptions()))],
             'tahun_lulus_ijazah' => ['nullable', 'regex:/^[0-9]{4}$/'],
+            'npwp' => ['nullable', 'regex:/^[0-9]{15,16}$/'],
             'status_sertifikasi' => ['required', Rule::in(array_keys(DataPtk::statusSertifikasiOptions()))],
             'tahun_lulus_sertifikasi' => ['nullable', 'regex:/^([0-9]{4}|-)$/'],
             'nama_sekolah' => $this->sekolahDiperbolehkan === null
@@ -185,6 +194,7 @@ class DataPtkImport implements ToModel, WithHeadingRow, WithValidation
             'nuptk.regex' => 'NUPTK harus berupa 16 digit angka.',
             'nip.regex' => 'NIP harus berupa 18 digit angka.',
             'tahun_lulus_ijazah.regex' => 'Tahun Lulus Ijazah harus berupa 4 digit angka tahun.',
+            'npwp.regex' => 'NPWP harus berupa 15-16 digit angka.',
             'tahun_lulus_sertifikasi.regex' => 'Tahun Lulus Sertifikasi harus berupa 4 digit angka tahun.',
             'nama_sekolah.exists' => 'Nama Sekolah tidak ditemukan di menu Data Sekolah.',
             'jabatan.in' => 'Jabatan harus dipilih dari daftar pilihan yang tersedia.',

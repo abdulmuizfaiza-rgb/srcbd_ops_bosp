@@ -38,13 +38,20 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * 2026-10-03, jawaban AskUserQuestion "Export Excel & Unduh, keduanya"):
  * No, NIK, NUPTK, NIP, Nama PTK, Tempat Lahir, Tanggal Lahir, Jabatan,
  * Pangkat/Golongan, Status Kepegawaian, Jenis PTK, TMT Di Sekolah Induk,
- * Pendidikan Terakhir, Jurusan/Prodi, Tahun Lulus Ijazah, Status
+ * Pendidikan Terakhir, Jurusan/Prodi, Tahun Lulus Ijazah, NPWP, Status
  * Sertifikasi, Bidang Studi Sertifikasi, Tahun Lulus Sertifikasi, Nomor
  * Sertifikat Sertifikasi, Nomor Registrasi Guru, Nomor Peserta
  * Sertifikasi, Nama Sekolah, Status Dapodik, Status Keaktifan - jangan
  * diubah urutannya tanpa persetujuan. Kolom "No" HANYA nomor urut
  * tampilan (bukan kolom data), diabaikan sepenuhnya oleh DataPtkImport
  * (import memakai WithHeadingRow + nama kolom, bukan posisi, jadi aman).
+ *
+ * KOLOM NPWP ditambahkan 2026-10-15 (permintaan user: field NPWP belum
+ * muncul di export, posisinya mengikuti urutan field NPWP pada form
+ * aplikasi - setelah Tahun Lulus Ijazah, sebelum Status Sertifikasi).
+ * Semua referensi kolom (huruf) di bawah untuk kolom-kolom SETELAH NPWP
+ * bergeser satu huruf (P->Q, V->W, W->X, X->Y) - kolom SEBELUM NPWP
+ * (termasuk G=Tanggal Lahir, H-M) TIDAK berubah.
  *
  * SEJAK permintaan user 2026-10-03: ditambahkan 2 hal lagi -
  * 1) Format tanggal Excel asli (dd-mm-yyyy) pada kolom Tanggal Lahir &
@@ -76,7 +83,7 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithEvents, WithH
      */
     private const KOLOM_PERTAMA = 'A';
 
-    private const KOLOM_STATUS_KEAKTIFAN = 'X';
+    private const KOLOM_STATUS_KEAKTIFAN = 'Y';
 
     /**
      * Penghitung nomor urut baris untuk kolom "No" - diincrement tiap
@@ -106,7 +113,7 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithEvents, WithH
         return [
             'No', 'NIK', 'NUPTK', 'NIP', 'Nama PTK', 'Tempat Lahir', 'Tanggal Lahir',
             'Jabatan', 'Pangkat / Golongan', 'Status Kepegawaian', 'Jenis PTK', 'TMT Di Sekolah Induk',
-            'Pendidikan Terakhir', 'Jurusan / Prodi Sesuai Ijazah Terakhir', 'Tahun Lulus Ijazah',
+            'Pendidikan Terakhir', 'Jurusan / Prodi Sesuai Ijazah Terakhir', 'Tahun Lulus Ijazah', 'NPWP',
             'Status Sertifikasi', 'Bidang Studi Sertifikasi', 'Tahun Lulus Sertifikasi',
             'Nomor Sertifikat Sertifikasi', 'Nomor Registrasi Guru', 'Nomor Peserta Sertifikasi',
             'Nama Sekolah', 'Status Dapodik', 'Status Keaktifan',
@@ -136,6 +143,7 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithEvents, WithH
             $p->pendidikan_terakhir,
             $p->jurusan_prodi,
             $p->tahun_lulus_ijazah,
+            $p->npwp,
             $p->status_sertifikasi,
             $p->bidang_studi_sertifikasi,
             $p->tahun_lulus_sertifikasi,
@@ -245,13 +253,13 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithEvents, WithH
             'J' => array_values(DataPtk::statusKepegawaianOptions()),
             'K' => array_values(DataPtk::jenisPtkOptions()),
             'M' => array_values(DataPtk::pendidikanTerakhirOptions()),
-            'P' => array_values(DataPtk::statusSertifikasiOptions()),
-            'V' => ProfilSekolah::urutStandar()->pluck('nama_sekolah')->all(),
-            'W' => array_values(DataPtk::statusDapodikOptions()),
-            'X' => array_values(DataPtk::statusKeaktifanOptions()),
+            'Q' => array_values(DataPtk::statusSertifikasiOptions()),
+            'W' => ProfilSekolah::urutStandar()->pluck('nama_sekolah')->all(),
+            'X' => array_values(DataPtk::statusDapodikOptions()),
+            'Y' => array_values(DataPtk::statusKeaktifanOptions()),
         ];
 
-        $indeksKolomTersembunyi = Coordinate::columnIndexFromString('Y');
+        $indeksKolomTersembunyi = Coordinate::columnIndexFromString('Z');
 
         foreach ($daftarPilihan as $kolomData => $pilihan) {
             $kolomTersembunyi = Coordinate::stringFromColumnIndex($indeksKolomTersembunyi);
