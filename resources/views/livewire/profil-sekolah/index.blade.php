@@ -484,7 +484,19 @@
                 --}}
                 <div>
                     <x-input-label for="nama_yayasan" value="Nama Yayasan" />
-                    <x-text-input wire:model="nama_yayasan" id="nama_yayasan" class="block mt-1 w-full" type="text" @disabled($status !== 'swasta') />
+                    {{--
+                        PENTING: pakai binding :disabled="..." (BUKAN
+                        directive @disabled(...) langsung di tag komponen
+                        x-text-input) - @disabled() dgn ekspresi berspasi
+                        (mis. $status !== 'swasta') rusak saat dikompilasi
+                        Blade persis di dalam tag komponen x-..., sehingga
+                        field selalu "disabled" apapun isi $status (bug yang
+                        dilaporkan user 2026-10-15). :disabled="..." adalah
+                        cara yang benar utk nge-bind boolean ke prop
+                        komponen (lihat @props(['disabled' => false]) di
+                        resources/views/components/text-input.blade.php).
+                    --}}
+                    <x-text-input wire:model="nama_yayasan" id="nama_yayasan" class="block mt-1 w-full" type="text" :disabled="$status !== 'swasta'" />
                     <p class="text-xs text-slate-400 mt-1">Khusus sekolah Swasta - otomatis dipakai di tab Cover SMP-S (menu Format Surat Rekomendasi & Pembatalan TPG). Non-aktif selama Status bukan Swasta.</p>
                     <x-input-error :messages="$errors->get('nama_yayasan')" class="mt-2" />
                 </div>
