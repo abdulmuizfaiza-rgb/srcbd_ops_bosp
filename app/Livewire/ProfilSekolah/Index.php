@@ -239,7 +239,7 @@ class Index extends Component
             'nama_kepala_sekolah', 'nip_kepala_sekolah', 'no_whatsapp_kepala_sekolah', 'status_kepegawaian_kepsek',
             'nama_pengawas', 'nip_pengawas',
             'nama_bendahara', 'nip_bendahara', 'status_kepegawaian_bendahara',
-            'alamat_sekolah', 'nama_yayasan',
+            'alamat_sekolah', 'nama_yayasan', 'logoSekolahBaru',
         ]);
         $this->resetErrorBag();
     }
@@ -336,6 +336,24 @@ class Index extends Component
             $sekolah = ProfilSekolah::create($data);
         }
 
+        // Logo Sekolah yang dipilih di mode Tambah Sekolah (belum ada ID
+        // sekolah saat file dipilih, jadi ditahan dulu oleh
+        // updatedLogoSekolahBaru() - lihat docblock method itu) BARU
+        // diproses & disimpan di sini, setelah $sekolah pasti sudah punya
+        // ID (baru dibuat / sudah ada krn mode Edit). Di mode Edit normal,
+        // $this->logoSekolahBaru SUDAH kosong duluan (auto-save saat
+        // dipilih), jadi blok ini aman TIDAK menimpa logo yang sudah
+        // tersimpan kecuali memang ada file baru yang masih pending.
+        if ($this->logoSekolahBaru) {
+            $pathLama = $sekolah->logo_sekolah;
+            $pathBaru = $this->simpanLogoSekolah($this->logoSekolahBaru);
+            $sekolah->update(['logo_sekolah' => $pathBaru]);
+
+            if ($pathLama && Storage::disk('public')->exists($pathLama)) {
+                Storage::disk('public')->delete($pathLama);
+            }
+        }
+
         $this->showForm = false;
         $this->resetForm();
         $this->dispatch('close-modal', 'sekolah-form');
@@ -377,11 +395,21 @@ class Index extends Component
     }
 
     /**
-     * Upload/ganti Logo Sekolah (permintaan user 2026-10-15) - langsung
-     * tersimpan begitu file dipilih (auto-save, pola sama persis dgn
-     * App\Livewire\PendataanOps\SuratTpg\Index::updatedKopSuratBaru()),
-     * tanpa tombol "Simpan" terpisah & TANPA perlu modal form Tambah/Edit
-     * terbuka. Disimpan ke App\Models\ProfilSekolah::logo_sekolah.
+     * Upload/ganti Logo Sekolah - perilaku beda tergantung mode form
+     * (permintaan user 2026-10-15, diperluas 2026-10-15 sore supaya juga
+     * bisa dipakai di mode Tambah Sekolah, sebelumnya hanya mode Edit):
+     *
+     * - Mode EDIT ($editingId ada): tetap PERSIS seperti sebelumnya -
+     *   langsung tersimpan begitu file dipilih (auto-save, pola sama
+     *   persis dgn App\Livewire\PendataanOps\SuratTpg\Index::
+     *   updatedKopSuratBaru()), tanpa tombol "Simpan" terpisah.
+     * - Mode TAMBAH SEKOLAH ($editingId belum ada, sekolah belum
+     *   tersimpan jadi belum ada ID utk dikaitkan): file HANYA
+     *   divalidasi & ditahan dulu di $this->logoSekolahBaru (preview
+     *   pakai ->temporaryUrl(), lihat blade) - baru benar-benar diproses
+     *   & disimpan saat tombol "Simpan" ditekan, lihat simpan().
+     *
+     * Disimpan ke App\Models\ProfilSekolah::logo_sekolah.
      *
      * TIDAK ada pengecekan orientasi landscape seperti Kop Surat (logo
      * sekolah lazimnya persegi/potret, bukan memanjang seperti
@@ -393,9 +421,12 @@ class Index extends Component
             return;
         }
 
-        abort_unless($this->editingId, 403);
-        $sekolah = ProfilSekolah::findOrFail($this->editingId);
-        abort_unless($this->bolehEdit($sekolah), 403);
+        if ($this->editingId) {
+            $sekolah = ProfilSekolah::findOrFail($this->editingId);
+            abort_unless($this->bolehEdit($sekolah), 403);
+        } else {
+            abort_unless($this->bolehKelolaSemua(), 403);
+        }
 
         $validator = Validator::make(
             ['logoSekolahBaru' => $this->logoSekolahBaru],
@@ -407,6 +438,15 @@ class Index extends Component
         if ($validator->fails()) {
             $this->addError('logoSekolahBaru', $validator->errors()->first('logoSekolahBaru'));
             $this->logoSekolahBaru = null;
+
+            return;
+        }
+
+        if (! $this->editingId) {
+            // Mode Tambah Sekolah: file sudah valid, tapi TAHAN dulu -
+            // belum ada ID sekolah utk disimpan. Diproses nanti di
+            // simpan() setelah ProfilSekolah::create() berhasil.
+            $this->resetErrorBag('logoSekolahBaru');
 
             return;
         }

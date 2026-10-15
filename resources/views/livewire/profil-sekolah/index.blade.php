@@ -470,55 +470,24 @@
                 @endif
 
                 {{--
-                    Logo Sekolah & Nama Yayasan (permintaan user 2026-10-15) -
-                    dipakai otomatis di tab "Cover SMPN"/"Cover SMP-S" menu
-                    Format Surat Rekomendasi & Pembatalan TPG. Logo Sekolah
-                    HANYA muncul saat $editingId ada (sekolah sudah tersimpan,
-                    butuh ID utk upload - sama seperti pola Kop Surat), Nama
-                    Yayasan HANYA relevan utk sekolah berstatus Swasta.
+                    Nama Yayasan (permintaan user 2026-10-15, diubah
+                    2026-10-15 sore) - field SELALU tampil (di mode Tambah
+                    maupun Edit), tapi non-aktif (disabled) saat Status BUKAN
+                    Swasta, aktif otomatis begitu Status dipilih Swasta
+                    (reaktif lewat wire:model.live="status" pada field
+                    Status) - permintaan eksplisit user, menggantikan versi
+                    sebelumnya yang menyembunyikan field ini sepenuhnya saat
+                    bukan Swasta. Nilai yang sudah tersimpan TIDAK dihapus
+                    otomatis saat status diganti ke Negeri (supaya tidak ada
+                    risiko kehilangan data tanpa sengaja) - field hanya
+                    dikunci dari pengeditan.
                 --}}
-                @if ($editingId)
-                    <div>
-                        <x-input-label value="Logo Sekolah" />
-                        <p class="text-xs text-slate-400 -mt-0.5 mb-1.5">Dipakai otomatis di tengah halaman Cover SMPN/Cover SMP-S (menu Format Surat Rekomendasi & Pembatalan TPG).</p>
-                        @if ($logoSekolahSrc)
-                            <div class="flex items-center gap-3">
-                                <img src="{{ $logoSekolahSrc }}" class="h-16 w-16 object-contain border border-slate-200 rounded-md bg-white">
-                                <div wire:loading.remove wire:target="logoSekolahBaru,hapusLogoSekolah" class="flex items-center gap-3 text-xs">
-                                    <label class="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-700 cursor-pointer">
-                                        <x-icon name="upload" class="w-3.5 h-3.5" />
-                                        Ganti Logo
-                                        <input type="file" wire:model="logoSekolahBaru" accept="image/*" class="hidden">
-                                    </label>
-                                    <button type="button" wire:click="hapusLogoSekolah" wire:confirm="Hapus Logo Sekolah ini? Setelah dihapus, logo akan kosong sampai diupload lagi." class="inline-flex items-center gap-1.5 text-red-500 hover:text-red-700 cursor-pointer">
-                                        <x-icon name="trash" class="w-3.5 h-3.5" />
-                                        Hapus
-                                    </button>
-                                </div>
-                                <div wire:loading wire:target="logoSekolahBaru,hapusLogoSekolah" class="text-xs text-slate-400">Memproses logo...</div>
-                            </div>
-                        @else
-                            <div wire:loading.remove wire:target="logoSekolahBaru">
-                                <label class="flex flex-col items-center justify-center gap-1.5 border border-dashed border-slate-300 rounded-lg py-4 text-slate-400 hover:text-slate-600 hover:border-slate-400 cursor-pointer text-xs">
-                                    <x-icon name="upload" class="w-5 h-5" />
-                                    Logo Sekolah belum diupload - klik untuk upload
-                                    <input type="file" wire:model="logoSekolahBaru" accept="image/*" class="hidden">
-                                </label>
-                            </div>
-                            <div wire:loading wire:target="logoSekolahBaru" class="text-center text-xs text-slate-400 border border-dashed border-slate-300 rounded-lg py-4">Mengunggah logo...</div>
-                        @endif
-                        <x-input-error :messages="$errors->get('logoSekolahBaru')" class="mt-2" />
-                    </div>
-                @endif
-
-                @if ($status === 'swasta')
-                    <div>
-                        <x-input-label for="nama_yayasan" value="Nama Yayasan" />
-                        <x-text-input wire:model="nama_yayasan" id="nama_yayasan" class="block mt-1 w-full" type="text" />
-                        <p class="text-xs text-slate-400 mt-1">Khusus sekolah Swasta - otomatis dipakai di tab Cover SMP-S (menu Format Surat Rekomendasi & Pembatalan TPG).</p>
-                        <x-input-error :messages="$errors->get('nama_yayasan')" class="mt-2" />
-                    </div>
-                @endif
+                <div>
+                    <x-input-label for="nama_yayasan" value="Nama Yayasan" />
+                    <x-text-input wire:model="nama_yayasan" id="nama_yayasan" class="block mt-1 w-full" type="text" @disabled($status !== 'swasta') />
+                    <p class="text-xs text-slate-400 mt-1">Khusus sekolah Swasta - otomatis dipakai di tab Cover SMP-S (menu Format Surat Rekomendasi & Pembatalan TPG). Non-aktif selama Status bukan Swasta.</p>
+                    <x-input-error :messages="$errors->get('nama_yayasan')" class="mt-2" />
+                </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -605,6 +574,80 @@
                     <x-input-label for="alamat_sekolah" value="Alamat Sekolah" />
                     <textarea wire:model="alamat_sekolah" id="alamat_sekolah" rows="3" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm block mt-1 w-full"></textarea>
                     <x-input-error :messages="$errors->get('alamat_sekolah')" class="mt-2" />
+                </div>
+
+                {{--
+                    Logo Sekolah (permintaan user 2026-10-15, dipindah &
+                    diaktifkan utk mode Tambah Sekolah 2026-10-15 sore) -
+                    dipakai otomatis di tab "Cover SMPN"/"Cover SMP-S" menu
+                    Format Surat Rekomendasi & Pembatalan TPG. Posisi
+                    SENGAJA di bawah Alamat Sekolah (permintaan eksplisit
+                    user), dan field ini SEKARANG tampil di KEDUA mode
+                    (Tambah Sekolah maupun Edit) - 3 kondisi tampilan:
+                    1) $editingId && $logoSekolahSrc -> logo SUDAH tersimpan
+                       di server (mode Edit, sekolah sudah pernah upload
+                       logo sebelumnya) - auto-save on select TETAP dipakai
+                       di kondisi ini (App\Livewire\ProfilSekolah\Index::
+                       updatedLogoSekolahBaru()), lengkap tombol Ganti/Hapus.
+                    2) $logoSekolahBaru (tanpa syarat $editingId) -> file
+                       BARU dipilih tapi BELUM tersimpan ke server (mode
+                       Tambah Sekolah SELALU masuk sini dulu, krn belum ada
+                       ID sekolah utk disimpan; mode Edit SEHARUSNYA jarang
+                       terlihat di kondisi ini krn auto-save langsung
+                       mengosongkan $logoSekolahBaru) - preview pakai
+                       ->temporaryUrl() (pola sama dgn $fotoOpsBaru di
+                       PendataanOps\Index), baru benar-benar disimpan +
+                       di-crop 450x450px saat tombol "Simpan" ditekan, lihat
+                       App\Livewire\ProfilSekolah\Index::simpan().
+                    3) Belum ada logo sama sekali -> kotak upload kosong.
+                --}}
+                <div>
+                    <x-input-label value="Logo Sekolah" />
+                    <p class="text-xs text-slate-400 -mt-0.5 mb-1.5">Dipakai otomatis di tengah halaman Cover SMPN/Cover SMP-S (menu Format Surat Rekomendasi & Pembatalan TPG). Ukuran otomatis disesuaikan sistem jadi 450x450px (crop ke tengah).</p>
+                    @if ($editingId && $logoSekolahSrc)
+                        <div class="flex items-center gap-3">
+                            <img src="{{ $logoSekolahSrc }}" class="h-16 w-16 object-contain border border-slate-200 rounded-md bg-white">
+                            <div wire:loading.remove wire:target="logoSekolahBaru,hapusLogoSekolah" class="flex items-center gap-3 text-xs">
+                                <label class="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-700 cursor-pointer">
+                                    <x-icon name="upload" class="w-3.5 h-3.5" />
+                                    Ganti Logo
+                                    <input type="file" wire:model="logoSekolahBaru" accept="image/*" class="hidden">
+                                </label>
+                                <button type="button" wire:click="hapusLogoSekolah" wire:confirm="Hapus Logo Sekolah ini? Setelah dihapus, logo akan kosong sampai diupload lagi." class="inline-flex items-center gap-1.5 text-red-500 hover:text-red-700 cursor-pointer">
+                                    <x-icon name="trash" class="w-3.5 h-3.5" />
+                                    Hapus
+                                </button>
+                            </div>
+                            <div wire:loading wire:target="logoSekolahBaru,hapusLogoSekolah" class="text-xs text-slate-400">Memproses logo...</div>
+                        </div>
+                    @elseif ($logoSekolahBaru)
+                        <div class="flex items-center gap-3">
+                            <img src="{{ $logoSekolahBaru->temporaryUrl() }}" class="h-16 w-16 object-contain border border-slate-200 rounded-md bg-white">
+                            <div wire:loading.remove wire:target="logoSekolahBaru" class="flex items-center gap-3 text-xs">
+                                <label class="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-700 cursor-pointer">
+                                    <x-icon name="upload" class="w-3.5 h-3.5" />
+                                    Ganti
+                                    <input type="file" wire:model="logoSekolahBaru" accept="image/*" class="hidden">
+                                </label>
+                                <button type="button" wire:click="$set('logoSekolahBaru', null)" class="inline-flex items-center gap-1.5 text-red-500 hover:text-red-700 cursor-pointer">
+                                    <x-icon name="trash" class="w-3.5 h-3.5" />
+                                    Batalkan
+                                </button>
+                            </div>
+                            <div wire:loading wire:target="logoSekolahBaru" class="text-xs text-slate-400">Memproses logo...</div>
+                        </div>
+                        <p class="text-xs text-amber-500 mt-1">Logo baru akan tersimpan saat tombol "Simpan" ditekan.</p>
+                    @else
+                        <div wire:loading.remove wire:target="logoSekolahBaru">
+                            <label class="flex flex-col items-center justify-center gap-1.5 border border-dashed border-slate-300 rounded-lg py-4 text-slate-400 hover:text-slate-600 hover:border-slate-400 cursor-pointer text-xs">
+                                <x-icon name="upload" class="w-5 h-5" />
+                                Logo Sekolah belum diupload - klik untuk upload
+                                <input type="file" wire:model="logoSekolahBaru" accept="image/*" class="hidden">
+                            </label>
+                        </div>
+                        <div wire:loading wire:target="logoSekolahBaru" class="text-center text-xs text-slate-400 border border-dashed border-slate-300 rounded-lg py-4">Mengunggah logo...</div>
+                    @endif
+                    <x-input-error :messages="$errors->get('logoSekolahBaru')" class="mt-2" />
                 </div>
             </div>
 
