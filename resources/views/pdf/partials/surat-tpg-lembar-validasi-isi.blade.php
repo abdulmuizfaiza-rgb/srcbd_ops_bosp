@@ -157,29 +157,33 @@
         <td style="width:34%;vertical-align:top;">Mengetahui / Menyetujui,</td>
         <td colspan="2" style="width:66%;vertical-align:top;text-align:center;">VERIFIKATOR :</td>
     </tr>
-    {{-- Garis putus-putus di bawah baris label jabatan (BARU 2026-10-16,
-         permintaan user sesuai contoh gambar) - memisahkan label jabatan
-         dari ruang tanda tangan di bawahnya. --}}
+    {{-- Garis putus-putus (BARU 2026-10-16, permintaan user sesuai contoh
+         gambar, 2 tahap): horizontal di bawah baris label jabatan +
+         vertikal pemisah antar 3 kolom tanda tangan (dari baris label
+         sampai baris nama/NIP paling bawah) - supaya setiap bagian tanda
+         tangan (Kepala Seksi Tata Kelola Kelembagaan dan Ketenagaan /
+         Pengawas / Kepala Sekolah) terlihat jelas terpisah satu sama
+         lain, meniru tata letak kotak/tabel. --}}
     <tr>
         <td style="vertical-align:top;padding-right:8px;padding-bottom:4px;border-bottom:1px dashed #000;">Kepala Seksi Tata Kelola Kelembagaan dan Ketenagaan</td>
-        <td style="width:33%;vertical-align:top;text-align:center;padding:0 8px 4px;border-bottom:1px dashed #000;">Pengawas,</td>
-        <td style="width:33%;vertical-align:top;text-align:center;padding-left:8px;padding-bottom:4px;border-bottom:1px dashed #000;">Kepala {{ $namaSekolah ?: '............................' }}</td>
+        <td style="width:33%;vertical-align:top;text-align:center;padding:0 8px 4px;border-bottom:1px dashed #000;border-left:1px dashed #000;">Pengawas,</td>
+        <td style="width:33%;vertical-align:top;text-align:center;padding-left:8px;padding-bottom:4px;border-bottom:1px dashed #000;border-left:1px dashed #000;">Kepala {{ $namaSekolah ?: '............................' }}</td>
     </tr>
     <tr>
         <td style="height:56px;"></td>
-        <td style="height:56px;"></td>
-        <td style="height:56px;"></td>
+        <td style="height:56px;border-left:1px dashed #000;"></td>
+        <td style="height:56px;border-left:1px dashed #000;"></td>
     </tr>
     <tr>
         <td style="vertical-align:top;padding-right:8px;">
             {{ $namaKasieKpml ?: '............................' }}<br>
             NIP. {{ $nipKasieKpml ?: '............................' }}
         </td>
-        <td style="vertical-align:top;text-align:center;padding:0 8px;">
+        <td style="vertical-align:top;text-align:center;padding:0 8px;border-left:1px dashed #000;">
             {{ $namaPengawas ?: '............................' }}<br>
             NIP. {{ $nipPengawas ?: '............................' }}
         </td>
-        <td style="vertical-align:top;text-align:center;padding-left:8px;">
+        <td style="vertical-align:top;text-align:center;padding-left:8px;border-left:1px dashed #000;">
             {{ $namaKepsek ?: '............................' }}<br>
             NIP. {{ $nipKepsek ?: '............................' }}
         </td>
