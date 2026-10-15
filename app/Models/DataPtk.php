@@ -110,6 +110,12 @@ class DataPtk extends Model
         ];
     }
 
+    /**
+     * Pilihan status kepegawaian untuk Data PTK. PTY, GTY, GTT ditambahkan
+     * 2026-10-15 (permintaan user) - PTY/GTY = Pegawai/Guru Tetap Yayasan,
+     * GTT = Guru Tidak Tetap, dipakai untuk PTK sekolah swasta yang
+     * statusnya bukan PNS/PPPK/Honorer.
+     */
     public static function statusKepegawaianOptions(): array
     {
         return [
@@ -118,6 +124,9 @@ class DataPtk extends Model
             'PPPK Paruh Waktu' => 'PPPK Paruh Waktu',
             'Honorer Sekolah Negeri' => 'Honorer Sekolah Negeri',
             'Honorer Sekolah Swasta' => 'Honorer Sekolah Swasta',
+            'PTY' => 'PTY',
+            'GTY' => 'GTY',
+            'GTT' => 'GTT',
         ];
     }
 

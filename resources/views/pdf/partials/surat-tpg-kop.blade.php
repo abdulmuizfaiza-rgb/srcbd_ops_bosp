@@ -21,6 +21,12 @@
       layar Livewire (App\Livewire\PendataanOps\SuratTpg\Index) - kotak
       upload/ganti HANYA muncul saat true, krn PDF/Word tidak interaktif.
 
+    Perbaikan 2026-10-15 (permintaan user): tombol "Hapus" ditambahkan di
+    samping "Ganti Kop Surat" (muncul HANYA saat $editable && kop surat
+    SUDAH ada) - memanggil hapusKopSurat() di komponen Livewire, supaya
+    Admin OPS/BOSP bisa mengosongkan kop surat lama dulu kalau mau ganti,
+    tanpa harus langsung menimpa dengan upload baru.
+
     SENGAJA ditulis dengan tabel/div HTML polos (BUKAN flexbox/grid, & TANPA
     garis kotak hitam pada gambar kop-nya sendiri - permintaan user poin 4
     "isi surat nya tidak perlu pakai garis hitam") supaya tampil identik di
@@ -35,14 +41,18 @@
     </div>
     <div style="border-bottom:2px solid #334155;margin-bottom:16px;"></div>
     @if ($editable)
-        <div wire:loading.remove wire:target="kopSuratBaru" class="mb-4 -mt-2 text-center">
+        <div wire:loading.remove wire:target="kopSuratBaru,hapusKopSurat" class="mb-4 -mt-2 flex items-center justify-center gap-3 text-center">
             <label class="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 cursor-pointer">
                 <x-icon name="upload" class="w-3.5 h-3.5" />
                 Ganti Kop Surat
                 <input type="file" wire:model="kopSuratBaru" accept="image/*" class="hidden">
             </label>
+            <button type="button" wire:click="hapusKopSurat" wire:confirm="Hapus Kop Surat ini? Setelah dihapus, kop surat akan kosong sampai diupload lagi (berlaku untuk tab Rekomendasi maupun Penghentian)." class="inline-flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 cursor-pointer">
+                <x-icon name="trash" class="w-3.5 h-3.5" />
+                Hapus
+            </button>
         </div>
-        <div wire:loading wire:target="kopSuratBaru" class="mb-4 -mt-2 text-center text-xs text-slate-400">Mengunggah kop surat...</div>
+        <div wire:loading wire:target="kopSuratBaru,hapusKopSurat" class="mb-4 -mt-2 text-center text-xs text-slate-400">Memproses kop surat...</div>
         <x-input-error :messages="$errors->get('kopSuratBaru')" class="mb-4 -mt-2 text-center" />
     @endif
 @elseif ($editable)

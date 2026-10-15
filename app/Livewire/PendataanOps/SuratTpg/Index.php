@@ -520,6 +520,37 @@ class Index extends Component
     }
 
     /**
+     * Hapus Kop Surat yang sedang tersimpan (permintaan user 2026-10-15:
+     * tombol "Hapus" di samping "Ganti Kop Surat", supaya Admin OPS/BOSP
+     * bisa mengosongkan kop surat lama dulu - misalnya salah upload -
+     * SEBELUM upload gambar baru, tanpa harus langsung menimpa). Sama
+     * seperti updatedKopSuratBaru(): per SEKOLAH (App\Models\ProfilSekolah::
+     * kop_surat), berlaku otomatis untuk KEDUA tab (Rekomendasi &
+     * Penghentian) begitu dihapus dari tab manapun. File lama ikut
+     * dihapus dari storage (pola sama seperti $pathLama di
+     * updatedKopSuratBaru()).
+     */
+    public function hapusKopSurat(): void
+    {
+        $sekolahId = $this->sekolahAktifId();
+
+        if (! $sekolahId || ! $this->bolehKelola($sekolahId)) {
+            return;
+        }
+
+        $sekolah = ProfilSekolah::findOrFail($sekolahId);
+        $pathLama = $sekolah->kop_surat;
+
+        if (! $pathLama) {
+            return;
+        }
+
+        $sekolah->update(['kop_surat' => null]);
+
+        Storage::disk('public')->delete($pathLama);
+    }
+
+    /**
      * Menyusun seluruh data tampilan (dipakai bersama render(), exportPdf(),
      * exportWord()) - Nama/NIP Kepsek, Tempat Tugas, Nama/NIP Pengawas
      * SELALU diambil langsung dari ProfilSekolah (bukan dari $this->nomorSurat/

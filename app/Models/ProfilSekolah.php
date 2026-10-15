@@ -58,9 +58,12 @@ class ProfilSekolah extends Model
     }
 
     /**
-     * Pilihan status kepegawaian untuk Bendahara (dipakai juga sebagai
-     * dasar untuk Kepala Sekolah, lihat statusKepegawaianKepsekOptions()
-     * di bawah).
+     * Pilihan status kepegawaian untuk Bendahara. SENGAJA independen dari
+     * statusKepegawaianKepsekOptions() di bawah (TIDAK saling mewarisi
+     * lewat array_merge lagi sejak 2026-10-15) - supaya penambahan pilihan
+     * di salah satu field (Bendahara ATAU Kepala Sekolah) tidak ikut
+     * "bocor"/muncul di field yang lain. PTY, GTY, PTT ditambahkan
+     * 2026-10-15 (permintaan user, KHUSUS Bendahara).
      *
      * @return array<string, string>
      */
@@ -71,23 +74,32 @@ class ProfilSekolah extends Model
             'ASN PPPK' => 'ASN PPPK',
             'ASN PPPK-PW' => 'ASN PPPK-PW',
             'Honorer' => 'Honorer',
+            'PTY' => 'PTY',
+            'GTY' => 'GTY',
+            'PTT' => 'PTT',
         ];
     }
 
     /**
-     * Pilihan status kepegawaian KHUSUS untuk Kepala Sekolah - sama seperti
-     * statusKepegawaianOptions() (dipakai Bendahara), ditambah GTT & GTY
-     * (permintaan user 2026-10-15, KHUSUS field Status Kepegawaian Kepala
-     * Sekolah pada menu Profil Sekolah - TIDAK berlaku untuk Bendahara).
+     * Pilihan status kepegawaian KHUSUS untuk Kepala Sekolah - daftar
+     * independen sendiri (lihat catatan "SENGAJA independen" di
+     * statusKepegawaianOptions() di atas), isinya sama persis dengan
+     * pilihan Bendahara yang lama (PNS/ASN PPPK/ASN PPPK-PW/Honorer)
+     * ditambah GTT & GTY (permintaan user 2026-10-15, KHUSUS field Status
+     * Kepegawaian Kepala Sekolah pada menu Profil Sekolah).
      *
      * @return array<string, string>
      */
     public static function statusKepegawaianKepsekOptions(): array
     {
-        return array_merge(self::statusKepegawaianOptions(), [
+        return [
+            'PNS' => 'PNS',
+            'ASN PPPK' => 'ASN PPPK',
+            'ASN PPPK-PW' => 'ASN PPPK-PW',
+            'Honorer' => 'Honorer',
             'GTT' => 'GTT',
             'GTY' => 'GTY',
-        ]);
+        ];
     }
 
     public function getStatusLabelAttribute(): string

@@ -49,12 +49,17 @@ class PendataanBosp extends Model
         'P' => 'Perempuan',
     ];
 
+    /**
+     * GTY, PTY ditambahkan 2026-10-15 (permintaan user).
+     */
     public const STATUS_KEPEGAWAIAN_OPTIONS = [
         'PNS' => 'PNS',
         'ASN PPPK' => 'ASN PPPK',
         'ASN PPPK-PW' => 'ASN PPPK-PW',
         'Honorer' => 'Honorer',
         'PTT Yayasan' => 'PTT Yayasan',
+        'GTY' => 'GTY',
+        'PTY' => 'PTY',
     ];
 
     public const PENDIDIKAN_OPTIONS = [
