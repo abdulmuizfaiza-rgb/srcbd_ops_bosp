@@ -14,7 +14,10 @@ use App\Models\ProfilSekolah;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -54,6 +57,17 @@ class Index extends Component
     public const TAB_PROFIL = 'profil';
 
     public const TAB_DATA_PTK = 'data_ptk';
+
+    /**
+     * Logo Sekolah yang diupload OTOMATIS di-crop (center-crop, pola sama
+     * persis dengan App\Livewire\PendataanOps\Index::simpanFotoOps())
+     * supaya persis 450x450 px persegi, berapapun ukuran/rasio asli
+     * gambar yang diupload - permintaan user 2026-10-15, dipilih metode
+     * "crop ke tengah" (bukan tambah latar putih) lewat AskUserQuestion.
+     */
+    public const LOGO_SEKOLAH_LEBAR_PX = 450;
+
+    public const LOGO_SEKOLAH_TINGGI_PX = 450;
 
     #[Url(as: 'tab')]
     public string $tabUtama = self::TAB_PROFIL;
@@ -398,7 +412,7 @@ class Index extends Component
         }
 
         $pathLama = $sekolah->logo_sekolah;
-        $pathBaru = $this->logoSekolahBaru->store('logo-sekolah', 'public');
+        $pathBaru = $this->simpanLogoSekolah($this->logoSekolahBaru);
         $sekolah->update(['logo_sekolah' => $pathBaru]);
 
         if ($pathLama && Storage::disk('public')->exists($pathLama)) {
@@ -408,6 +422,26 @@ class Index extends Component
         $this->logoSekolahBaru = null;
         $this->resetErrorBag('logoSekolahBaru');
         session()->flash('status', 'Logo Sekolah berhasil diperbarui.');
+    }
+
+    /**
+     * Crop & resize Logo Sekolah ke 450x450 px persegi (center-crop via
+     * Intervention Image, pola sama persis dengan
+     * App\Livewire\PendataanOps\Index::simpanFotoOps()) - permintaan user
+     * 2026-10-15, supaya logo selalu tampil rapi di tab Cover SMPN/Cover
+     * SMP-S berapapun ukuran/rasio asli gambar yang diupload admin.
+     */
+    private function simpanLogoSekolah($fileBaru): string
+    {
+        $manager = new ImageManager(new Driver);
+
+        $gambar = $manager->read($fileBaru->getRealPath())
+            ->cover(self::LOGO_SEKOLAH_LEBAR_PX, self::LOGO_SEKOLAH_TINGGI_PX);
+
+        $namaFile = 'logo-sekolah/'.Str::random(40).'.jpg';
+        Storage::disk('public')->put($namaFile, (string) $gambar->toJpeg(90));
+
+        return $namaFile;
     }
 
     /**
