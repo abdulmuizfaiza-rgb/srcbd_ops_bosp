@@ -22,10 +22,13 @@
         @php
             $m = $margin ?? ['atas' => 3, 'kanan' => 2.5, 'bawah' => 2.5, 'kiri' => 2.5];
         @endphp
+        {{-- Landscape (permintaan user 2026-10-16, supaya 8 kolom
+             ceklist lebih lega) - ukuran kertas ditukar lebar<->tinggi
+             drpd wrapper Word lainnya yg portrait. --}}
         @page Section1 {
-            size: 21cm 29.7cm;
+            size: 29.7cm 21cm;
             margin: {{ $m['atas'] }}cm {{ $m['kanan'] }}cm {{ $m['bawah'] }}cm {{ $m['kiri'] }}cm;
-            mso-page-orientation: portrait;
+            mso-page-orientation: landscape;
         }
         div.Section1 { page: Section1; }
         body { font-family: 'Calibri', sans-serif; font-size: 11pt; color: #000; }

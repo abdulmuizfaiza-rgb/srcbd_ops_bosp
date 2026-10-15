@@ -87,7 +87,13 @@
 </table>
 
 {{-- Tabel daftar PTK + ceklist 8 kriteria --}}
+{{-- <thead>/<tbody> (BARU 2026-10-16, permintaan user: halaman
+     landscape + otomatis nambah halaman kalau data PTK banyak) - dompdf
+     mengulang otomatis isi <thead> di setiap halaman saat <tbody>
+     terpotong ke halaman berikutnya, supaya header kolom & tombol
+     "Centang Semua" (mode layar) tetap terlihat di setiap halaman. --}}
 <table style="width:100%;border-collapse:collapse;font-size:7pt;">
+    <thead>
     <tr>
         <td style="border:1px solid #000;padding:3px;text-align:center;font-weight:bold;width:3%;">No</td>
         <td style="border:1px solid #000;padding:3px;text-align:center;font-weight:bold;width:16%;">Nama</td>
@@ -100,6 +106,8 @@
             </td>
         @endforeach
     </tr>
+    </thead>
+    <tbody>
     @forelse ($daftarPtkValidasi as $nuptk => $ptk)
         <tr>
             <td style="border:1px solid #000;padding:3px;text-align:center;">{{ $loop->iteration }}</td>
@@ -121,6 +129,7 @@
             </td>
         </tr>
     @endforelse
+    </tbody>
 </table>
 
 <div style="margin-top:14px;font-size:10.5pt;">
@@ -148,10 +157,13 @@
         <td style="width:34%;vertical-align:top;">Mengetahui / Menyetujui,</td>
         <td colspan="2" style="width:66%;vertical-align:top;text-align:center;">VERIFIKATOR :</td>
     </tr>
+    {{-- Garis putus-putus di bawah baris label jabatan (BARU 2026-10-16,
+         permintaan user sesuai contoh gambar) - memisahkan label jabatan
+         dari ruang tanda tangan di bawahnya. --}}
     <tr>
-        <td style="vertical-align:top;padding-right:8px;">Kepala Seksi Tata Kelola Kelembagaan dan Ketenagaan</td>
-        <td style="width:33%;vertical-align:top;text-align:center;padding:0 8px;">Pengawas,</td>
-        <td style="width:33%;vertical-align:top;text-align:center;padding-left:8px;">Kepala {{ $namaSekolah ?: '............................' }}</td>
+        <td style="vertical-align:top;padding-right:8px;padding-bottom:4px;border-bottom:1px dashed #000;">Kepala Seksi Tata Kelola Kelembagaan dan Ketenagaan</td>
+        <td style="width:33%;vertical-align:top;text-align:center;padding:0 8px 4px;border-bottom:1px dashed #000;">Pengawas,</td>
+        <td style="width:33%;vertical-align:top;text-align:center;padding-left:8px;padding-bottom:4px;border-bottom:1px dashed #000;">Kepala {{ $namaSekolah ?: '............................' }}</td>
     </tr>
     <tr>
         <td style="height:56px;"></td>

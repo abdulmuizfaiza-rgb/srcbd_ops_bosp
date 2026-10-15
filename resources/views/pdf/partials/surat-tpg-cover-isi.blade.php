@@ -149,7 +149,7 @@
 @endphp
 
 <table style="width:100%; height: {{ $tinggiKontenCm }}cm; border-collapse:collapse;">
-    <tr>
+    <tr style="height: {{ $tinggiBarisJudulCm }}cm; mso-height-rule:exactly;">
         <td style="height: {{ $tinggiBarisJudulCm }}cm; padding:0; text-align:center; vertical-align:top;">
             <div style="font-weight:bold;font-size:13pt;line-height:1.5;text-transform:uppercase;">
                 Verifikasi dan Validasi<br>
@@ -159,7 +159,7 @@
             </div>
         </td>
     </tr>
-    <tr>
+    <tr style="height: {{ $logoUkuranCm }}cm; mso-height-rule:exactly;">
         <td style="height: {{ $logoUkuranCm }}cm; padding:0; text-align:center; vertical-align:middle;">
             @if ($logoSekolahSrc)
                 <img src="{{ $logoSekolahSrc }}" style="width:{{ $logoPx }}px;height:{{ $logoPx }}px;">
@@ -168,12 +168,20 @@
             @endif
         </td>
     </tr>
-    <tr>
+    <tr style="height: {{ $tinggiBarisBawahCm }}cm; mso-height-rule:exactly;">
         <td style="height: {{ $tinggiBarisBawahCm }}cm; padding:0; text-align:center; vertical-align:bottom;">
             <div style="font-weight:bold;font-size:13pt;line-height:1.5;text-transform:uppercase;">
-                @unless ($isNegeri)
+                @if ($isNegeri)
+                    {{-- "Pemerintah Kabupaten Sukabumi" (BARU 2026-10-16,
+                         permintaan user) - HANYA utk Cover Negeri (SMPN),
+                         ditulis sebelum Nama Sekolah. Teks tetap tampil
+                         huruf besar lewat text-transform:uppercase pada
+                         div ini (bukan ditulis huruf besar manual di sini,
+                         konsisten dgn Nama Yayasan/Nama Sekolah). --}}
+                    Pemerintah Kabupaten Sukabumi<br>
+                @else
                     {{ $sekolah->nama_yayasan ?: '...................................' }}<br>
-                @endunless
+                @endif
                 {{ $sekolah->nama_sekolah }}
             </div>
             <div style="font-weight:bold;font-size:11pt;margin-top:4px;">

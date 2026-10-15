@@ -984,7 +984,11 @@ class Index extends Component
 
         $view = 'pdf.'.($this->viewSuratPerJenis()[$this->tabAktif] ?? 'surat-tpg-rekomendasi');
 
-        $pdf = Pdf::loadView($view, $data)->setPaper($ukuranKertas, 'portrait');
+        // Lembar Validasi TPG dicetak LANDSCAPE (permintaan user
+        // 2026-10-16) - jenis/tab lainnya tetap portrait.
+        $orientasiKertas = $this->tabAktif === SuratTpg::JENIS_LEMBAR_VALIDASI ? 'landscape' : 'portrait';
+
+        $pdf = Pdf::loadView($view, $data)->setPaper($ukuranKertas, $orientasiKertas);
 
         $namaFile = 'surat-tpg-'.$this->tabAktif.'-'.Str::slug($sekolah->nama_sekolah).'-tw'.$this->triwulan.'-'.$this->tahun.'.pdf';
         $pathSementara = tempnam(sys_get_temp_dir(), 'surat-tpg-').'.pdf';

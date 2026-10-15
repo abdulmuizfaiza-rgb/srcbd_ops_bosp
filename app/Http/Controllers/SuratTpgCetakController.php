@@ -155,7 +155,12 @@ class SuratTpgCetakController extends Controller
         };
         $ukuranKertas = $kertas === 'f4' ? 'folio' : 'a4';
 
-        $pdf = Pdf::loadView($view, $data)->setPaper($ukuranKertas, 'portrait');
+        // Lembar Validasi TPG dicetak LANDSCAPE (permintaan user
+        // 2026-10-16, supaya 8 kolom ceklist lebih lega/rapi) - jenis
+        // surat TPG lainnya tetap portrait seperti sebelumnya.
+        $orientasiKertas = $jenis === SuratTpg::JENIS_LEMBAR_VALIDASI ? 'landscape' : 'portrait';
+
+        $pdf = Pdf::loadView($view, $data)->setPaper($ukuranKertas, $orientasiKertas);
 
         return $pdf->stream('preview-surat-tpg-'.$jenis.'.pdf');
     }
