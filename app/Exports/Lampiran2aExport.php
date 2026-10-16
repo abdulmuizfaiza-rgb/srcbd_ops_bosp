@@ -2,7 +2,6 @@
 
 namespace App\Exports;
 
-use App\Models\DataPtk;
 use App\Models\Lampiran2a;
 use App\Models\ProfilSekolah;
 use Illuminate\Support\Collection as SupportCollection;
@@ -17,7 +16,6 @@ use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
-use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -31,18 +29,16 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * lembar tanda tangan Pengawas (kolom B, NIP diisi manual) & Kepala
  * Sekolah (kolom E, NIP otomatis dari Profil Sekolah) di bagian bawah.
  *
- * Kolom Status Kepegawaian diberi dropdown (Data Validation Excel) supaya
- * penulisannya selalu sama dengan pilihan yang ada di aplikasi - daftar
- * sumbernya ditulis ke kolom tersembunyi I.
- *
  * SEJAK 2026-10-15: Status Kepegawaian Lampiran 2a sekarang diambil
  * OTOMATIS dari Data PTK (permintaan user) begitu baris terhubung ke
  * sebuah PTK - lihat App\Livewire\PendataanOps\Lampiran2a\Index::
- * updatedDataPtkId(). Daftar sumber dropdown kolom I di bawah digabung
- * (union) antara pilihan Lampiran 2a sendiri (mode ketik bebas, data
- * lama) DAN pilihan Status Kepegawaian Data PTK (mode otomatis, jalur
- * utama sekarang) - lihat tulisDaftarPilihanTersembunyi() - supaya
- * nilai apa pun yang mungkin tersimpan tetap ada di daftar dropdown.
+ * updatedDataPtkId().
+ *
+ * SEJAK 2026-10-16 (permintaan user): kolom Status Kepegawaian TIDAK
+ * LAGI diberi dropdown (Data Validation Excel) di hasil export ini -
+ * menu Unduhan isinya data yang SUDAH tersimpan (bukan template untuk
+ * diisi lalu diimport ulang seperti DataPtkExport/ProfilSekolahExport),
+ * jadi yang ditampilkan cukup hasil inputan apa adanya (teks biasa).
  *
  * 4 baris kosong (bergaris tabel, mengikuti lebar tabel) disediakan
  * setelah baris data terakhir sebelum lembar tanda tangan Pengawas &
@@ -143,7 +139,6 @@ class Lampiran2aExport implements FromCollection, ShouldAutoSize, WithCustomStar
                 $this->tulisJudul($sheet);
                 $this->rapikanTabel($sheet);
                 $this->tulisLembarTandaTangan($sheet);
-                $this->tulisDaftarPilihanTersembunyi($sheet);
             },
         ];
     }
@@ -250,67 +245,4 @@ class Lampiran2aExport implements FromCollection, ShouldAutoSize, WithCustomStar
         }
     }
 
-    /**
-     * Dropdown Status Kepegawaian pada hasil export supaya penulisannya
-     * selalu sama persis dengan pilihan yang ada di aplikasi. Daftar
-     * sumbernya ditulis ke kolom tersembunyi I lalu dirujuk lewat Data
-     * Validation Excel (bukan kolom biasa).
-     *
-     * Sejak 2026-10-15: digabung (union) dengan pilihan Status
-     * Kepegawaian Data PTK, karena baris Lampiran 2a yang terhubung ke
-     * Data PTK (jalur utama sekarang) bisa punya nilai status dari
-     * daftar Data PTK yang lebih luas, bukan cuma daftar Lampiran 2a
-     * sendiri (mode ketik bebas, data lama).
-     */
-    private function tulisDaftarPilihanTersembunyi(Worksheet $sheet): void
-    {
-        $statusKepegawaian = array_values(array_unique(array_merge(
-            Lampiran2a::STATUS_KEPEGAWAIAN_OPTIONS,
-            DataPtk::statusKepegawaianOptions()
-        )));
-        foreach ($statusKepegawaian as $indeks => $nilai) {
-            $sheet->setCellValue('I'.($indeks + 1), $nilai);
-        }
-
-        $sheet->getColumnDimension('I')->setVisible(false);
-
-        $this->terapkanValidasiPilihan(
-            $sheet,
-            'D',
-            '=$I$1:$I$'.count($statusKepegawaian),
-            self::BARIS_HEADER_TABEL + 1,
-            $this->barisAkhirValidasi()
-        );
-    }
-
-    /**
-     * Baris terakhir tempat dropdown pilihan diterapkan - diberi buffer
-     * jauh di bawah baris data terakhir supaya masih bisa dipakai kalau
-     * ada baris baru yang ditambahkan manual di Excel sebelum di-import
-     * lagi.
-     */
-    private function barisAkhirValidasi(): int
-    {
-        return $this->barisTerakhirTabel() + 300;
-    }
-
-    private function terapkanValidasiPilihan(Worksheet $sheet, string $kolom, string $referensiRentang, int $barisMulai, int $barisSelesai): void
-    {
-        for ($baris = $barisMulai; $baris <= $barisSelesai; $baris++) {
-            $validasi = new DataValidation();
-            $validasi->setType(DataValidation::TYPE_LIST);
-            $validasi->setErrorStyle(DataValidation::STYLE_STOP);
-            $validasi->setAllowBlank(true);
-            $validasi->setShowInputMessage(true);
-            $validasi->setShowErrorMessage(true);
-            $validasi->setShowDropDown(true);
-            $validasi->setErrorTitle('Nilai tidak valid');
-            $validasi->setError('Silakan pilih nilai dari daftar dropdown yang tersedia.');
-            $validasi->setPromptTitle('Pilih dari daftar');
-            $validasi->setPrompt('Silakan pilih salah satu nilai dari daftar pilihan.');
-            $validasi->setFormula1($referensiRentang);
-
-            $sheet->getCell($kolom.$baris)->setDataValidation($validasi);
-        }
-    }
 }

@@ -16,7 +16,6 @@ use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
-use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -38,10 +37,12 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * tangan Pengawas (kolom B, diisi manual) & Kepala Sekolah (kolom K,
  * otomatis dari Profil Sekolah) di bagian bawah.
  *
- * Kolom Tempat Tugas, Jenis Kepangkatan, Golongan, & Pangkat/Berkala
- * diberi dropdown (Data Validation Excel) supaya penulisannya selalu sama
- * dengan pilihan yang ada di aplikasi - daftar sumbernya ditulis ke kolom
- * tersembunyi N/O/P/Q.
+ * SEJAK 2026-10-16 (permintaan user): kolom Tempat Tugas, Jenis
+ * Kepangkatan, Golongan, & Pangkat/Berkala TIDAK LAGI diberi dropdown
+ * (Data Validation Excel) di hasil export ini - menu Unduhan isinya
+ * data yang SUDAH tersimpan (bukan template untuk diisi lalu diimport
+ * ulang seperti DataPtkExport/ProfilSekolahExport), jadi yang
+ * ditampilkan cukup hasil inputan apa adanya (teks biasa).
  *
  * 4 baris kosong (bergaris tabel, mengikuti lebar tabel) disediakan
  * setelah baris data terakhir sebelum lembar tanda tangan Pengawas &
@@ -164,7 +165,6 @@ class Lampiran2cExport implements FromCollection, ShouldAutoSize, WithCustomStar
                 $this->gabungkanJudulKolomStandalone($sheet);
                 $this->rapikanTabel($sheet);
                 $this->tulisLembarTandaTangan($sheet);
-                $this->tulisDaftarPilihanTersembunyi($sheet);
                 $this->tulisTanggalTmt($sheet);
             },
         ];
@@ -275,78 +275,6 @@ class Lampiran2cExport implements FromCollection, ShouldAutoSize, WithCustomStar
                     'horizontal' => Alignment::HORIZONTAL_CENTER,
                 ],
             ]);
-        }
-    }
-
-    /**
-     * Daftar pilihan (dropdown) pada hasil export supaya penulisan Tempat
-     * Tugas, Jenis Kepangkatan, & Golongan selalu sama persis dengan yang
-     * ada di aplikasi. Daftar sumbernya ditulis ke kolom tersembunyi N/O/P
-     * lalu dirujuk lewat Data Validation Excel (bukan kolom biasa).
-     */
-    private function tulisDaftarPilihanTersembunyi(Worksheet $sheet): void
-    {
-        $jenisKepangkatan = array_values(Lampiran2c::JENIS_KEPANGKATAN_OPTIONS);
-        foreach ($jenisKepangkatan as $indeks => $nilai) {
-            $sheet->setCellValue('N'.($indeks + 1), $nilai);
-        }
-
-        $golongan = array_values(Lampiran2c::GOLONGAN_OPTIONS);
-        foreach ($golongan as $indeks => $nilai) {
-            $sheet->setCellValue('O'.($indeks + 1), $nilai);
-        }
-
-        $sekolah = ProfilSekolah::query()->urutStandar()->pluck('nama_sekolah')->values();
-        foreach ($sekolah as $indeks => $nilai) {
-            $sheet->setCellValue('P'.($indeks + 1), $nilai);
-        }
-
-        $pangkatBerkala = array_values(Lampiran2c::PANGKAT_BERKALA_OPTIONS);
-        foreach ($pangkatBerkala as $indeks => $nilai) {
-            $sheet->setCellValue('Q'.($indeks + 1), $nilai);
-        }
-
-        foreach (['N', 'O', 'P', 'Q'] as $kolom) {
-            $sheet->getColumnDimension($kolom)->setVisible(false);
-        }
-
-        $barisMulai = self::BARIS_HEADER_TABEL + 1;
-        $barisSelesai = $this->barisAkhirValidasi();
-
-        $this->terapkanValidasiPilihan($sheet, 'D', '=$P$1:$P$'.max($sekolah->count(), 1), $barisMulai, $barisSelesai);
-        $this->terapkanValidasiPilihan($sheet, 'F', '=$N$1:$N$'.count($jenisKepangkatan), $barisMulai, $barisSelesai);
-        $this->terapkanValidasiPilihan($sheet, 'G', '=$O$1:$O$'.count($golongan), $barisMulai, $barisSelesai);
-        $this->terapkanValidasiPilihan($sheet, 'I', '=$Q$1:$Q$'.count($pangkatBerkala), $barisMulai, $barisSelesai);
-    }
-
-    /**
-     * Baris terakhir tempat dropdown pilihan diterapkan - diberi buffer
-     * jauh di bawah baris data terakhir supaya masih bisa dipakai kalau
-     * ada baris baru yang ditambahkan manual di Excel sebelum di-import
-     * lagi.
-     */
-    private function barisAkhirValidasi(): int
-    {
-        return $this->barisTerakhirTabel() + 300;
-    }
-
-    private function terapkanValidasiPilihan(Worksheet $sheet, string $kolom, string $referensiRentang, int $barisMulai, int $barisSelesai): void
-    {
-        for ($baris = $barisMulai; $baris <= $barisSelesai; $baris++) {
-            $validasi = new DataValidation();
-            $validasi->setType(DataValidation::TYPE_LIST);
-            $validasi->setErrorStyle(DataValidation::STYLE_STOP);
-            $validasi->setAllowBlank(true);
-            $validasi->setShowInputMessage(true);
-            $validasi->setShowErrorMessage(true);
-            $validasi->setShowDropDown(true);
-            $validasi->setErrorTitle('Nilai tidak valid');
-            $validasi->setError('Silakan pilih nilai dari daftar dropdown yang tersedia.');
-            $validasi->setPromptTitle('Pilih dari daftar');
-            $validasi->setPrompt('Silakan pilih salah satu nilai dari daftar pilihan.');
-            $validasi->setFormula1($referensiRentang);
-
-            $sheet->getCell($kolom.$baris)->setDataValidation($validasi);
         }
     }
 
