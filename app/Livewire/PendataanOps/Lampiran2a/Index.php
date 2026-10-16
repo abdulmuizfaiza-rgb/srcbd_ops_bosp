@@ -443,7 +443,7 @@ class Index extends Component
 
     public function toggleSemua(): void
     {
-        $idHalamanIni = $this->queryDasar()->latest()->paginate($this->perPage)->pluck('id')->all();
+        $idHalamanIni = $this->terapkanUrutan($this->queryDasar())->paginate($this->perPage)->pluck('id')->all();
         if (count($idHalamanIni) > 0 && count(array_diff($idHalamanIni, $this->dipilih)) === 0) {
             $this->dipilih = array_values(array_diff($this->dipilih, $idHalamanIni));
         } else {
@@ -514,9 +514,66 @@ class Index extends Component
         return $query;
     }
 
+    /**
+     * Urutan KHUSUS utk tampilan "semua sekolah" (Superadmin, TANPA
+     * filter ke 1 sekolah tertentu) - permintaan user 2026-10-16:
+     * Status (Negeri dulu, Swasta sesudah) -> Nama Sekolah (A-Z) ->
+     * Kecamatan (A-Z). SENGAJA BEDA dari urutan baku aplikasi
+     * ProfilSekolah::scopeUrutStandar() (Status -> Kecamatan -> Nama
+     * Sekolah) - dikonfirmasi lewat AskUserQuestion bahwa user memang
+     * ingin urutan Nama Sekolah didahulukan dari Kecamatan KHUSUS di
+     * sini, jadi TIDAK memakai/mengubah scope yang sudah ada tsb.
+     * Kalau sedang memfilter ke 1 sekolah tertentu, urutan ini tidak
+     * relevan - tetap pakai urutan terbaru (->latest()) spt sebelumnya.
+     */
+    protected function terapkanUrutan($query)
+    {
+        if ($this->bolehKelolaSemua() && ! $this->filterSekolahId) {
+            return $query
+                ->join('profil_sekolah', 'lampiran_2a.profil_sekolah_id', '=', 'profil_sekolah.id')
+                ->select('lampiran_2a.*')
+                ->orderByRaw('CASE WHEN profil_sekolah.status = ? THEN 0 ELSE 1 END', [ProfilSekolah::STATUS_NEGERI])
+                ->orderBy('profil_sekolah.nama_sekolah')
+                ->orderBy('profil_sekolah.kecamatan')
+                ->orderBy('lampiran_2a.created_at', 'desc');
+        }
+
+        return $query->latest();
+    }
+
+    /**
+     * Ringkasan jumlah data tersimpan (permintaan user 2026-10-16),
+     * dirinci per status sekolah (Negeri/Swasta) - HANYA dihitung &
+     * ditampilkan saat tampilan "semua sekolah" aktif (sama dgn kondisi
+     * di terapkanUrutan() di atas), krn kalau sedang difilter ke 1
+     * sekolah rinciannya tidak relevan (pasti 100% salah satu status
+     * saja). Menghitung dari query dasar yang SAMA (semua filter lain
+     * yang sedang aktif ikut terhitung), bukan cuma 1 halaman yang
+     * sedang ditampilkan.
+     */
+    protected function ringkasan(): ?array
+    {
+        if (! $this->bolehKelolaSemua() || $this->filterSekolahId) {
+            return null;
+        }
+
+        $jumlahNegeri = $this->queryDasar()
+            ->whereHas('profilSekolah', fn ($q) => $q->where('status', ProfilSekolah::STATUS_NEGERI))
+            ->count();
+        $jumlahSwasta = $this->queryDasar()
+            ->whereHas('profilSekolah', fn ($q) => $q->where('status', ProfilSekolah::STATUS_SWASTA))
+            ->count();
+
+        return [
+            'negeri' => $jumlahNegeri,
+            'swasta' => $jumlahSwasta,
+            'total' => $jumlahNegeri + $jumlahSwasta,
+        ];
+    }
+
     public function render()
     {
-        $daftar = $this->queryDasar()->latest()->paginate($this->perPage);
+        $daftar = $this->terapkanUrutan($this->queryDasar())->paginate($this->perPage);
 
         // Filter $dipilih supaya hanya berisi id yang masih valid di
         // halaman yang SEDANG ditampilkan - pola sama seperti $dipilih
@@ -527,6 +584,7 @@ class Index extends Component
 
         return view('livewire.pendataan-ops.lampiran2a.index', [
             'daftar' => $daftar,
+            'ringkasan' => $this->ringkasan(),
             'triwulanOptions' => Lampiran2a::TRIWULAN_OPTIONS,
             'statusKepegawaianOptions' => Lampiran2a::STATUS_KEPEGAWAIAN_OPTIONS,
             'sekolahOptions' => ProfilSekolah::urutStandar()->get(['id', 'nama_sekolah']),

@@ -987,7 +987,7 @@ class Index extends Component
 
     public function togglePtkSemua(): void
     {
-        $idHalamanIni = $this->queryDasarPtk()->latest()->paginate($this->perPagePtk, ['*'], 'ptkPage')->pluck('id')->all();
+        $idHalamanIni = $this->terapkanUrutanPtk($this->queryDasarPtk())->paginate($this->perPagePtk, ['*'], 'ptkPage')->pluck('id')->all();
         if (count($idHalamanIni) > 0 && count(array_diff($idHalamanIni, $this->dipilihPtk)) === 0) {
             $this->dipilihPtk = array_values(array_diff($this->dipilihPtk, $idHalamanIni));
         } else {
@@ -1061,6 +1061,64 @@ class Index extends Component
         }
 
         return $query;
+    }
+
+    /**
+     * Urutan KHUSUS utk tampilan Data PTK "semua sekolah" (Superadmin,
+     * TANPA filter ke 1 sekolah tertentu) - permintaan user 2026-10-16:
+     * Status (Negeri dulu, Swasta sesudah) -> Nama Sekolah (A-Z) ->
+     * Kecamatan (A-Z). SENGAJA BEDA dari urutan baku aplikasi
+     * ProfilSekolah::scopeUrutStandar() (Status -> Kecamatan -> Nama
+     * Sekolah) - dikonfirmasi lewat AskUserQuestion bahwa user memang
+     * ingin urutan Nama Sekolah didahulukan dari Kecamatan KHUSUS di
+     * sini, jadi TIDAK memakai/mengubah scope yang sudah ada tsb.
+     * Kalau Admin OPS (hanya 1 sekolah) atau Superadmin sedang
+     * memfilter ke 1 sekolah tertentu, urutan ini tidak relevan -
+     * tetap pakai urutan terbaru (->latest()) seperti sebelumnya.
+     */
+    protected function terapkanUrutanPtk($query)
+    {
+        if ($this->bolehKelolaDataPtkSemua() && ! $this->filterSekolahPtk) {
+            return $query
+                ->join('profil_sekolah', 'data_ptk.profil_sekolah_id', '=', 'profil_sekolah.id')
+                ->select('data_ptk.*')
+                ->orderByRaw('CASE WHEN profil_sekolah.status = ? THEN 0 ELSE 1 END', [ProfilSekolah::STATUS_NEGERI])
+                ->orderBy('profil_sekolah.nama_sekolah')
+                ->orderBy('profil_sekolah.kecamatan')
+                ->orderBy('data_ptk.created_at', 'desc');
+        }
+
+        return $query->latest();
+    }
+
+    /**
+     * Ringkasan jumlah data PTK tersimpan (permintaan user 2026-10-16),
+     * dirinci per status sekolah (Negeri/Swasta) - HANYA dihitung &
+     * ditampilkan saat tampilan "semua sekolah" Superadmin aktif (sama
+     * dgn kondisi di terapkanUrutanPtk() di atas), krn kalau sedang
+     * difilter ke 1 sekolah rinciannya tidak relevan (pasti 100% salah
+     * satu status saja). Menghitung dari query dasar yang SAMA (semua
+     * filter lain yang sedang aktif ikut terhitung), bukan cuma 1
+     * halaman yang sedang ditampilkan.
+     */
+    protected function ringkasanPtk(): ?array
+    {
+        if (! $this->bolehKelolaDataPtkSemua() || $this->filterSekolahPtk) {
+            return null;
+        }
+
+        $jumlahNegeri = $this->queryDasarPtk()
+            ->whereHas('profilSekolah', fn ($q) => $q->where('status', ProfilSekolah::STATUS_NEGERI))
+            ->count();
+        $jumlahSwasta = $this->queryDasarPtk()
+            ->whereHas('profilSekolah', fn ($q) => $q->where('status', ProfilSekolah::STATUS_SWASTA))
+            ->count();
+
+        return [
+            'negeri' => $jumlahNegeri,
+            'swasta' => $jumlahSwasta,
+            'total' => $jumlahNegeri + $jumlahSwasta,
+        ];
     }
 
     /**
@@ -1171,7 +1229,7 @@ class Index extends Component
             ->urutStandar()
             ->get();
 
-        $daftarPtk = $this->queryDasarPtk()->latest()->paginate($this->perPagePtk, ['*'], 'ptkPage');
+        $daftarPtk = $this->terapkanUrutanPtk($this->queryDasarPtk())->paginate($this->perPagePtk, ['*'], 'ptkPage');
 
         $idHalamanIniPtk = $daftarPtk->pluck('id')->all();
         $this->dipilihPtk = array_values(array_intersect($this->dipilihPtk, $idHalamanIniPtk));
@@ -1204,6 +1262,7 @@ class Index extends Component
 
             // Tab Data PTK
             'daftarPtk' => $daftarPtk,
+            'ringkasanPtk' => $this->ringkasanPtk(),
             'semuaTerpilihPtk' => $semuaTerpilihPtk,
             'bolehKelolaDataPtkSemua' => $this->bolehKelolaDataPtkSemua(),
             'bolehTambahDataPtk' => $this->bolehTambahDataPtk(),

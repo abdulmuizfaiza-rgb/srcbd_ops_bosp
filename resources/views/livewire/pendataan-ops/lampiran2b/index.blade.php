@@ -93,6 +93,8 @@
                         </table>
                     </div>
 
+                    <x-ringkasan-negeri-swasta :ringkasan="$ringkasan" />
+
                     <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div class="flex-1">
                             {{ $daftar->links() }}
