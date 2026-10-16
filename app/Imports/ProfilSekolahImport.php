@@ -6,6 +6,7 @@ use App\Models\ProfilSekolah;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Concerns\Importable;
+use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
@@ -23,7 +24,22 @@ use Maatwebsite\Excel\Concerns\WithValidation;
  * sekolah baru. Jumlah baris yang berhasil ditambah/dilewati bisa dibaca
  * lewat properti $jumlahDibuat/$jumlahDilewati setelah import selesai.
  */
-class ProfilSekolahImport implements ToModel, WithHeadingRow, WithValidation
+/**
+ * SkipsEmptyRows (2026-10-16, perbaikan bug "Baris 11 wajib diisi" yang
+ * dilaporkan user): file hasil "Export Excel" template tsb (lihat Export
+ * berpasangan) sengaja menulis dropdown Data Validation ratusan baris di
+ * BAWAH data asli (buffer kosong supaya admin OPS bisa menambah baris
+ * baru sebelum diimport ulang) - akibatnya Excel mencatat baris-baris
+ * buffer itu sebagai "terpakai" walau TIDAK ADA isinya sama sekali.
+ * Tanpa SkipsEmptyRows, Laravel Excel ikut memvalidasi baris-baris
+ * kosong tsb sebagai baris data sungguhan (SEMUA field wajib dianggap
+ * kosong) - gagal pada baris PERTAMA setelah data asli & membatalkan
+ * sisa proses import (krn tidak WithBatchInserts, validasi per-baris
+ * langsung melempar exception begitu 1 baris gagal). SkipsEmptyRows
+ * membuat baris yang BENAR-BENAR kosong (tanpa isi sama sekali)
+ * dilewati otomatis, tidak dianggap baris data yang gagal.
+ */
+class ProfilSekolahImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmptyRows
 {
     use Importable;
 
