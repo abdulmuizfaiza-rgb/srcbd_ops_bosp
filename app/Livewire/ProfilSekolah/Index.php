@@ -6,12 +6,14 @@ use App\Models\AksesDataLog;
 use App\Exports\DataPtkExport;
 use App\Exports\DataPtkLaporanExport;
 use App\Exports\ProfilSekolahExport;
+use App\Exports\ProfilSekolahLaporanExport;
 use App\Imports\DataPtkImport;
 use App\Imports\ProfilSekolahImport;
 use App\Livewire\Concerns\HasZoomTampilan;
 use App\Models\DataPtk;
 use App\Models\ProfilSekolah;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -192,6 +194,36 @@ class Index extends Component
     protected function bolehKelolaSemua(): bool
     {
         return auth()->user()->isSuperadmin();
+    }
+
+    /**
+     * Query dasar tabel Profil Sekolah (tab "profil") - dipakai bersama
+     * oleh render() & tombol "Unduh Excel"/"Unduh PDF" (permintaan user
+     * 2026-10-16), supaya hasil unduhan SELALU mengikuti filter/pencarian
+     * yang sedang aktif pada tabel (jawaban AskUserQuestion "Ikuti
+     * filter/pencarian yang sedang aktif") - diekstrak dari render() TANPA
+     * mengubah logikanya sama sekali.
+     */
+    protected function queryDasarSekolah()
+    {
+        $query = ProfilSekolah::query();
+
+        if (! $this->bolehKelolaSemua()) {
+            // Admin OPS/Admin BOSP hanya melihat data sekolahnya sendiri.
+            $query->where('id', auth()->user()->profil_sekolah_id);
+        } else {
+            if ($this->filterNamaSekolah !== '') {
+                $query->where('id', $this->filterNamaSekolah);
+            }
+            if ($this->filterStatus !== '') {
+                $query->where('status', $this->filterStatus);
+            }
+            if ($this->filterKecamatan !== '') {
+                $query->where('kecamatan', $this->filterKecamatan);
+            }
+        }
+
+        return $query;
     }
 
     protected function bolehEdit(ProfilSekolah $sekolah): bool
@@ -561,6 +593,48 @@ class Index extends Component
         $daftarSekolah = ProfilSekolah::urutStandar()->get();
 
         return Excel::download(new ProfilSekolahExport($daftarSekolah), 'profil-sekolah.xlsx');
+    }
+
+    /**
+     * Tombol "Unduh Excel" (permintaan user 2026-10-16) - laporan RAPI
+     * berisi SEMUA field Profil Sekolah, bergaris tiap kolom & baris -
+     * BERBEDA dari export()/tombol "Export Excel" di atas (hanya 4 kolom,
+     * khusus re-import, khusus Superadmin). Tombol ini terbuka untuk
+     * SEMUA role (Admin OPS ikut bisa mengunduh data sekolahnya sendiri),
+     * sama seperti pola tombol "Unduh" Data PTK - lihat unduhPtk().
+     * Hasilnya SELALU mengikuti filter/pencarian yang sedang aktif (lihat
+     * queryDasarSekolah()).
+     */
+    public function unduhExcel()
+    {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Profil Sekolah', 'Excel (Laporan)');
+
+        $daftarSekolah = $this->queryDasarSekolah()->urutStandar()->get();
+
+        return Excel::download(new ProfilSekolahLaporanExport($daftarSekolah), 'profil-sekolah-laporan.xlsx');
+    }
+
+    /**
+     * Tombol "Unduh PDF" (permintaan user 2026-10-16) - sama persis
+     * dengan unduhExcel() di atas, hanya bentuk file berbeda. Pola
+     * simpan-ke-file-sementara mengikuti Unduhan\Index::unduhPdf()
+     * (Livewire tidak bisa langsung mengirim response PDF biner dari
+     * method komponen tanpa ini).
+     */
+    public function unduhPdf()
+    {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Profil Sekolah', 'PDF');
+
+        $daftarSekolah = $this->queryDasarSekolah()->urutStandar()->get();
+
+        $pdf = Pdf::loadView('pdf.profil-sekolah-laporan', [
+            'daftarSekolah' => $daftarSekolah,
+        ])->setPaper('a4', 'landscape');
+
+        $pathSementara = tempnam(sys_get_temp_dir(), 'profil-sekolah-pdf-').'.pdf';
+        file_put_contents($pathSementara, $pdf->output());
+
+        return response()->download($pathSementara, 'profil-sekolah-laporan.pdf')->deleteFileAfterSend(true);
     }
 
     public function import(): void
@@ -1226,24 +1300,7 @@ class Index extends Component
     {
         $kelolaSemua = $this->bolehKelolaSemua();
 
-        $query = ProfilSekolah::query();
-
-        if (! $kelolaSemua) {
-            // Admin OPS/Admin BOSP hanya melihat data sekolahnya sendiri.
-            $query->where('id', auth()->user()->profil_sekolah_id);
-        } else {
-            if ($this->filterNamaSekolah !== '') {
-                $query->where('id', $this->filterNamaSekolah);
-            }
-            if ($this->filterStatus !== '') {
-                $query->where('status', $this->filterStatus);
-            }
-            if ($this->filterKecamatan !== '') {
-                $query->where('kecamatan', $this->filterKecamatan);
-            }
-        }
-
-        $daftarSekolah = $query
+        $daftarSekolah = $this->queryDasarSekolah()
             ->urutStandar()
             ->get();
 

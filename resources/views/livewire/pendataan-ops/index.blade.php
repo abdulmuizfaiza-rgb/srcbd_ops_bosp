@@ -29,6 +29,20 @@
                             <x-filter-select wireModel="filterNamaOps" label="Nama OPS" allLabel="Semua Nama OPS" :options="$filterNamaOpsOptions" color="sky" />
                         @endif
                     </div>
+
+                    {{-- Tombol "Unduh Excel"/"Unduh PDF" (permintaan user 2026-10-16) -
+                         laporan RAPI berisi semua field Identitas OPS, terbuka untuk SEMUA
+                         role (Admin OPS ikut bisa mengunduh data sekolahnya sendiri). --}}
+                    <div class="flex items-center gap-1.5">
+                        <x-secondary-button wire:click="unduhExcel" wire:loading.attr="disabled" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                            <x-icon name="download" class="w-3.5 h-3.5 mr-1" />
+                            Unduh Excel
+                        </x-secondary-button>
+                        <x-secondary-button wire:click="unduhPdf" wire:loading.attr="disabled" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                            <x-icon name="download" class="w-3.5 h-3.5 mr-1" />
+                            Unduh PDF
+                        </x-secondary-button>
+                    </div>
                 </div>
 
                 <div class="overflow-auto scrollbar-modern border border-slate-200 rounded-lg" style="max-height: 30rem; zoom: {{ $zoomPercent }}%;">

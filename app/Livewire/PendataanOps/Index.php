@@ -2,9 +2,12 @@
 
 namespace App\Livewire\PendataanOps;
 
+use App\Exports\IdentitasOpsLaporanExport;
 use App\Livewire\Concerns\HasZoomTampilan;
+use App\Models\AksesDataLog;
 use App\Models\PendataanOps;
 use App\Models\ProfilSekolah;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -14,6 +17,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Maatwebsite\Excel\Facades\Excel;
 
 /**
  * Identitas OPS - satu data per sekolah.
@@ -144,6 +148,74 @@ class Index extends Component
     protected function bolehEdit(int $profilSekolahId): bool
     {
         return $this->bolehKelolaSemua() || auth()->user()->profil_sekolah_id === $profilSekolahId;
+    }
+
+    /**
+     * Query dasar tabel Identitas OPS - dipakai bersama oleh render() &
+     * tombol "Unduh Excel"/"Unduh PDF" (permintaan user 2026-10-16),
+     * supaya hasil unduhan SELALU mengikuti filter/pencarian yang sedang
+     * aktif pada tabel (jawaban AskUserQuestion "Ikuti filter/pencarian
+     * yang sedang aktif") - diekstrak dari render() TANPA mengubah
+     * logikanya sama sekali.
+     */
+    protected function queryDasarIdentitasOps()
+    {
+        $query = ProfilSekolah::with('identitasOps');
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('id', auth()->user()->profil_sekolah_id);
+        } else {
+            if ($this->filterNamaSekolah !== '') {
+                $query->where('id', $this->filterNamaSekolah);
+            }
+            if ($this->filterNamaOps !== '') {
+                $query->whereHas('identitasOps', fn ($q) => $q->where('nama', $this->filterNamaOps));
+            }
+        }
+
+        return $query;
+    }
+
+    /**
+     * Tombol "Unduh Excel" (permintaan user 2026-10-16: "tambahkan
+     * tombol unduh excel dan unduh pdf dengan field yang sama dengan yang
+     * ada pada aplikasi dan sudah disusun rapih dengan garis hitam") -
+     * laporan RAPI berisi SEMUA field Identitas OPS, bergaris tiap kolom
+     * & baris, mencakup SEMUA sekolah (termasuk yang belum mengisi).
+     * Terbuka untuk SEMUA role (Admin OPS ikut bisa mengunduh data
+     * sekolahnya sendiri). Hasilnya SELALU mengikuti filter/pencarian
+     * yang sedang aktif (lihat queryDasarIdentitasOps()).
+     */
+    public function unduhExcel()
+    {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Identitas OPS', 'Excel (Laporan)');
+
+        $daftarSekolah = $this->queryDasarIdentitasOps()->urutStandar()->get();
+
+        return Excel::download(new IdentitasOpsLaporanExport($daftarSekolah), 'identitas-ops-laporan.xlsx');
+    }
+
+    /**
+     * Tombol "Unduh PDF" (permintaan user 2026-10-16) - sama persis
+     * dengan unduhExcel() di atas, hanya bentuk file berbeda. Pola
+     * simpan-ke-file-sementara mengikuti Unduhan\Index::unduhPdf()
+     * (Livewire tidak bisa langsung mengirim response PDF biner dari
+     * method komponen tanpa ini).
+     */
+    public function unduhPdf()
+    {
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Identitas OPS', 'PDF');
+
+        $daftarSekolah = $this->queryDasarIdentitasOps()->urutStandar()->get();
+
+        $pdf = Pdf::loadView('pdf.identitas-ops-laporan', [
+            'daftarSekolah' => $daftarSekolah,
+        ])->setPaper('a4', 'landscape');
+
+        $pathSementara = tempnam(sys_get_temp_dir(), 'identitas-ops-pdf-').'.pdf';
+        file_put_contents($pathSementara, $pdf->output());
+
+        return response()->download($pathSementara, 'identitas-ops-laporan.pdf')->deleteFileAfterSend(true);
     }
 
     public function isi(int $profilSekolahId): void
@@ -351,20 +423,7 @@ class Index extends Component
     {
         $kelolaSemua = $this->bolehKelolaSemua();
 
-        $query = ProfilSekolah::with('identitasOps');
-
-        if (! $kelolaSemua) {
-            $query->where('id', auth()->user()->profil_sekolah_id);
-        } else {
-            if ($this->filterNamaSekolah !== '') {
-                $query->where('id', $this->filterNamaSekolah);
-            }
-            if ($this->filterNamaOps !== '') {
-                $query->whereHas('identitasOps', fn ($q) => $q->where('nama', $this->filterNamaOps));
-            }
-        }
-
-        $daftarSekolah = $query
+        $daftarSekolah = $this->queryDasarIdentitasOps()
             ->urutStandar()
             ->get();
 

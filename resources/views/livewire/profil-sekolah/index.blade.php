@@ -98,6 +98,22 @@
                                     </div>
                                 </div>
                             @endif
+
+                            {{-- Tombol "Unduh Excel"/"Unduh PDF" (permintaan user 2026-10-16) -
+                                 laporan RAPI lengkap, berbeda dari "Export Excel" di atas (khusus
+                                 re-import, khusus Superadmin). Terbuka untuk SEMUA role, sama
+                                 seperti tombol "Unduh" Data PTK - Admin OPS ikut bisa mengunduh
+                                 data sekolahnya sendiri. --}}
+                            <div class="flex items-center gap-1.5">
+                                <x-secondary-button wire:click="unduhExcel" wire:loading.attr="disabled" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                                    <x-icon name="download" class="w-3.5 h-3.5 mr-1" />
+                                    Unduh Excel
+                                </x-secondary-button>
+                                <x-secondary-button wire:click="unduhPdf" wire:loading.attr="disabled" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
+                                    <x-icon name="download" class="w-3.5 h-3.5 mr-1" />
+                                    Unduh PDF
+                                </x-secondary-button>
+                            </div>
                         </div>
 
                         <div class="flex flex-wrap items-center justify-between gap-2.5 mb-4">
