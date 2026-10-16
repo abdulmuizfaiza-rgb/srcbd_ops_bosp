@@ -162,6 +162,14 @@ class Index extends Component
     public ?string $errorExport = null;
 
     /**
+     * Jenis kertas untuk "Unduh PDF" (permintaan user 2026-10-16:
+     * "tambahkan juga tombol jenis kertas supaya bisa atur kertas nya" -
+     * laporan Profil Sekolah berisi banyak kolom (20 kolom) & sebelumnya
+     * terpotong di PDF A4 landscape) - lihat daftarKertasOptionsLaporan().
+     */
+    public string $jenisKertas = 'a4';
+
+    /**
      * Popup wajib "profil sekolah belum lengkap" - hanya untuk Admin
      * OPS/Admin BOSP yang profil sekolahnya sendiri belum lengkap, supaya
      * langsung disadari & segera dilengkapi. Muncul setiap kali halaman
@@ -596,6 +604,31 @@ class Index extends Component
     }
 
     /**
+     * Pilihan "Jenis Kertas" untuk "Unduh PDF" (permintaan user
+     * 2026-10-16) - A3 ditambahkan (berbeda dari dropdown kertas A4/F4
+     * yang sudah ada di menu Formulir BOS K7/Surat TPG, karena laporan
+     * ini landscape berkolom banyak - A3 lebih lebar, pola yang sama
+     * sudah dipakai di menu Rekap RKAS untuk masalah serupa).
+     */
+    public function daftarKertasOptionsLaporan(): array
+    {
+        return [
+            'a4' => 'Kertas A4',
+            'f4' => 'Kertas HVS/Legal/F4',
+            'a3' => 'Kertas A3',
+        ];
+    }
+
+    /**
+     * dompdf mengenal nama kertas F4 sebagai 'folio' (lihat pola yang
+     * sama di FormulirBosK7\Index::cetak()/SuratTpg\Index::cetak()).
+     */
+    private function ukuranKertasDompdf(): string
+    {
+        return $this->jenisKertas === 'f4' ? 'folio' : $this->jenisKertas;
+    }
+
+    /**
      * Tombol "Unduh Excel" (permintaan user 2026-10-16) - laporan RAPI
      * berisi SEMUA field Profil Sekolah, bergaris tiap kolom & baris -
      * BERBEDA dari export()/tombol "Export Excel" di atas (hanya 4 kolom,
@@ -629,7 +662,7 @@ class Index extends Component
 
         $pdf = Pdf::loadView('pdf.profil-sekolah-laporan', [
             'daftarSekolah' => $daftarSekolah,
-        ])->setPaper('a4', 'landscape');
+        ])->setPaper($this->ukuranKertasDompdf(), 'landscape');
 
         $pathSementara = tempnam(sys_get_temp_dir(), 'profil-sekolah-pdf-').'.pdf';
         file_put_contents($pathSementara, $pdf->output());
@@ -1328,6 +1361,7 @@ class Index extends Component
             'statusKepegawaianKepsekOptions' => ProfilSekolah::statusKepegawaianKepsekOptions(),
             'sekolahSayaId' => auth()->user()->profil_sekolah_id,
             'bolehKelolaSemua' => $kelolaSemua,
+            'kertasOptionsLaporan' => $this->daftarKertasOptionsLaporan(),
             'filterNamaSekolahOptions' => $kelolaSemua
                 ? ProfilSekolah::urutStandar()->pluck('nama_sekolah', 'id')
                 : collect(),

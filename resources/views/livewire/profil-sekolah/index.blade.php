@@ -105,6 +105,16 @@
                                  seperti tombol "Unduh" Data PTK - Admin OPS ikut bisa mengunduh
                                  data sekolahnya sendiri. --}}
                             <div class="flex items-center gap-1.5">
+                                {{-- Jenis Kertas (permintaan user 2026-10-16) - khusus untuk
+                                     "Unduh PDF", mengikuti pola dropdown kertas yang sudah ada
+                                     di menu Formulir BOS K7/Surat TPG. --}}
+                                <label for="jenis_kertas_profil_sekolah" class="text-[11px] text-slate-600">Jenis Kertas</label>
+                                <select wire:model.live="jenisKertas" id="jenis_kertas_profil_sekolah" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-xs">
+                                    @foreach ($kertasOptionsLaporan as $nilaiKertas => $labelKertas)
+                                        <option value="{{ $nilaiKertas }}">{{ $labelKertas }}</option>
+                                    @endforeach
+                                </select>
+
                                 <x-secondary-button wire:click="unduhExcel" wire:loading.attr="disabled" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
                                     <x-icon name="download" class="w-3.5 h-3.5 mr-1" />
                                     Unduh Excel
