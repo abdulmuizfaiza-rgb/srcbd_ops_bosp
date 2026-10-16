@@ -128,11 +128,19 @@ class DataPtk extends Model
      * "-" ditambahkan 2026-10-15 (permintaan user) sebagai pilihan
      * untuk PTK yang Jabatannya tidak memiliki jenjang Pangkat/Golongan
      * (lihat jabatanTanpaPangkatGolongan() & terapkanAturanPangkatGolongan()).
+     *
+     * "Guru Ahli Pertama IX" ditambahkan 2026-10-16 (permintaan user) -
+     * golongan skema baru (PPPK/jabatan fungsional pakai angka romawi,
+     * BUKAN gol. PNS lama III/a-IV/e) - dikonfirmasi AskUserQuestion
+     * posisinya PALING RENDAH, di atas "-" & di bawah "Penata Muda
+     * III/a" (lihat pangkatGolonganUrutan() - urutan di sini otomatis
+     * menentukan urutan tertinggi-terendah utk Lampiran 2a).
      */
     public static function pangkatGolonganOptions(): array
     {
         return [
             '-' => '-',
+            'Guru Ahli Pertama IX' => 'Guru Ahli Pertama IX',
             'Penata Muda III/a' => 'Penata Muda III/a',
             'Penata Muda Tk. I III/b' => 'Penata Muda Tk. I III/b',
             'Penata III/c' => 'Penata III/c',
