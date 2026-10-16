@@ -8,11 +8,15 @@ use Illuminate\Support\Collection as SupportCollection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -38,7 +42,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Urutan kolom data WAJIB mengikuti: NRG, NUPTK, Nama PTK, Nama Sekolah,
  * Keterangan, TMT - jangan diubah urutannya tanpa persetujuan.
  */
-class Lampiran2bExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping, WithTitle
+class Lampiran2bExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithCustomValueBinder, WithEvents, WithHeadings, WithMapping, WithTitle
 {
     private const BARIS_HEADER_TABEL = 5;
 
@@ -91,6 +95,31 @@ class Lampiran2bExport implements FromCollection, ShouldAutoSize, WithCustomStar
             $baris->keterangan,
             optional($baris->tmt)->format('d-m-Y'),
         ];
+    }
+
+    /**
+     * Kolom berisi NRG/NUPTK dipaksa bertipe TEKS (bukan Angka) - kalau
+     * dibiarkan memakai tipe Angka bawaan Excel, angka yang berawalan "0"
+     * bisa TERPOTONG (hilang nolnya) & angka berdigit panjang bisa tampil
+     * beda (notasi ilmiah) di Excel - harus sama persis dengan yang tampil
+     * di aplikasi. Permintaan user 2026-10-16: "hasil nya tidak terpotong
+     * atau berubah ... saya ingin sesuai dengan yang ada di aplikasi."
+     */
+    public function bindValue(Cell $cell, mixed $value): bool
+    {
+        if (in_array($cell->getColumn(), $this->kolomDipaksaTeks(), true)) {
+            $cell->setValueExplicit((string) $value, DataType::TYPE_STRING);
+
+            return true;
+        }
+
+        return (new DefaultValueBinder())->bindValue($cell, $value);
+    }
+
+    /** @return string[] kolom NRG, NUPTK - urutan kolom tabel ini tetap, lihat headings()/map(). */
+    private function kolomDipaksaTeks(): array
+    {
+        return ['A', 'B'];
     }
 
     public function registerEvents(): array
