@@ -33,6 +33,8 @@
                                     @endforeach
                                 </select>
                             @endif
+
+                            <x-zoom-controls :zoom="$zoomPercent" />
                         </div>
 
                         <div class="flex flex-wrap sm:flex-row sm:items-center gap-2.5">
@@ -49,7 +51,7 @@
                         </div>
                     </div>
 
-                    <div class="overflow-auto scrollbar-modern border border-slate-200 rounded-lg" style="max-height: 30rem;">
+                    <div class="overflow-auto scrollbar-modern border border-slate-200 rounded-lg" style="max-height: 30rem; zoom: {{ $zoomPercent }}%;">
                         <table class="min-w-full divide-y divide-slate-200 text-sm">
                             <thead class="sticky top-0 z-10 bg-slate-50">
                                 <tr class="text-left text-slate-500">

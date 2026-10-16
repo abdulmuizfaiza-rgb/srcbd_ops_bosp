@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PendataanOps\Lampiran2b;
 
+use App\Livewire\Concerns\HasZoomTampilan;
 use App\Models\DataPtk;
 use App\Models\Lampiran2b;
 use App\Models\ProfilSekolah;
@@ -57,6 +58,7 @@ use Livewire\WithPagination;
 #[Title('Lampiran 2b')]
 class Index extends Component
 {
+    use HasZoomTampilan;
     use WithPagination;
 
     #[Url(as: 'triwulan')]
