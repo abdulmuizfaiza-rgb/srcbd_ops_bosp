@@ -34,12 +34,25 @@
                             </select>
                         </div>
 
+                        @if ($bolehKelolaSemua)
+                            <div>
+                                <x-input-label for="filter_sekolah_unduhan" value="Sekolah" />
+                                <select wire:model.live="filterSekolahUnduhan" id="filter_sekolah_unduhan" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm block mt-1 w-full sm:w-64">
+                                    <option value="">Semua Sekolah</option>
+                                    @foreach ($sekolahOptionsUnduhan as $opsiSekolah)
+                                        <option value="{{ $opsiSekolah->id }}">{{ $opsiSekolah->nama_sekolah }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
+
                         <div class="text-sm text-slate-500">
                             Data untuk: <span class="font-medium text-slate-700">{{ $namaSekolahTampil }}</span>
-                            @if ($bolehKelolaSemua)
+                            @if ($bolehKelolaSemua && ! $filterSekolahUnduhan)
                                 <span class="block text-xs text-slate-400 mt-0.5">
-                                    Superadmin selalu mengunduh gabungan data seluruh sekolah yang terdaftar
-                                    (diurutkan Status &rarr; Kecamatan &rarr; Nama Sekolah).
+                                    Gabungan data seluruh sekolah yang terdaftar (diurutkan Status &rarr; Kecamatan
+                                    &rarr; Nama Sekolah) - pilih 1 sekolah di atas untuk mengunduh khusus sekolah itu
+                                    saja.
                                 </span>
                             @endif
                         </div>

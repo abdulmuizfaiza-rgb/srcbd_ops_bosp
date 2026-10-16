@@ -47,6 +47,18 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * berubah huruf. KOLOM_TANGGAL_LAHIR berubah dari 'G' jadi 'F'.
  * KOLOM_TMT_SEKOLAH_INDUK ('L') TIDAK berubah. JUMLAH_KOLOM tetap 25
  * (jumlah kolom tidak berubah, hanya urutannya).
+ *
+ * MODE "SEMUA SEKOLAH" ditambahkan 2026-10-16 (permintaan user, jawaban
+ * AskUserQuestion "1 sheet gabungan, data semua sekolah digabung
+ * berurutan") - $sekolah SEKARANG boleh null (dipanggil dari
+ * ProfilSekolah\Index::unduhPtk() saat Superadmin memilih "Semua
+ * Sekolah" pada filter): judul baris ke-2 jadi "SEMUA SEKOLAH" (bukan
+ * nama 1 sekolah), & $daftar yang dioper sudah diurutkan Status ->
+ * Nama Sekolah -> Kecamatan (lihat ProfilSekolah\Index::
+ * terapkanUrutanPtk()) sebelum sampai ke sini - kolom "Nama Sekolah"
+ * yang SUDAH ADA di tiap baris (lihat map()) otomatis cukup untuk
+ * membedakan asal data tiap baris, tidak perlu pengelompokan/sheet
+ * terpisah per sekolah.
  */
 class DataPtkLaporanExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping, WithTitle
 {
@@ -73,7 +85,7 @@ class DataPtkLaporanExport implements FromCollection, ShouldAutoSize, WithCustom
      */
     public function __construct(
         protected SupportCollection $daftar,
-        protected ProfilSekolah $sekolah,
+        protected ?ProfilSekolah $sekolah,
     ) {}
 
     public function collection(): SupportCollection
@@ -133,7 +145,7 @@ class DataPtkLaporanExport implements FromCollection, ShouldAutoSize, WithCustom
             $p->nomor_sertifikat_sertifikasi,
             $p->nomor_registrasi_guru,
             $p->nomor_peserta_sertifikasi,
-            $p->profilSekolah->nama_sekolah ?? $this->sekolah->nama_sekolah,
+            $p->profilSekolah->nama_sekolah ?? $this->sekolah?->nama_sekolah ?? '-',
             $p->status_dapodik,
             $p->status_keaktifan,
         ];
@@ -162,7 +174,7 @@ class DataPtkLaporanExport implements FromCollection, ShouldAutoSize, WithCustom
         $kolomTerakhir = $this->hurufKolomTerakhir();
 
         $sheet->setCellValue('A'.self::BARIS_JUDUL_1, 'DATA PTK');
-        $sheet->setCellValue('A'.self::BARIS_JUDUL_2, $this->sekolah->nama_sekolah);
+        $sheet->setCellValue('A'.self::BARIS_JUDUL_2, $this->sekolah->nama_sekolah ?? 'SEMUA SEKOLAH');
 
         foreach ([self::BARIS_JUDUL_1, self::BARIS_JUDUL_2] as $baris) {
             $rentang = 'A'.$baris.':'.$kolomTerakhir.$baris;

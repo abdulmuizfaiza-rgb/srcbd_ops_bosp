@@ -1138,15 +1138,33 @@ class Index extends Component
     }
 
     /**
-     * "Unduh" - laporan rapi berjudul "DATA PTK (nama sekolah)" dengan
-     * garis tabel, untuk 1 sekolah (jawaban AskUserQuestion "Dua fungsi
-     * berbeda" - Superadmin wajib memilih 1 sekolah dulu di filter,
-     * Admin OPS otomatis terkunci ke sekolahnya sendiri - pola sama
-     * seperti export() pada Lampiran2a).
+     * "Unduh" - laporan rapi dengan garis tabel. Dua mode (permintaan
+     * user 2026-10-16, jawaban AskUserQuestion "Filter sekolah yang
+     * sudah ada ditambah pilihan Semua Sekolah"):
+     * - Superadmin + filter sekolah KOSONG ("Semua Sekolah" pada
+     *   dropdown yang sudah ada) -> 1 sheet gabungan SEMUA sekolah,
+     *   berjudul "DATA PTK" / "SEMUA SEKOLAH", diurutkan SAMA seperti
+     *   tabel "semua sekolah" (Status -> Nama Sekolah -> Kecamatan,
+     *   lihat terapkanUrutanPtk()).
+     * - Superadmin + 1 sekolah difilter, ATAU Admin OPS (selalu
+     *   sekolahnya sendiri) -> laporan berjudul "DATA PTK (nama
+     *   sekolah)" seperti sebelumnya (jawaban AskUserQuestion lama "Dua
+     *   fungsi berbeda" - pola sama seperti export() pada Lampiran2a).
      */
     public function unduhPtk()
     {
         $this->errorExportPtk = null;
+
+        if ($this->bolehKelolaDataPtkSemua() && ! $this->filterSekolahPtk) {
+            AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Data PTK', 'Excel (Laporan - Semua Sekolah)');
+
+            $daftar = $this->terapkanUrutanPtk(DataPtk::query()->with('profilSekolah'))->get();
+
+            return Excel::download(
+                new DataPtkLaporanExport($daftar, null),
+                'data-ptk-semua-sekolah.xlsx'
+            );
+        }
 
         $sekolahId = $this->bolehKelolaDataPtkSemua() ? $this->filterSekolahPtk : $this->sekolahSayaId();
 

@@ -87,6 +87,20 @@ class Index extends Component
     public int $tahun;
 
     /**
+     * Pilihan sekolah utk Lampiran 2a/2b/2c (Excel & PDF) - permintaan
+     * user 2026-10-16 (jawaban AskUserQuestion "Tambahkan pilihan di
+     * menu Unduhan yang sudah ada"): SEBELUMNYA Superadmin SELALU
+     * mengunduh gabungan semua sekolah (tanpa pilihan) - SEKARANG boleh
+     * pilih 1 sekolah tertentu lewat dropdown ini, atau biarkan kosong
+     * ("Semua Sekolah", perilaku lama tetap jadi default). HANYA
+     * dipakai utk Superadmin (Admin OPS selalu otomatis sekolahnya
+     * sendiri, lihat sekolahIdUntukUnduhan()) - TERPISAH dari
+     * $suratTpgProfilSekolahId di bawah (bagian Surat TPG memang sudah
+     * lebih dulu punya pilihan sekolah sendiri, tidak diubah).
+     */
+    public ?int $filterSekolahUnduhan = null;
+
+    /**
      * Pilihan sekolah KHUSUS utk bagian "Cetak Surat Rekomendasi, Surat
      * Penghentian TPG dan Surat Pernyataan" (round kedua puluh dua) -
      * HANYA dipakai/ditampilkan utk Superadmin (Admin OPS selalu otomatis
@@ -137,13 +151,14 @@ class Index extends Component
     }
 
     /**
-     * null berarti gabungan SEMUA sekolah (khusus Superadmin) - menu
-     * Unduhan ini TIDAK punya filter per-sekolah untuk Superadmin, sesuai
-     * permintaan (Superadmin selalu mengunduh data seluruh sekolah).
+     * null berarti gabungan SEMUA sekolah. Utk Superadmin, mengikuti
+     * pilihan $filterSekolahUnduhan (kosong = Semua Sekolah, default -
+     * SEJAK 2026-10-16, sebelumnya SELALU null/semua sekolah tanpa
+     * pilihan). Admin OPS selalu otomatis sekolahnya sendiri.
      */
     protected function sekolahIdUntukUnduhan(): ?int
     {
-        return $this->bolehKelolaSemua() ? null : $this->sekolahSayaId();
+        return $this->bolehKelolaSemua() ? $this->filterSekolahUnduhan : $this->sekolahSayaId();
     }
 
     protected function sekolahUntukExport(): ?ProfilSekolah
@@ -423,6 +438,8 @@ class Index extends Component
             'tahunOptions' => $this->tahunOptions(),
             'bolehKelolaSemua' => $this->bolehKelolaSemua(),
             'namaSekolahTampil' => $this->sekolahUntukExport()?->nama_sekolah ?? 'Semua Sekolah',
+            'sekolahOptionsUnduhan' => $this->bolehKelolaSemua() ? ProfilSekolah::urutStandar()->get(['id', 'nama_sekolah']) : null,
+            'filterSekolahUnduhan' => $this->filterSekolahUnduhan,
             'jumlah2a' => $baris2a->count(),
             'jumlah2b' => $baris2b->count(),
             'jumlah2c' => $baris2c->count(),
