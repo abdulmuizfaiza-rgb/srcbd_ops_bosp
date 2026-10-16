@@ -91,14 +91,23 @@ class LembarValidasiTpgExport implements FromCollection, ShouldAutoSize, WithCus
         return array_merge($kolom, array_values($this->labelKolom()));
     }
 
-    /** @param  array<string, mixed>  $baris */
+    /**
+     * @param  array<string, mixed>  $baris
+     *
+     * Ceklist 8 kriteria ditulis 'V' (terisi) atau kosong (tidak dicentang) -
+     * BUKAN 'Ya'/'Tidak' - supaya sama persis dengan tampilan non-editable
+     * di aplikasi (PDF & Word, lihat {{ $ptk[$kolom] ? 'V' : '' }} pada
+     * resources/views/pdf/partials/surat-tpg-lembar-validasi-isi.blade.php)
+     * - permintaan user 2026-10-16: "isi nya berupa ceklist yang sama
+     * seperti inputan di aplikasi".
+     */
     public function map($baris): array
     {
         $kolom = $this->sekolah === null ? [$baris['nama_sekolah']] : [];
         $kolom[] = $baris['nama_ptk'];
 
         foreach (array_keys($this->labelKolom()) as $nama) {
-            $kolom[] = $baris[$nama] ? 'Ya' : 'Tidak';
+            $kolom[] = $baris[$nama] ? 'V' : '';
         }
 
         return $kolom;
@@ -112,6 +121,14 @@ class LembarValidasiTpgExport implements FromCollection, ShouldAutoSize, WithCus
     private function kolomTerakhir(): string
     {
         return Coordinate::stringFromColumnIndex($this->jumlahKolom());
+    }
+
+    /** Kolom pertama ceklist (setelah kolom Nama Sekolah opsional & Nama PTK) - dipakai utk perataan tengah tanda 'V'. */
+    private function kolomPertamaCeklist(): string
+    {
+        $indeks = ($this->sekolah === null ? 1 : 0) + 1 + 1;
+
+        return Coordinate::stringFromColumnIndex($indeks);
     }
 
     public function registerEvents(): array
@@ -172,6 +189,13 @@ class LembarValidasiTpgExport implements FromCollection, ShouldAutoSize, WithCus
         if ($this->baris->count() > 0) {
             $sheet->getStyle('A'.self::BARIS_HEADER_TABEL.':'.$kolomAkhir.$this->barisTerakhirTabel())
                 ->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+
+            // Tanda 'V' ceklist diratakan tengah di bawah kolomnya (sama
+            // seperti PDF/Word: text-align:center) - permintaan user
+            // 2026-10-16 "isi nya berupa ceklist yang sama seperti
+            // inputan di aplikasi".
+            $sheet->getStyle($this->kolomPertamaCeklist().(self::BARIS_HEADER_TABEL + 1).':'.$kolomAkhir.$this->barisTerakhirTabel())
+                ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
 
         $sheet->freezePane('A'.(self::BARIS_HEADER_TABEL + 1));
@@ -200,9 +224,12 @@ class LembarValidasiTpgExport implements FromCollection, ShouldAutoSize, WithCus
         $barisNip = $barisNama + 1;
 
         $sheet->setCellValue('A'.$barisCatatanLabel, 'CATATAN HASIL VERIFIKASI :');
+        $sheet->mergeCells('A'.$barisCatatanLabel.':'.$kolomAkhir.$barisCatatanLabel);
         $sheet->getStyle('A'.$barisCatatanLabel)->getFont()->setBold(true);
         $sheet->setCellValue('A'.$barisCatatanIsi, $this->catatanHasilVerifikasi ?: '');
         $sheet->mergeCells('A'.$barisCatatanIsi.':'.$kolomAkhir.$barisCatatanIsi);
+        $sheet->getStyle('A'.$barisCatatanIsi)->getAlignment()->setVertical(Alignment::VERTICAL_TOP)->setWrapText(true);
+        $sheet->getRowDimension($barisCatatanIsi)->setRowHeight(60);
 
         [$tiga1, $tiga2, $tiga3] = $this->rentangTigaKolom();
 
@@ -229,6 +256,60 @@ class LembarValidasiTpgExport implements FromCollection, ShouldAutoSize, WithCus
             foreach ([$barisMengetahui, $barisJabatan, $barisNama, $barisNip] as $baris) {
                 $sheet->getStyle($rentang[0].$baris)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             }
+        }
+
+        $this->gambarGarisKotakTandaTangan(
+            $sheet, $kolomAkhir, $barisCatatanLabel, $barisCatatanIsi,
+            $barisMengetahui, $barisJabatan, $barisNip, $tiga1, $tiga2, $tiga3,
+        );
+    }
+
+    /**
+     * Garis kotak hitam (border penuh) pada blok Catatan Hasil Verifikasi
+     * + tanda tangan - meniru PERSIS tampilan aplikasi (lihat komentar
+     * blok "CATATAN HASIL VERIFIKASI + Blok Tanda Tangan" pada
+     * resources/views/pdf/partials/surat-tpg-lembar-validasi-isi.blade.php):
+     * baris Label & Isi Catatan masing2 1 kotak penuh selebar tabel;
+     * baris Mengetahui/Verifikator 2 kotak penuh (kolom 1 sendiri, kolom
+     * 2+3 menyatu); lalu baris Jabatan - (2 baris kosong ruang ttd) -
+     * Nama - NIP per kolom tanda tangan digambar sbg SATU kotak penuh
+     * (border 'outline' - TANPA garis pembatas di dalamnya), persis spt
+     * di aplikasi yg menyatukan ke-4 baris itu jadi 1 kotak tanpa garis
+     * horizontal di tengahnya. Permintaan user 2026-10-16: "untuk bagian
+     * CATATAN HASIL VERIFIKASI dan tanda tangannya harus sama persis
+     * seperti yang tampil di aplikasi yang ada garis hitam nya".
+     *
+     * @param  array{0: string, 1: string}  $tiga1
+     * @param  array{0: string, 1: string}  $tiga2
+     * @param  array{0: string, 1: string}  $tiga3
+     */
+    private function gambarGarisKotakTandaTangan(
+        Worksheet $sheet,
+        string $kolomAkhir,
+        int $barisCatatanLabel,
+        int $barisCatatanIsi,
+        int $barisMengetahui,
+        int $barisJabatan,
+        int $barisNip,
+        array $tiga1,
+        array $tiga2,
+        array $tiga3,
+    ): void {
+        $kotak = function (string $rentang) use ($sheet): void {
+            $sheet->getStyle($rentang)->applyFromArray([
+                'borders' => ['outline' => ['borderStyle' => Border::BORDER_THIN]],
+            ]);
+        };
+
+        $kotak('A'.$barisCatatanLabel.':'.$kolomAkhir.$barisCatatanLabel);
+        $kotak('A'.$barisCatatanIsi.':'.$kolomAkhir.$barisCatatanIsi);
+        $kotak($tiga1[0].$barisMengetahui.':'.$tiga1[1].$barisMengetahui);
+        $kotak($tiga2[0].$barisMengetahui.':'.$tiga3[1].$barisMengetahui);
+
+        // barisNip = barisJabatan + 4 (lihat tulisTandaTangan()) - 1 kotak
+        // utuh membungkus Jabatan, 2 baris kosong ruang ttd, Nama, & NIP.
+        foreach ([$tiga1, $tiga2, $tiga3] as $rentang) {
+            $kotak($rentang[0].$barisJabatan.':'.$rentang[1].$barisNip);
         }
     }
 
