@@ -1263,11 +1263,26 @@ class Index extends Component
      */
     protected function daftarBelumLengkapPtk(): \Illuminate\Support\Collection
     {
+        // PERBAIKAN BUG 2026-10-18 (error 500 di ONLINE, log Postgres:
+        // "invalid input syntax for type date"): 2 dari 7 field di
+        // DataPtk::FIELD_BELUM_LENGKAP (tanggal_lahir, tmt_sekolah_induk)
+        // bertipe DATE di database (lihat $casts di DataPtk) - TIDAK
+        // PERNAH bisa bernilai string kosong '', hanya NULL kalau kosong.
+        // Membandingkan kolom DATE dengan '' ditolak PostgreSQL. Field
+        // tanggal dideteksi OTOMATIS dari $casts model (bukan daftar
+        // hardcode terpisah) supaya kalau FIELD_BELUM_LENGKAP nanti
+        // nambah field tanggal baru, otomatis ikut aman, tidak perlu
+        // diingat-ingat lagi.
+        $fieldTanggal = array_keys(array_filter((new DataPtk())->getCasts(), fn ($tipe) => $tipe === 'date'));
+
         return DataPtk::query()
             ->join('profil_sekolah', 'profil_sekolah.id', '=', 'data_ptk.profil_sekolah_id')
-            ->where(function ($query) {
+            ->where(function ($query) use ($fieldTanggal) {
                 foreach (DataPtk::FIELD_BELUM_LENGKAP as $i => $field) {
-                    $kondisi = fn ($q) => $q->whereNull('data_ptk.'.$field)->orWhere('data_ptk.'.$field, '');
+                    $kolom = 'data_ptk.'.$field;
+                    $kondisi = in_array($field, $fieldTanggal, true)
+                        ? fn ($q) => $q->whereNull($kolom)
+                        : fn ($q) => $q->whereNull($kolom)->orWhere($kolom, '');
                     $i === 0 ? $query->where($kondisi) : $query->orWhere($kondisi);
                 }
             })
