@@ -291,6 +291,7 @@
                                                 <input type="checkbox" wire:click="togglePtkSemua" @checked($semuaTerpilihPtk) class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" title="Pilih/batal pilih semua baris di halaman ini">
                                             </th>
                                         @endif
+                                        <th class="px-3 py-2 text-right">Aksi</th>
                                         <th class="px-3 py-2">No</th>
                                         <th class="px-3 py-2">NIK</th>
                                         <th class="px-3 py-2">NUPTK</th>
@@ -316,7 +317,6 @@
                                         <th class="px-3 py-2">Nama Sekolah</th>
                                         <th class="px-3 py-2">Status Dapodik</th>
                                         <th class="px-3 py-2">Status Keaktifan</th>
-                                        <th class="px-3 py-2 text-right">Aksi</th>
                                     </tr>
                                 </thead>
                                 @forelse ($daftarPtk as $baris)
@@ -334,6 +334,14 @@
                                                     @endif
                                                 </td>
                                             @endif
+                                            <td class="px-3 py-2 whitespace-nowrap text-right space-x-2">
+                                                @if ($bolehKelolaDataPtkSemua || auth()->user()->profil_sekolah_id === $baris->profil_sekolah_id)
+                                                    <button wire:click="editPtk({{ $baris->id }})" class="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"><x-icon name="pencil" class="w-3 h-3" />Edit</button>
+                                                    @if ($bolehTambahDataPtk)
+                                                        <button wire:click="konfirmasiHapusPtk({{ $baris->id }})" class="inline-flex items-center gap-1 text-xs text-red-600 hover:underline"><x-icon name="trash" class="w-3 h-3" />Hapus</button>
+                                                    @endif
+                                                @endif
+                                            </td>
                                             <td class="px-3 py-2 whitespace-nowrap text-slate-500">
                                                 <button type="button" x-on:click="terbuka = ! terbuka" class="inline-flex items-center justify-center w-5 h-5 mr-1.5 rounded border border-slate-300 text-slate-500 text-xs font-bold align-middle hover:bg-slate-100" title="Lihat info tambahan">
                                                     <span x-text="terbuka ? '−' : '+'"></span>
@@ -379,14 +387,6 @@
                                                     ])">
                                                     {{ $baris->status_keaktifan }}
                                                 </span>
-                                            </td>
-                                            <td class="px-3 py-2 whitespace-nowrap text-right space-x-2">
-                                                @if ($bolehKelolaDataPtkSemua || auth()->user()->profil_sekolah_id === $baris->profil_sekolah_id)
-                                                    <button wire:click="editPtk({{ $baris->id }})" class="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"><x-icon name="pencil" class="w-3 h-3" />Edit</button>
-                                                    @if ($bolehTambahDataPtk)
-                                                        <button wire:click="konfirmasiHapusPtk({{ $baris->id }})" class="inline-flex items-center gap-1 text-xs text-red-600 hover:underline"><x-icon name="trash" class="w-3 h-3" />Hapus</button>
-                                                    @endif
-                                                @endif
                                             </td>
                                         </tr>
                                         <tr x-show="terbuka" x-cloak>

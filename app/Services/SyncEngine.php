@@ -93,6 +93,29 @@ use Throwable;
  *    dibuang, kata sandi (hash bcrypt, bukan terenkripsi APP_KEY) BOLEH
  *    ikut tertimpa - lihat docblock terapkanTabelPengguna() utk alasan
  *    lengkap tiap keputusan.
+ *
+ * 9. PERBAIKAN BUG 2026-10-18 (Tarik Data gagal, error Postgres:
+ *    "violates foreign key constraint ...rincian_belanja_barang_habis_pak"):
+ *    tabel `stock_opname_barang_persediaan` punya kolom FK
+ *    `rincian_belanja_barang_habis_pakai_id` yang MENUNJUK KE TABEL
+ *    TERSINKRON LAIN (bukan profil_sekolah_id, bukan users) - ID
+ *    auto-increment itu LOKAL pada database masing-masing, sama
+ *    masalahnya dengan poin 2 di atas. Diperbaiki dengan pola SAMA:
+ *    kumpulkanDataKeluar() mengganti kolom ini dengan `_rincian_sync_uuid`
+ *    (sync_uuid baris rincian_belanja_barang_habis_pakai terkait - tabel
+ *    itu juga tidak punya kunci unik alami, lihat RegistriModulSekolah,
+ *    jadi sync_uuid-nya sudah pasti identitas yang sama di kedua sisi),
+ *    lalu terapkanTabelAnak() menerjemahkan balik ke id versi SISI INI
+ *    lewat peta sync_uuid->id yang dihitung TEPAT SEBELUM tabel
+ *    stock_opname_barang_persediaan diproses (RegistriModulSekolah::
+ *    semua() SUDAH menaruh 'Rincian Belanja Barang Habis Pakai' SEBELUM
+ *    'Stock Opname Barang Persediaan', jadi baris RBBHP yang baru masuk
+ *    lewat sinkronisasi ini juga sudah tersimpan & ikut terhitung di
+ *    peta tsb). sync_uuid yang tidak dikenal di sisi ini (atau memang
+ *    kosong) diterjemahkan jadi NULL - BUKAN alasan melewati seluruh
+ *    baris Stock Opname-nya, karena NULL pada kolom ini sudah punya arti
+ *    sah sendiri ("baris lama/tidak terhubung", lihat migration
+ *    add_rincian_link_dan_rumus_stock_opname).
  */
 class SyncEngine
 {
@@ -127,6 +150,18 @@ class SyncEngine
         foreach (RegistriModulSekolah::tabelDisinkronkan() as $namaTabel => $konfigurasi) {
             if ($namaTabel === 'profil_sekolah') {
                 $baris = DB::table('profil_sekolah')->get()->map(fn ($r) => (array) $r)->all();
+            } elseif ($namaTabel === 'stock_opname_barang_persediaan') {
+                // KHUSUS tabel ini - lihat poin 9 docblock class: FK
+                // rincian_belanja_barang_habis_pakai_id JUGA diganti
+                // kolom sementara `_rincian_sync_uuid`, pola sama dengan
+                // profil_sekolah_id -> _sekolah_npsn.
+                $baris = DB::table($namaTabel)
+                    ->leftJoin('profil_sekolah', 'profil_sekolah.id', '=', $namaTabel.'.profil_sekolah_id')
+                    ->leftJoin('rincian_belanja_barang_habis_pakai', 'rincian_belanja_barang_habis_pakai.id', '=', $namaTabel.'.rincian_belanja_barang_habis_pakai_id')
+                    ->select($namaTabel.'.*', 'profil_sekolah.npsn as _sekolah_npsn', 'rincian_belanja_barang_habis_pakai.sync_uuid as _rincian_sync_uuid')
+                    ->get()
+                    ->map(fn ($r) => (array) $r)
+                    ->all();
             } else {
                 $baris = DB::table($namaTabel)
                     ->leftJoin('profil_sekolah', 'profil_sekolah.id', '=', $namaTabel.'.profil_sekolah_id')
@@ -144,6 +179,9 @@ class SyncEngine
                 }
                 if ($namaTabel !== 'profil_sekolah') {
                     unset($satu['profil_sekolah_id']);
+                }
+                if ($namaTabel === 'stock_opname_barang_persediaan') {
+                    unset($satu['rincian_belanja_barang_habis_pakai_id']);
                 }
 
                 return $satu;
@@ -204,7 +242,17 @@ class SyncEngine
                         continue;
                     }
 
-                    $ringkasan[$namaTabel] = $this->terapkanTabelAnak($namaTabel, $konfigurasi, $daftarBaris, $pemetaanNpsn);
+                    // Lihat poin 9 docblock class - dihitung FRESH tepat
+                    // di sini (bukan di awal, sebelum loop) supaya ikut
+                    // menghitung baris rincian_belanja_barang_habis_pakai
+                    // yang BARU SAJA diterapkan dari payload yang sama
+                    // (tabel itu SELALU diproses lebih dulu, lihat urutan
+                    // RegistriModulSekolah::semua()).
+                    $pemetaanRincianSyncUuid = $namaTabel === 'stock_opname_barang_persediaan'
+                        ? DB::table('rincian_belanja_barang_habis_pakai')->whereNotNull('sync_uuid')->pluck('id', 'sync_uuid')->all()
+                        : [];
+
+                    $ringkasan[$namaTabel] = $this->terapkanTabelAnak($namaTabel, $konfigurasi, $daftarBaris, $pemetaanNpsn, $pemetaanRincianSyncUuid);
                 }
 
                 // 2. Tombstone (penghapusan yang ikut disinkronkan).
@@ -255,7 +303,7 @@ class SyncEngine
         return ['ditambah' => $ditambah, 'diupdate' => $diupdate, 'dilewati' => $dilewati];
     }
 
-    protected function terapkanTabelAnak(string $namaTabel, array $konfigurasi, array $daftarBaris, array $pemetaanNpsn): array
+    protected function terapkanTabelAnak(string $namaTabel, array $konfigurasi, array $daftarBaris, array $pemetaanNpsn, array $pemetaanRincianSyncUuid = []): array
     {
         $kolomKunci = $konfigurasi['kunci'] ?? ['sync_uuid'];
         $ditambah = 0;
@@ -283,6 +331,20 @@ class SyncEngine
             }
 
             $baris['profil_sekolah_id'] = $pemetaanNpsn[$npsn];
+
+            // FK rincian_belanja_barang_habis_pakai_id (HANYA tabel
+            // stock_opname_barang_persediaan) - lihat poin 9 docblock
+            // class & kumpulkanDataKeluar(). sync_uuid yang tidak
+            // dikenal (atau memang kosong) diterjemahkan jadi NULL, arti
+            // sah sendiri untuk kolom ini ("baris lama/tidak terhubung"),
+            // BUKAN alasan melewati baris Stock Opname-nya.
+            if ($namaTabel === 'stock_opname_barang_persediaan') {
+                $rincianSyncUuid = $baris['_rincian_sync_uuid'] ?? null;
+                unset($baris['_rincian_sync_uuid']);
+                $baris['rincian_belanja_barang_habis_pakai_id'] = $rincianSyncUuid !== null
+                    ? ($pemetaanRincianSyncUuid[$rincianSyncUuid] ?? null)
+                    : null;
+            }
 
             $nilaiKunci = [];
             $kunciLengkap = true;
