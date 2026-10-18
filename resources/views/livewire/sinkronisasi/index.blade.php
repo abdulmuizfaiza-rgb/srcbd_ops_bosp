@@ -171,7 +171,7 @@
                     </div>
                 </div>
                 <p class="text-xs text-slate-400 mb-1">
-                    Keterangan kolom Keterangan: <span class="font-mono">+ditambah ~diupdate -dihapus !gagal dihapus</span> per tabel ("!gagal dihapus" muncul kalau ada baris yang gagal dihapus krn masih direferensikan data lain - cek manual di menu terkait).
+                    Keterangan kolom Keterangan: <span class="font-mono">+ditambah ~diupdate -dihapus !gagal dihapus ^dibuat ulang</span> per tabel ("!gagal dihapus" muncul kalau ada baris yang gagal dihapus krn masih direferensikan data lain - cek manual di menu terkait; "^dibuat ulang" muncul kalau ada baris yang PERNAH dihapus lalu DIBUAT ULANG dengan data yang sama - tombstone lama otomatis dilewati, bukan dihapus lagi).
                 </p>
                 <div class="overflow-x-auto" style="zoom: {{ $zoomPercent }}%;">
                     <table class="min-w-full divide-y divide-slate-200 text-sm">
@@ -217,6 +217,12 @@
                                                  docblock App\Services\SyncEngine - baris yang gagal dihapus
                                                  krn masih direferensikan data lain, SUPAYA Superadmin bisa
                                                  cek manual, bukan cuma "hilang" tanpa jejak). --}}
+                                            {{-- 2026-10-18 (lanjutan ke-7): ^N dibuat ulang ditambahkan -
+                                                 lihat poin 11 docblock App\Services\SyncEngine - baris yang
+                                                 PERNAH dihapus lalu DIBUAT ULANG dgn kunci yang sama (NIK,
+                                                 dst) sekarang dideteksi & tombstone lamanya dilewati
+                                                 (bukan dihapus lagi), supaya Superadmin tahu ini pernah
+                                                 terjadi utk baris terkait. --}}
                                             {{ collect($log->ringkasan)->map(function ($v, $k) {
                                                 if (! is_array($v)) {
                                                     return null;
@@ -227,6 +233,9 @@
                                                 }
                                                 if (! empty($v['gagal_dihapus'])) {
                                                     $teks .= ' !'.$v['gagal_dihapus'].' gagal dihapus';
+                                                }
+                                                if (! empty($v['dilewati_tombstone_usang'])) {
+                                                    $teks .= ' ^'.$v['dilewati_tombstone_usang'].' dibuat ulang';
                                                 }
 
                                                 return $teks;

@@ -138,6 +138,30 @@ use Throwable;
  *     membatalkan seluruh proses. Ditampilkan di riwayat Sinkronisasi
  *     (resources/views/livewire/sinkronisasi/index.blade.php) supaya
  *     Superadmin bisa cek manual baris mana yang masih tersangkut.
+ *
+ * 11. PERBAIKAN BUG 2026-10-18 (lanjutan ke-7, "Cek Kecocokan Data"
+ *     beda terus - Data PTK & Surat TPG tertentu tidak pernah masuk ke
+ *     Lokal walau "Tarik Data" selalu sukses tanpa error): SyncTombstone
+ *     (poin 2) TIDAK PERNAH dibersihkan/kedaluwarsa - dicatat permanen
+ *     selamanya begitu 1 baris dihapus lewat menu aplikasi. Kalau baris
+ *     dengan kunci alami yang SAMA (misal NIK yang sama, atau kombinasi
+ *     profil_sekolah_id+tahun+triwulan+jenis yang sama) kemudian DIBUAT
+ *     ULANG (data baru/koreksi dengan identitas sama), tombstone LAMA
+ *     itu tetap ada & akan TERUS-MENERUS menghapus lagi baris baru itu
+ *     di SETIAP sinkronisasi berikutnya (tabel diterapkan dulu baru
+ *     tombstone, dalam transaksi yang sama - baris sempat masuk lalu
+ *     langsung terhapus lagi, tidak terlihat/tidak ada error). Dibuktikan
+ *     lewat data nyata: tombstone data_ptk nik=3202115106790006 dicatat
+ *     2026-10-16 18:23:55, baris dgn NIK sama dibuat ulang 18:35:12 (12
+ *     menit kemudian) - tiap Tarik Data berikutnya menghapusnya lagi.
+ *     Perbaikan: terapkanTombstone() SEKARANG mengecek dulu baris yang
+ *     SAAT INI cocok dgn kunci tombstone - kalau ADA & updated_at-nya
+ *     LEBIH BARU dari dihapus_pada tombstone, tombstone dianggap USANG
+ *     (baris itu sah dibuat ulang setelah penghapusan lama) & DILEWATI
+ *     (tidak dihapus), dihitung $ringkasan[tabel]['dilewati_tombstone_usang'].
+ *     Kalau baris yang cocok TIDAK lebih baru (atau tidak ada sama
+ *     sekali), tombstone tetap diterapkan seperti biasa (perilaku lama
+ *     tidak berubah utk kasus penghapusan yang belum sempat tersinkron).
  */
 class SyncEngine
 {
@@ -286,6 +310,9 @@ class SyncEngine
                     $ringkasan[$namaTabel]['dihapus'] = ($ringkasan[$namaTabel]['dihapus'] ?? 0) + ($hasilTombstone['dihapus'] ?? 0);
                     if (($hasilTombstone['gagal_dihapus'] ?? 0) > 0) {
                         $ringkasan[$namaTabel]['gagal_dihapus'] = ($ringkasan[$namaTabel]['gagal_dihapus'] ?? 0) + $hasilTombstone['gagal_dihapus'];
+                    }
+                    if (($hasilTombstone['dilewati_tombstone_usang'] ?? 0) > 0) {
+                        $ringkasan[$namaTabel]['dilewati_tombstone_usang'] = ($ringkasan[$namaTabel]['dilewati_tombstone_usang'] ?? 0) + $hasilTombstone['dilewati_tombstone_usang'];
                     }
                 }
             });
@@ -441,6 +468,24 @@ class SyncEngine
                 }
 
                 $kunci['profil_sekolah_id'] = $pemetaanNpsn[$npsn];
+            }
+
+            // Lihat poin 11 docblock class - kalau SAAT INI ada baris yang
+            // cocok dgn kunci tombstone ini & updated_at-nya LEBIH BARU
+            // dari dihapus_pada tombstone, berarti baris itu dibuat ULANG
+            // setelah penghapusan lama - tombstone ini USANG, lewati,
+            // JANGAN dihapus (supaya tidak menghapus-hapus lagi baris
+            // yang sudah sah dibuat ulang).
+            $dihapusPada = isset($t['dihapus_pada']) ? Carbon::parse($t['dihapus_pada']) : null;
+            if ($dihapusPada !== null) {
+                $existingSaatIni = DB::table($namaTabel)->where($kunci)->first();
+                if ($existingSaatIni !== null
+                    && isset($existingSaatIni->updated_at)
+                    && Carbon::parse($existingSaatIni->updated_at)->gt($dihapusPada)) {
+                    $hasilPerTabel[$namaTabel]['dilewati_tombstone_usang'] = ($hasilPerTabel[$namaTabel]['dilewati_tombstone_usang'] ?? 0) + 1;
+
+                    continue;
+                }
             }
 
             // Lihat poin 10 docblock class - dibungkus DB::transaction()
