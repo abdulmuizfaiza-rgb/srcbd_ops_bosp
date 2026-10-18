@@ -116,6 +116,28 @@ use Throwable;
  *    baris Stock Opname-nya, karena NULL pada kolom ini sudah punya arti
  *    sah sendiri ("baris lama/tidak terhubung", lihat migration
  *    add_rincian_link_dan_rumus_stock_opname).
+ *
+ * 10. PERBAIKAN BUG 2026-10-18 (Tarik Data gagal, error Postgres:
+ *     "violates RESTRICT setting of foreign key constraint
+ *     data_ptk_profil_sekolah_id_foreign"): tombstone (poin 2 di atas)
+ *     menghapus baris LANGSUNG lewat DB::table()->delete() - kalau baris
+ *     itu (misal profil_sekolah) TERNYATA masih direferensikan oleh
+ *     baris lain di SISI INI yang FK-nya RESTRICT (bukan CASCADE -
+ *     data_ptk SENGAJA restrictOnDelete(), lihat migration
+ *     create_data_ptk_table, supaya sekolah tidak bisa terhapus selagi
+ *     masih py PTK), database menolak & SELURUH transaksi sinkronisasi
+ *     ikut gagal/batal - walaupun tombstone lain & 24 tabel lainnya
+ *     sebenarnya valid. Jawaban AskUserQuestion 2026-10-18: "lewati
+ *     baris itu saja, proses lain tetap lanjut (Recommended)". Setiap
+ *     delete tombstone SEKARANG dibungkus DB::transaction() TERSENDIRI
+ *     (nested - otomatis jadi SAVEPOINT krn sudah ada transaksi luar
+ *     yang sedang berjalan) supaya kalau GAGAL, HANYA savepoint itu yang
+ *     di-ROLLBACK (transaksi utama tetap valid/tidak "aborted" di
+ *     Postgres) - baris itu dilewati & dihitung di
+ *     $ringkasan[tabel]['gagal_dihapus'], BUKAN melempar exception yang
+ *     membatalkan seluruh proses. Ditampilkan di riwayat Sinkronisasi
+ *     (resources/views/livewire/sinkronisasi/index.blade.php) supaya
+ *     Superadmin bisa cek manual baris mana yang masih tersangkut.
  */
 class SyncEngine
 {
@@ -255,9 +277,16 @@ class SyncEngine
                     $ringkasan[$namaTabel] = $this->terapkanTabelAnak($namaTabel, $konfigurasi, $daftarBaris, $pemetaanNpsn, $pemetaanRincianSyncUuid);
                 }
 
-                // 2. Tombstone (penghapusan yang ikut disinkronkan).
-                foreach ($this->terapkanTombstone($payload['tombstones'] ?? [], $konfigurasiSemua, $pemetaanNpsn) as $namaTabel => $jumlahDihapus) {
-                    $ringkasan[$namaTabel]['dihapus'] = ($ringkasan[$namaTabel]['dihapus'] ?? 0) + $jumlahDihapus;
+                // 2. Tombstone (penghapusan yang ikut disinkronkan). Lihat
+                // poin 10 docblock class - tiap tombstone yang gagal
+                // dihapus (misal masih direferensikan FK RESTRICT)
+                // dilewati & dicatat 'gagal_dihapus', bukan membatalkan
+                // tombstone/tabel lain.
+                foreach ($this->terapkanTombstone($payload['tombstones'] ?? [], $konfigurasiSemua, $pemetaanNpsn) as $namaTabel => $hasilTombstone) {
+                    $ringkasan[$namaTabel]['dihapus'] = ($ringkasan[$namaTabel]['dihapus'] ?? 0) + ($hasilTombstone['dihapus'] ?? 0);
+                    if (($hasilTombstone['gagal_dihapus'] ?? 0) > 0) {
+                        $ringkasan[$namaTabel]['gagal_dihapus'] = ($ringkasan[$namaTabel]['gagal_dihapus'] ?? 0) + $hasilTombstone['gagal_dihapus'];
+                    }
                 }
             });
         } catch (Throwable $e) {
@@ -394,7 +423,7 @@ class SyncEngine
      */
     protected function terapkanTombstone(array $tombstones, array $konfigurasiSemua, array $pemetaanNpsn): array
     {
-        $dihapusPerTabel = [];
+        $hasilPerTabel = [];
 
         foreach ($tombstones as $t) {
             $namaTabel = $t['tabel'] ?? null;
@@ -414,13 +443,26 @@ class SyncEngine
                 $kunci['profil_sekolah_id'] = $pemetaanNpsn[$npsn];
             }
 
-            $dihapus = DB::table($namaTabel)->where($kunci)->delete();
+            // Lihat poin 10 docblock class - dibungkus DB::transaction()
+            // TERSENDIRI (otomatis jadi SAVEPOINT krn sudah di dalam
+            // transaksi utama) supaya kalau baris ini GAGAL dihapus
+            // (misal masih direferensikan FK RESTRICT), HANYA baris ini
+            // yang di-rollback & dilewati - transaksi utama & tombstone/
+            // tabel lain TETAP lanjut, TIDAK ikut batal.
+            try {
+                $dihapus = DB::transaction(fn () => DB::table($namaTabel)->where($kunci)->delete());
+            } catch (Throwable $e) {
+                $hasilPerTabel[$namaTabel]['gagal_dihapus'] = ($hasilPerTabel[$namaTabel]['gagal_dihapus'] ?? 0) + 1;
+
+                continue;
+            }
+
             if ($dihapus > 0) {
-                $dihapusPerTabel[$namaTabel] = ($dihapusPerTabel[$namaTabel] ?? 0) + $dihapus;
+                $hasilPerTabel[$namaTabel]['dihapus'] = ($hasilPerTabel[$namaTabel]['dihapus'] ?? 0) + $dihapus;
             }
         }
 
-        return $dihapusPerTabel;
+        return $hasilPerTabel;
     }
 
     /**

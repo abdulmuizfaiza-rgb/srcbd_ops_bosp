@@ -170,6 +170,9 @@
                         <x-zoom-controls :zoom="$zoomPercent" />
                     </div>
                 </div>
+                <p class="text-xs text-slate-400 mb-1">
+                    Keterangan kolom Keterangan: <span class="font-mono">+ditambah ~diupdate -dihapus !gagal dihapus</span> per tabel ("!gagal dihapus" muncul kalau ada baris yang gagal dihapus krn masih direferensikan data lain - cek manual di menu terkait).
+                </p>
                 <div class="overflow-x-auto" style="zoom: {{ $zoomPercent }}%;">
                     <table class="min-w-full divide-y divide-slate-200 text-sm">
                         <thead class="bg-slate-50">
@@ -208,7 +211,26 @@
                                         @if ($log->status === 'gagal')
                                             {{ $log->pesan_error }}
                                         @elseif ($log->ringkasan)
-                                            {{ collect($log->ringkasan)->map(fn ($v, $k) => is_array($v) ? $k.': +'.($v['ditambah'] ?? 0).' ~'.($v['diupdate'] ?? 0) : null)->filter()->implode(', ') }}
+                                            {{-- 2026-10-18: ditambah -dihapus & !gagal_dihapus (sebelumnya
+                                                 dihapus SUDAH dihitung di $ringkasan tapi TIDAK ditampilkan
+                                                 sama sekali di sini - gagal_dihapus BARU, lihat poin 10
+                                                 docblock App\Services\SyncEngine - baris yang gagal dihapus
+                                                 krn masih direferensikan data lain, SUPAYA Superadmin bisa
+                                                 cek manual, bukan cuma "hilang" tanpa jejak). --}}
+                                            {{ collect($log->ringkasan)->map(function ($v, $k) {
+                                                if (! is_array($v)) {
+                                                    return null;
+                                                }
+                                                $teks = $k.': +'.($v['ditambah'] ?? 0).' ~'.($v['diupdate'] ?? 0);
+                                                if (! empty($v['dihapus'])) {
+                                                    $teks .= ' -'.$v['dihapus'];
+                                                }
+                                                if (! empty($v['gagal_dihapus'])) {
+                                                    $teks .= ' !'.$v['gagal_dihapus'].' gagal dihapus';
+                                                }
+
+                                                return $teks;
+                                            })->filter()->implode(', ') }}
                                         @endif
                                     </td>
                                 </tr>
