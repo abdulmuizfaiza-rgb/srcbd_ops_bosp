@@ -1418,8 +1418,22 @@ class Index extends Component
 
         return view('livewire.profil-sekolah.index', [
             'daftarSekolah' => $daftarSekolah,
+            // 2026-10-18: ditambah query string "?v=..." (cache-buster) -
+            // lihat docblock App\Http\Controllers\LogoSekolahFileController -
+            // controller itu sengaja menyetel header Cache-Control
+            // "max-age=3600" (1 jam) utk performa, TAPI URL route ini
+            // HANYA berisi ID sekolah (bukan nama file logo-nya), jadi
+            // URL-nya TIDAK PERNAH berubah walau logo diganti/dihapus -
+            // browser akan terus menampilkan gambar lama dari cache-nya
+            // sampai 1 jam berlalu (laporan user "diganti logo baru tidak
+            // berhasil, masih logo lama yang muncul"). Nama file logo
+            // SUDAH unik acak tiap kali diunggah (lihat
+            // simpanLogoSekolah()), jadi dipakai langsung sbg penanda
+            // versi - browser otomatis minta ulang gambarnya begitu
+            // logo berganti, TETAP memanfaatkan cache 1 jam selama
+            // logonya belum berubah.
             'logoSekolahSrc' => ($sekolahSedangDiedit && $sekolahSedangDiedit->logo_sekolah)
-                ? route('profil-sekolah.logo-sekolah', $sekolahSedangDiedit->id)
+                ? route('profil-sekolah.logo-sekolah', $sekolahSedangDiedit->id).'?v='.urlencode(basename($sekolahSedangDiedit->logo_sekolah))
                 : null,
             'statusOptions' => ProfilSekolah::statusOptions(),
             'statusKepegawaianOptions' => ProfilSekolah::statusKepegawaianOptions(),

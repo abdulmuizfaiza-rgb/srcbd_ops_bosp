@@ -1178,8 +1178,16 @@ class Index extends Component
             // SMPN/Cover SMP-S) - pola sama persis dgn kopSuratSrc di
             // atas: route terautentikasi utk preview layar, ditimpa data
             // URI base64 di exportPdf()/exportWord() (lihat di bawah).
+            // 2026-10-18: ditambah query string "?v=..." (cache-buster) -
+            // lihat docblock App\Http\Controllers\LogoSekolahFileController
+            // & perbaikan yang sama di App\Livewire\ProfilSekolah\
+            // Index::render() - URL route ini hanya berisi ID sekolah
+            // (bukan nama file logo-nya) & disajikan dengan Cache-Control
+            // 1 jam, jadi tanpa penanda versi ini browser akan terus
+            // menampilkan logo LAMA dari cache-nya sampai 1 jam berlalu
+            // walau logo sudah diganti/dihapus di menu Profil Sekolah.
             'logoSekolahSrc' => $sekolah && $sekolah->logo_sekolah
-                ? route('profil-sekolah.logo-sekolah', $sekolah->id)
+                ? route('profil-sekolah.logo-sekolah', $sekolah->id).'?v='.urlencode(basename($sekolah->logo_sekolah))
                 : null,
             'sekolah' => $sekolah,
             // Tab "Lembar Validasi TPG" (BARU 2026-10-15/16) - SELALU
