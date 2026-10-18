@@ -8,13 +8,17 @@ use Illuminate\Support\Collection as SupportCollection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
+use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -100,8 +104,17 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * semua versi Excel - validasi paling pasti berlaku saat mengetik
  * manual atau memilih dari dropdown; perilaku saat paste bergantung
  * versi Excel yang dipakai.
+ *
+ * SEJAK permintaan user 2026-10-18 ("field yang inputannya berupa angka
+ * ... tidak berubah sesuai inputan dan tidak terpotong angkanya"):
+ * kolom NIK/NUPTK/NIP/Tahun Lulus Ijazah/NPWP/Tahun Lulus Sertifikasi/
+ * Nomor Sertifikat Sertifikasi/Nomor Registrasi Guru/Nomor Peserta
+ * Sertifikasi dipaksa bertipe TEKS lewat WithCustomValueBinder (lihat
+ * bindValue()/kolomDipaksaTeks()) - pola sama persis dengan
+ * App\Exports\Lampiran2aExport/Lampiran2bExport/Lampiran2cExport yang
+ * sudah menerapkan ini sejak 2026-10-16.
  */
-class DataPtkExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping, WithTitle
+class DataPtkExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithCustomValueBinder, WithEvents, WithHeadings, WithMapping, WithTitle
 {
     /**
      * Baris 1 dipakai untuk baris keterangan kolom kuning (lihat
@@ -204,6 +217,43 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithCustomStartCe
             $p->status_dapodik,
             $p->status_keaktifan,
         ];
+    }
+
+    /**
+     * Kolom berisi NIK/NUPTK/NIP/Tahun Lulus Ijazah/NPWP/Tahun Lulus
+     * Sertifikasi/Nomor Sertifikat/Nomor Registrasi Guru/Nomor Peserta
+     * Sertifikasi dipaksa bertipe TEKS (bukan Angka) - kalau dibiarkan
+     * memakai tipe Angka bawaan Excel, angka yang berawalan "0" bisa
+     * TERPOTONG (hilang nolnya) & angka berdigit panjang (NIK/NUPTK 16
+     * digit, NIP 18 digit) bisa tampil beda (notasi ilmiah/dibulatkan,
+     * krn melebihi 15 digit presisi Excel) - harus sama persis dengan
+     * yang tampil di aplikasi. Permintaan user 2026-10-18 - pola SAMA
+     * PERSIS dengan App\Exports\Lampiran2aExport/Lampiran2bExport/
+     * Lampiran2cExport::bindValue() yang sudah ada sejak 2026-10-16.
+     * Kolom "No" (A) SENGAJA TIDAK dipaksa teks (nomor urut biasa, tidak
+     * berisiko kepanjangan digit).
+     */
+    public function bindValue(Cell $cell, mixed $value): bool
+    {
+        if (in_array($cell->getColumn(), $this->kolomDipaksaTeks(), true)) {
+            $cell->setValueExplicit((string) $value, DataType::TYPE_STRING);
+
+            return true;
+        }
+
+        return (new DefaultValueBinder())->bindValue($cell, $value);
+    }
+
+    /**
+     * @return string[] kolom NIK, NUPTK, NIP, Tahun Lulus Ijazah, NPWP,
+     *                   Tahun Lulus Sertifikasi, Nomor Sertifikat
+     *                   Sertifikasi, Nomor Registrasi Guru, Nomor
+     *                   Peserta Sertifikasi - urutan kolom tabel ini
+     *                   tetap, lihat headings()/map().
+     */
+    private function kolomDipaksaTeks(): array
+    {
+        return ['B', 'C', 'H', 'O', 'P', 'S', 'T', 'U', 'V'];
     }
 
     public function registerEvents(): array
