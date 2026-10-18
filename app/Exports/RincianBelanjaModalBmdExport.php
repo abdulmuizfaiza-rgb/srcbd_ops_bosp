@@ -97,6 +97,15 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * saat file diimport kembali (PPK & tanggal JUGA - lihat import tsb) -
  * formula/dropdown/format tanggal ini murni untuk kenyamanan & keakuratan
  * tampilan saat file dibuka/diisi di Excel, BUKAN sumber data saat import.
+ *
+ * SEJAK permintaan user 2026-10-18: kolom PILIHAN (Bentuk Kontrak/
+ * Transaksi, Rekening Belanja) kini JUGA diberi warna kuning FFFBEB
+ * (sama dgn kolom otomatis di atas, dikonfirmasi lewat AskUserQuestion),
+ * & 1 baris keterangan ditambahkan di baris 4 (sebelumnya kosong, lihat
+ * tulisKeteranganKolomKuning()) - tepat di atas baris header, tidak
+ * perlu menggeser BARIS_HEADER_TABEL. Lihat juga docblock
+ * App\Exports\DataPtkExport untuk catatan keterbatasan Data Validation
+ * Excel terhadap copy-paste.
  */
 class RincianBelanjaModalBmdExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping, WithTitle
 {
@@ -298,6 +307,34 @@ class RincianBelanjaModalBmdExport implements FromCollection, ShouldAutoSize, Wi
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
             ]);
         }
+
+        $this->tulisKeteranganKolomKuning($sheet);
+    }
+
+    /**
+     * Baris keterangan (permintaan user 2026-10-18) - memakai baris 4
+     * yang sebelumnya kosong (dulu jadi spasi sebelum lembar tanda
+     * tangan yang sudah dihapus, lihat docblock kelas), tepat di atas
+     * baris header (BARIS_HEADER_TABEL = 5), supaya tidak perlu
+     * menggeser BARIS_HEADER_TABEL/baris lain sama sekali. Warna kuning
+     * di file ini SUDAH dipakai utk kolom OTOMATIS (lihat
+     * $kolomOtomatis di terapkanFieldOtomatis()) - dikonfirmasi lewat
+     * AskUserQuestion warna yang SAMA (FFFBEB) dipakai juga utk kolom
+     * PILIHAN (Bentuk Kontrak/Transaksi, Rekening Belanja), jadi
+     * keterangan ini mencakup KEDUA arti kuning tersebut.
+     */
+    private function tulisKeteranganKolomKuning(Worksheet $sheet): void
+    {
+        $baris = self::BARIS_HEADER_TABEL - 1;
+        $rentang = 'A'.$baris.':'.self::KOLOM_TERAKHIR.$baris;
+
+        $sheet->mergeCells($rentang);
+        $sheet->setCellValue('A'.$baris, 'Kolom berwarna kuning: untuk kolom otomatis tidak perlu diisi manual; untuk kolom pilihan (Bentuk Kontrak/Transaksi, Rekening Belanja) silahkan pilih dari dropdown yang tersedia, jangan diketik manual atau copy-paste, untuk meminimalisir kesalahan saat diimpor kembali.');
+        $sheet->getStyle($rentang)->applyFromArray([
+            'font' => ['italic' => true, 'bold' => true, 'size' => 9, 'color' => ['rgb' => '9A3412']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'wrapText' => true],
+        ]);
+        $sheet->getRowDimension($baris)->setRowHeight(30);
     }
 
     private function barisTerakhirTabel(): int
@@ -428,6 +465,19 @@ class RincianBelanjaModalBmdExport implements FromCollection, ShouldAutoSize, Wi
             self::KOLOM_PPK, self::KOLOM_JENIS_ASET, self::KOLOM_TOTAL, self::KOLOM_KETERANGAN_BOS, self::KOLOM_KETERANGAN_BOSP,
         ];
         foreach ($kolomOtomatis as $kolom) {
+            $sheet->getStyle($kolom.$barisMulai.':'.$kolom.$barisSelesai)->applyFromArray([
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFFBEB']],
+            ]);
+        }
+
+        // BARU 2026-10-18 (permintaan user, lihat tulisKeteranganKolomKuning()):
+        // kolom PILIHAN (dropdown) diberi warna kuning yang SAMA dgn
+        // kolom otomatis di atas (dikonfirmasi lewat AskUserQuestion) -
+        // SENGAJA dipisah dari $kolomOtomatis supaya penamaan variabel
+        // tetap akurat (kolom ini bukan "otomatis", tapi "wajib pilih
+        // dari dropdown").
+        $kolomPilihan = [self::KOLOM_BENTUK_KONTRAK, self::KOLOM_REKENING_BELANJA];
+        foreach ($kolomPilihan as $kolom) {
             $sheet->getStyle($kolom.$barisMulai.':'.$kolom.$barisSelesai)->applyFromArray([
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFFBEB']],
             ]);

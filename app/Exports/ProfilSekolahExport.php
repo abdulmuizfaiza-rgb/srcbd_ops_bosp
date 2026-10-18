@@ -6,12 +6,15 @@ use App\Models\ProfilSekolah;
 use Illuminate\Support\Collection as SupportCollection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
@@ -30,10 +33,19 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  *
  * Urutan kolom WAJIB mengikuti: NPSN, Nama Sekolah, Status, Kecamatan -
  * jangan diubah urutannya tanpa persetujuan.
+ *
+ * SEJAK permintaan user 2026-10-18: kolom Status (dropdown) diberi
+ * warna kuning (FFFBEB) & 1 baris keterangan ditambahkan tepat di atas
+ * tabel (baris 1) - pola sama persis dengan App\Exports\DataPtkExport,
+ * lihat docblock kelas itu untuk detail & catatan keterbatasannya.
+ * Header & data digeser 1 baris ke bawah lewat
+ * WithCustomStartCell::startCell().
  */
-class ProfilSekolahExport implements FromCollection, ShouldAutoSize, WithEvents, WithHeadings, WithMapping, WithTitle
+class ProfilSekolahExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping, WithTitle
 {
-    private const BARIS_HEADER_TABEL = 1;
+    private const BARIS_KETERANGAN = 1;
+
+    private const BARIS_HEADER_TABEL = 2;
 
     /**
      * @param  SupportCollection<int, ProfilSekolah>  $daftar
@@ -70,6 +82,15 @@ class ProfilSekolahExport implements FromCollection, ShouldAutoSize, WithEvents,
         return 'Profil Sekolah';
     }
 
+    /**
+     * Header & data digeser ke baris 2 supaya baris 1 bisa dipakai utk
+     * keterangan kolom kuning (permintaan user 2026-10-18).
+     */
+    public function startCell(): string
+    {
+        return 'A'.self::BARIS_HEADER_TABEL;
+    }
+
     public function registerEvents(): array
     {
         return [
@@ -79,9 +100,28 @@ class ProfilSekolahExport implements FromCollection, ShouldAutoSize, WithEvents,
                 $sheet->getStyle('A'.self::BARIS_HEADER_TABEL.':D'.self::BARIS_HEADER_TABEL)
                     ->getFont()->setBold(true);
 
+                $this->tulisKeteranganKolomPilihan($sheet);
                 $this->tulisDaftarPilihanTersembunyi($sheet);
             },
         ];
+    }
+
+    /**
+     * Baris keterangan di atas tabel (permintaan user 2026-10-18) -
+     * pola sama persis dgn App\Exports\DataPtkExport::
+     * tulisKeteranganKolomPilihan().
+     */
+    private function tulisKeteranganKolomPilihan(Worksheet $sheet): void
+    {
+        $rentang = 'A'.self::BARIS_KETERANGAN.':D'.self::BARIS_KETERANGAN;
+
+        $sheet->mergeCells($rentang);
+        $sheet->setCellValue('A'.self::BARIS_KETERANGAN, 'Kolom berwarna kuning: silahkan pilih dari dropdown yang tersedia, jangan diketik manual atau copy-paste, untuk meminimalisir kesalahan saat diimpor kembali.');
+        $sheet->getStyle($rentang)->applyFromArray([
+            'font' => ['italic' => true, 'bold' => true, 'color' => ['rgb' => '9A3412']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'wrapText' => true],
+        ]);
+        $sheet->getRowDimension(self::BARIS_KETERANGAN)->setRowHeight(30);
     }
 
     /**
@@ -106,6 +146,13 @@ class ProfilSekolahExport implements FromCollection, ShouldAutoSize, WithEvents,
             self::BARIS_HEADER_TABEL + 1,
             $this->barisAkhirValidasi()
         );
+
+        // Warna kuning (permintaan user 2026-10-18, lihat
+        // tulisKeteranganKolomPilihan()) - rentang sama dgn dropdown-nya.
+        $sheet->getStyle('C'.(self::BARIS_HEADER_TABEL + 1).':C'.$this->barisAkhirValidasi())
+            ->applyFromArray([
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFFBEB']],
+            ]);
     }
 
     /**

@@ -1019,7 +1019,7 @@ class Index extends Component
             'pendidikan_terakhir' => ['required', Rule::in(array_keys(DataPtk::pendidikanTerakhirOptions()))],
             'jurusan_prodi' => ['nullable', 'string', 'max:255'],
             'tahun_lulus_ijazah' => ['nullable', 'regex:/^[0-9]{4}$/'],
-            'npwp' => ['nullable', 'regex:/^[0-9]{1,16}$/'],
+            'npwp' => ['nullable', 'regex:/^[0-9]+$/'],
             'status_sertifikasi' => ['required', Rule::in(array_keys(DataPtk::statusSertifikasiOptions()))],
             'bidang_studi_sertifikasi' => $rincianSertifikasiWajib ? ['nullable', 'string', 'max:255'] : ['nullable'],
             'tahun_lulus_sertifikasi' => $rincianSertifikasiWajib ? ['nullable', 'regex:/^([0-9]{4}|-)$/'] : ['nullable'],
@@ -1034,7 +1034,7 @@ class Index extends Component
             'nuptk.regex' => 'NUPTK harus berupa 16 digit angka.',
             'nip.regex' => 'NIP harus berupa 18 digit angka.',
             'tahun_lulus_ijazah.regex' => 'Tahun Lulus Ijazah harus berupa 4 digit angka tahun.',
-            'npwp.regex' => 'NPWP harus berupa angka, maksimal 16 digit.',
+            'npwp.regex' => 'NPWP harus berupa angka.',
             'tahun_lulus_sertifikasi.regex' => 'Tahun Lulus Sertifikasi harus berupa 4 digit angka tahun.',
             'nomor_registrasi_guru.regex' => 'Nomor Registrasi Guru harus berupa angka, maksimal 12 digit.',
         ]);
@@ -1221,11 +1221,61 @@ class Index extends Component
             ->whereHas('profilSekolah', fn ($q) => $q->where('status', ProfilSekolah::STATUS_SWASTA))
             ->count();
 
+        // BARU 2026-10-18 (permintaan user): rincian jumlah berdasarkan
+        // Status Sertifikasi, dihitung dari queryDasarPtk() yang sama
+        // (ikut filter yang sedang aktif - pola sama persis dgn
+        // negeri/swasta di atas).
+        $jumlahSudahSertifikasi = $this->queryDasarPtk()
+            ->where('status_sertifikasi', DataPtk::STATUS_SERTIFIKASI_SUDAH)
+            ->count();
+        $jumlahBelumSertifikasi = $this->queryDasarPtk()
+            ->where('status_sertifikasi', DataPtk::STATUS_SERTIFIKASI_BELUM)
+            ->count();
+
         return [
             'negeri' => $jumlahNegeri,
             'swasta' => $jumlahSwasta,
             'total' => $jumlahNegeri + $jumlahSwasta,
+            'sudahSertifikasi' => $jumlahSudahSertifikasi,
+            'belumSertifikasi' => $jumlahBelumSertifikasi,
+            // BARU 2026-10-18 (permintaan user) - lihat daftarBelumLengkapPtk()
+            // di bawah. SENGAJA TIDAK memakai queryDasarPtk() (mencakup
+            // SELURUH data PTK, bukan hanya yang sedang terfilter) supaya
+            // daftar ini tetap jadi alat pantau menyeluruh, tidak ikut
+            // hilang/berubah saat admin sedang mencari/memfilter sesuatu
+            // yang lain di tabel.
+            'belumLengkap' => $this->daftarBelumLengkapPtk(),
         ];
+    }
+
+    /**
+     * Daftar sekolah yang punya Data PTK "belum lengkap" (permintaan
+     * user 2026-10-18, dikonfirmasi lewat AskUserQuestion) - sebuah
+     * baris Data PTK dianggap belum lengkap kalau salah satu field di
+     * DataPtk::FIELD_BELUM_LENGKAP masih NULL/kosong (bukan '-' - nilai
+     * '-' berarti SUDAH lengkap tapi memang sengaja ditandai tidak
+     * berlaku lewat aturan bisnis lain, lihat docblock konstanta itu).
+     * Hanya sekolah dengan jumlah > 0 yang dikembalikan (jawaban
+     * AskUserQuestion "Daftar ringkas, hanya sekolah yang punya data
+     * belum lengkap"), diurutkan dari yang paling banyak.
+     *
+     * @return \Illuminate\Support\Collection<int, object{nama_sekolah: string, jumlah: int}>
+     */
+    protected function daftarBelumLengkapPtk(): \Illuminate\Support\Collection
+    {
+        return DataPtk::query()
+            ->join('profil_sekolah', 'profil_sekolah.id', '=', 'data_ptk.profil_sekolah_id')
+            ->where(function ($query) {
+                foreach (DataPtk::FIELD_BELUM_LENGKAP as $i => $field) {
+                    $kondisi = fn ($q) => $q->whereNull('data_ptk.'.$field)->orWhere('data_ptk.'.$field, '');
+                    $i === 0 ? $query->where($kondisi) : $query->orWhere($kondisi);
+                }
+            })
+            ->selectRaw('profil_sekolah.nama_sekolah as nama_sekolah, count(*) as jumlah')
+            ->groupBy('profil_sekolah.nama_sekolah')
+            ->orderByDesc('jumlah')
+            ->orderBy('profil_sekolah.nama_sekolah')
+            ->get();
     }
 
     /**

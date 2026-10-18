@@ -869,8 +869,7 @@
 
                 <div>
                     <x-input-label for="npwp" value="NPWP" />
-                    <x-text-input wire:model="npwp" id="npwp" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="16" />
-                    <p class="text-xs text-slate-400 mt-1">Maksimal 16 digit angka.</p>
+                    <x-text-input wire:model="npwp" id="npwp" class="block mt-1 w-full" type="text" inputmode="numeric" />
                     <x-input-error :messages="$errors->get('npwp')" class="mt-2" />
                 </div>
 

@@ -76,6 +76,27 @@ class DataPtk extends Model
         'nomor_peserta_sertifikasi',
     ];
 
+    /**
+     * Field yang dipakai untuk menentukan "Data PTK belum lengkap"
+     * (permintaan user 2026-10-18, dikonfirmasi lewat AskUserQuestion) -
+     * HANYA field yang memang boleh kosong & TIDAK punya aturan bisnis
+     * "sengaja ditandai '-'" (berbeda dari pangkat_golongan/nip yang
+     * bisa '-' krn Jabatan tertentu, atau field rincian sertifikasi di
+     * atas yang bisa '-' krn Status Sertifikasi = Belum) - sebuah baris
+     * dianggap "belum lengkap" kalau salah satu dari field ini masih
+     * NULL/kosong (bukan '-'), lihat ProfilSekolah\Index::
+     * daftarBelumLengkapPtk().
+     */
+    public const FIELD_BELUM_LENGKAP = [
+        'nuptk',
+        'tempat_lahir',
+        'tanggal_lahir',
+        'tmt_sekolah_induk',
+        'jurusan_prodi',
+        'tahun_lulus_ijazah',
+        'npwp',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -135,12 +156,23 @@ class DataPtk extends Model
      * posisinya PALING RENDAH, di atas "-" & di bawah "Penata Muda
      * III/a" (lihat pangkatGolonganUrutan() - urutan di sini otomatis
      * menentukan urutan tertinggi-terendah utk Lampiran 2a).
+     *
+     * "Guru Ahli Pertama" (tanpa angka romawi) ditambahkan 2026-10-18
+     * (permintaan user) sebagai pilihan TERPISAH dari "Guru Ahli
+     * Pertama IX" - dikonfirmasi AskUserQuestion posisinya tepat di
+     * atas "Guru Ahli Pertama IX" (lebih tinggi dari IX, lebih rendah
+     * dari "Penata Muda III/a"). Sebelumnya field ini sempat diisi
+     * OTOMATIS ke "Guru Ahli Pertama IX" saat Status Kepegawaian =
+     * "PPPK Paruh Waktu", namun aturan auto-isi itu DIHAPUS (permintaan
+     * user) - kedua pilihan "Guru Ahli Pertama ..." ini sekarang
+     * murni pilihan manual, sama seperti pilihan lain.
      */
     public static function pangkatGolonganOptions(): array
     {
         return [
             '-' => '-',
             'Guru Ahli Pertama IX' => 'Guru Ahli Pertama IX',
+            'Guru Ahli Pertama' => 'Guru Ahli Pertama',
             'Penata Muda III/a' => 'Penata Muda III/a',
             'Penata Muda Tk. I III/b' => 'Penata Muda Tk. I III/b',
             'Penata III/c' => 'Penata III/c',

@@ -7,6 +7,7 @@ use App\Models\ProfilSekolah;
 use Illuminate\Support\Collection as SupportCollection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -15,8 +16,10 @@ use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Conditional;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
@@ -82,10 +85,33 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  *    hilang lagi kalau isian kolom itu dihapus), jawaban AskUserQuestion
  *    "Otomatis muncul begitu kolom Status Keaktifan terisi". Lihat
  *    tulisGarisBarisSelesai().
+ *
+ * SEJAK permintaan user 2026-10-18 ("untuk field/kolom yang sudah ada
+ * pilihannya ... diberi warna kuning dan diberi keterangan silahkan
+ * pilih ... untuk meminimalisir kesalahan ketika saat import excel
+ * nya"): ke-9 kolom dropdown di atas (G, I, J, K, M, Q, W, X, Y) kini
+ * diberi warna kuning (FFFBEB, sama dgn warna kolom otomatis di
+ * RincianBelanjaModalBmdExport - jawaban AskUserQuestion), & 1 baris
+ * keterangan ditambahkan tepat di atas tabel (baris 1, lihat
+ * BARIS_KETERANGAN/tulisKeteranganKolomPilihan()) - header & data
+ * digeser 1 baris ke bawah lewat WithCustomStartCell::startCell().
+ * CATATAN KETERBATASAN: Data Validation Excel (ErrorStyle STOP) TIDAK
+ * menjamin 100% mencegah copy-paste nilai di luar daftar pilihan pada
+ * semua versi Excel - validasi paling pasti berlaku saat mengetik
+ * manual atau memilih dari dropdown; perilaku saat paste bergantung
+ * versi Excel yang dipakai.
  */
-class DataPtkExport implements FromCollection, ShouldAutoSize, WithEvents, WithHeadings, WithMapping, WithTitle
+class DataPtkExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping, WithTitle
 {
-    private const BARIS_HEADER_TABEL = 1;
+    /**
+     * Baris 1 dipakai untuk baris keterangan kolom kuning (lihat
+     * tulisKeteranganKolomPilihan(), permintaan user 2026-10-18) -
+     * tabel (header + data) digeser 1 baris ke bawah lewat
+     * WithCustomStartCell::startCell().
+     */
+    private const BARIS_KETERANGAN = 1;
+
+    private const BARIS_HEADER_TABEL = 2;
 
     private const KOLOM_TANGGAL_LAHIR = 'F';
 
@@ -120,6 +146,16 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithEvents, WithH
     public function title(): string
     {
         return 'Data PTK';
+    }
+
+    /**
+     * Header & data digeser ke baris 2 (lihat BARIS_KETERANGAN/
+     * BARIS_HEADER_TABEL) supaya baris 1 bisa dipakai utk keterangan
+     * kolom kuning (permintaan user 2026-10-18).
+     */
+    public function startCell(): string
+    {
+        return 'A'.self::BARIS_HEADER_TABEL;
     }
 
     public function headings(): array
@@ -179,11 +215,33 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithEvents, WithH
                 $sheet->getStyle('A'.self::BARIS_HEADER_TABEL.':'.self::KOLOM_STATUS_KEAKTIFAN.self::BARIS_HEADER_TABEL)
                     ->getFont()->setBold(true);
 
+                $this->tulisKeteranganKolomPilihan($sheet);
                 $this->tulisTanggal($sheet);
                 $this->tulisDaftarPilihanTersembunyi($sheet);
                 $this->tulisGarisBarisSelesai($sheet);
             },
         ];
+    }
+
+    /**
+     * Baris keterangan di atas tabel (permintaan user 2026-10-18,
+     * dikonfirmasi lewat AskUserQuestion "Tambahkan baris keterangan
+     * di atas tabel") - menjelaskan kolom berwarna kuning (lihat
+     * tulisDaftarPilihanTersembunyi()) harus dipilih dari dropdown,
+     * bukan diketik/copy-paste manual, untuk meminimalisir kesalahan
+     * saat diimpor kembali.
+     */
+    private function tulisKeteranganKolomPilihan(Worksheet $sheet): void
+    {
+        $rentang = 'A'.self::BARIS_KETERANGAN.':'.self::KOLOM_STATUS_KEAKTIFAN.self::BARIS_KETERANGAN;
+
+        $sheet->mergeCells($rentang);
+        $sheet->setCellValue('A'.self::BARIS_KETERANGAN, 'Kolom berwarna kuning: silahkan pilih dari dropdown yang tersedia, jangan diketik manual atau copy-paste, untuk meminimalisir kesalahan saat diimpor kembali.');
+        $sheet->getStyle($rentang)->applyFromArray([
+            'font' => ['italic' => true, 'bold' => true, 'color' => ['rgb' => '9A3412']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'wrapText' => true],
+        ]);
+        $sheet->getRowDimension(self::BARIS_KETERANGAN)->setRowHeight(30);
     }
 
     /**
@@ -291,6 +349,15 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithEvents, WithH
                 self::BARIS_HEADER_TABEL + 1,
                 $this->barisAkhirValidasi()
             );
+
+            // Warna kuning (permintaan user 2026-10-18, lihat
+            // tulisKeteranganKolomPilihan()) - menandai kolom ini WAJIB
+            // dipilih dari dropdown, diterapkan ke rentang data yang
+            // sama dengan dropdown-nya (tidak termasuk baris header).
+            $sheet->getStyle($kolomData.(self::BARIS_HEADER_TABEL + 1).':'.$kolomData.$this->barisAkhirValidasi())
+                ->applyFromArray([
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFFBEB']],
+                ]);
 
             $indeksKolomTersembunyi++;
         }
