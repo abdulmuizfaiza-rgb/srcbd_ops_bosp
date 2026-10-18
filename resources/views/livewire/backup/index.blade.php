@@ -295,6 +295,9 @@
                                                     @if ($item->otomatisSebelumRestore())
                                                         <span class="ml-1 inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-100 text-amber-700" title="{{ $item->catatan }}">Otomatis (sebelum Restore)</span>
                                                     @endif
+                                                    @if ($item->diunggahDariPc())
+                                                        <span class="ml-1 inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full bg-blue-100 text-blue-700" title="Diunggah manual oleh Superadmin dari Laptop/PC, bukan dibuat oleh aplikasi ini">Diunggah dari PC</span>
+                                                    @endif
                                                 </td>
                                                 <td class="px-3 py-2 text-slate-600">{{ $item->tahun }}</td>
                                                 <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->ukuranManusiawi() ?: '-' }}</td>
@@ -343,6 +346,40 @@
                             </p>
                         </div>
 
+                        {{-- "Restore dari File di Laptop/PC" (BARU, permintaan user 2026-10-18)
+                             - lihat App\Services\BackupService::simpanUnggahan(). File yang
+                             diunggah di sini TIDAK langsung di-restore, cukup disimpan dulu
+                             sebagai 1 baris Backup biasa (muncul di tabel "Pilih Backup untuk
+                             Di-Restore" di bawah, ditandai badge "Diunggah dari PC") - proses
+                             Restore sesungguhnya tetap lewat tombol "Restore dari File Ini" &
+                             konfirmasi ketik-ulang-nama-file yang SAMA seperti backup biasa. --}}
+                        <div class="p-4 bg-white border border-slate-200 rounded-lg">
+                            <h3 class="text-lg font-bold text-indigo-900 mb-1">Atau Unggah File Backup dari Laptop/PC</h3>
+                            <p class="text-sm text-slate-500 mb-3">
+                                Punya file backup (.zip) hasil unduhan sebelumnya yang tersimpan di komputer Anda (misalnya dari instalasi lain, atau
+                                sebelum server/riwayat backup ini pernah hilang)? Unggah di sini - file ini akan ikut tersimpan di Riwayat Backup (ditandai
+                                "Diunggah dari PC") & muncul di daftar di bawah untuk di-restore. Ukuran maksimal 500MB, format .zip.
+                            </p>
+
+                            <form wire:submit="uploadBackupDariPc" class="flex flex-wrap items-end gap-3">
+                                <div>
+                                    <input type="file" wire:model="fileBackupUnggahan" accept=".zip" class="block text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+                                    <div wire:loading wire:target="fileBackupUnggahan" class="text-xs text-slate-400 mt-1">Mengunggah ke server...</div>
+                                    <x-input-error :messages="$errors->get('fileBackupUnggahan')" class="mt-1" />
+                                </div>
+                                <button
+                                    type="submit"
+                                    wire:loading.attr="disabled"
+                                    wire:target="uploadBackupDariPc,fileBackupUnggahan"
+                                    @disabled(! $fileBackupUnggahan)
+                                    class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
+                                >
+                                    <span wire:loading.remove wire:target="uploadBackupDariPc">Unggah File Ini</span>
+                                    <span wire:loading wire:target="uploadBackupDariPc">Menyimpan...</span>
+                                </button>
+                            </form>
+                        </div>
+
                         <div>
                             <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                                 <h3 class="text-lg font-bold text-indigo-900">Pilih Backup untuk Di-Restore (berdasarkan Tahun / Tanggal)</h3>
@@ -380,6 +417,9 @@
                                                     {{ $item->nama_file }}
                                                     @if ($item->otomatisSebelumRestore())
                                                         <span class="ml-1 inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-100 text-amber-700" title="{{ $item->catatan }}">Otomatis (sebelum Restore)</span>
+                                                    @endif
+                                                    @if ($item->diunggahDariPc())
+                                                        <span class="ml-1 inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full bg-blue-100 text-blue-700" title="Diunggah manual oleh Superadmin dari Laptop/PC, bukan dibuat oleh aplikasi ini">Diunggah dari PC</span>
                                                     @endif
                                                 </td>
                                                 <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $item->ukuranManusiawi() ?: '-' }}</td>

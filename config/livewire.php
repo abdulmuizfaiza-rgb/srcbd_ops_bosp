@@ -76,12 +76,25 @@ return [
         // 20MB (bukan pas 20480) supaya batas 20MB yang SEBENARNYA berlaku
         // selalu dari validasi App\Livewire\PanduanAplikasi\Index sendiri
         // (pesan errornya lebih ramah/jelas), bukan dari lapisan Livewire
-        // ini. Ini batas GLOBAL Livewire (berlaku semua fitur upload di
-        // aplikasi), tapi TIDAK melonggarkan batas fitur upload lain yang
-        // sudah py validasi lebih ketat sendiri (mis. Kop Surat tetap
-        // dibatasi 2048 KB oleh App\Livewire\PendataanOps\SuratTpg\
-        // Index::updatedKopSuratBaru()).
-        'rules' => ['required', 'file', 'max:25600'],       // Example: ['file', 'mimes:png,jpg']  | Default: ['required', 'file', 'max:12288'] (12MB)
+        // ini.
+        // Dinaikkan LAGI 25600 KB (25MB) -> 512000 KB (500MB) (2026-10-18,
+        // fitur "Restore dari File di Laptop/PC", jawaban AskUserQuestion
+        // "Batas ukuran unggahan" -> "Sampai 500 MB (Recommended)"): menu
+        // Backup & Restore (App\Livewire\Backup\Index::uploadBackupDariPc())
+        // mengizinkan unggah file backup .zip (kode aplikasi + dump
+        // database) sampai 500MB - tanpa baris ini, batas 25MB lama akan
+        // menolak file backup LEBIH DULU sebelum sempat divalidasi sendiri
+        // oleh Index::uploadBackupDariPc(). PENTING: server (PHP
+        // upload_max_filesize/post_max_size & Nginx client_max_body_size di
+        // VPS) JUGA harus dinaikkan ke >=500MB, kalau tidak permintaan akan
+        // ditolak web server SEBELUM sampai ke Laravel sama sekali - lihat
+        // panduan update terkait. Ini batas GLOBAL Livewire (berlaku semua
+        // fitur upload di aplikasi), tapi TIDAK melonggarkan batas fitur
+        // upload lain yang sudah py validasi lebih ketat sendiri (mis. Kop
+        // Surat tetap dibatasi 2048 KB oleh App\Livewire\PendataanOps\
+        // SuratTpg\Index::updatedKopSuratBaru(), Logo Sekolah 2048 KB,
+        // Foto OPS 5120 KB, dst - masing-masing py validasi max: sendiri).
+        'rules' => ['required', 'file', 'max:512000'],       // Example: ['file', 'mimes:png,jpg']  | Default: ['required', 'file', 'max:12288'] (12MB)
         'directory' => null,   // Example: 'tmp'                      | Default: 'livewire-tmp'
         'middleware' => null,  // Example: 'throttle:5,1'             | Default: 'throttle:60,1'
         'preview_mimes' => [   // Supported file types for temporary pre-signed file URLs...

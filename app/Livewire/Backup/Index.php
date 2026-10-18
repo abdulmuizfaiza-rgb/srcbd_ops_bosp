@@ -15,6 +15,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 use Throwable;
 
@@ -50,11 +51,22 @@ use Throwable;
  * "jalankanRestore") HANYA mengurus lapisan UI (buka/tutup modal,
  * validasi ketik-ulang nama file) - eksekusi sesungguhnya didelegasikan
  * ke RestoreService::restore().
+ *
+ * "Restore dari File di Laptop/PC" (BARU, 2026-10-18, permintaan user
+ * "saya ingin tombol restore ada pilihan restore dari backup yang di
+ * simpan di Laptop/PC komputer bukan hanya yang tersimpan di riwayat
+ * backup") - lihat App\Services\BackupService::simpanUnggahan() untuk
+ * keputusan bisnis/teknis lengkap (jawaban AskUserQuestion 2026-10-18).
+ * Method "uploadBackupDariPc" di bawah HANYA menyimpan file yang
+ * diunggah sebagai 1 baris Backup baru (ditandai `asal` = 'diunggah') -
+ * TIDAK langsung menjalankan Restore, supaya tetap lewat 1 jalur
+ * konfirmasi yang sama (ketik ulang nama file) seperti backup biasa.
  */
 #[Layout('layouts.app')]
 #[Title('Backup & Restore')]
 class Index extends Component
 {
+    use WithFileUploads;
     use WithPagination;
 
     public const TAB_BACKUP = 'backup';
@@ -357,6 +369,53 @@ class Index extends Component
 
     /** Tahun yang dipilih di Tab Restore (daftar backup difilter berdasarkan ini) - independen dari $filterTahun milik Tab Backup. */
     public string $restoreTahun = '';
+
+    // =========================================================================
+    // "Restore dari File di Laptop/PC" (BARU, permintaan user 2026-10-18:
+    // "saya ingin tombol restore ada pilihan restore dari backup yang di
+    // simpan di Laptop/PC komputer bukan hanya yang tersimpan di riwayat
+    // backup") - lihat App\Services\BackupService::simpanUnggahan() untuk
+    // keputusan bisnis/teknis lengkap. File yang diunggah di sini TIDAK
+    // langsung di-restore - cukup disimpan sebagai 1 baris Backup biasa
+    // (muncul di daftar "Pilih Backup untuk Di-Restore" di bawah), supaya
+    // proses Restore sesungguhnya TETAP lewat 1 jalur konfirmasi yang
+    // SAMA (konfirmasiRestore()/jalankanRestore()) utk SEMUA backup, baik
+    // yang dibuat aplikasi maupun yang diunggah - tidak ada jalur restore
+    // terpisah/pintasan yang melewati langkah ketik-ulang-nama-file.
+    // =========================================================================
+
+    /** File .zip yang sedang diunggah Superadmin dari Laptop/PC-nya (Livewire WithFileUploads). */
+    public $fileBackupUnggahan = null;
+
+    public function uploadBackupDariPc(BackupService $backupService): void
+    {
+        abort_unless(auth()->user()->isSuperadmin(), 403);
+
+        $this->resetErrorBag('fileBackupUnggahan');
+
+        $this->validate([
+            'fileBackupUnggahan' => ['required', 'file', 'max:512000', 'extensions:zip'],
+        ], [], ['fileBackupUnggahan' => 'File backup']);
+
+        try {
+            $backup = $backupService->simpanUnggahan($this->fileBackupUnggahan, auth()->id());
+        } catch (Throwable $e) {
+            report($e);
+            session()->flash('errorBackup', 'Gagal mengunggah file backup: '.$e->getMessage());
+            $this->fileBackupUnggahan = null;
+            $this->dispatch('backup-proses-selesai');
+
+            return;
+        }
+
+        $this->fileBackupUnggahan = null;
+        // Supaya baris yang baru saja diunggah langsung terlihat tanpa
+        // user perlu mengganti filter tahun/tanggal secara manual.
+        $this->restoreTahun = (string) $backup->tahun;
+        $this->restoreTanggalBackup = '';
+        session()->flash('status', 'File backup berhasil diunggah: '.$backup->nama_file.' ('.$backup->ukuranManusiawi().'). Silakan klik "Restore dari File Ini" pada baris barunya di bawah untuk melanjutkan proses Restore.');
+        $this->dispatch('backup-proses-selesai');
+    }
 
     /** Filter tanggal SPESIFIK (Y-m-d, kosong = tidak difilter) utk daftar "Pilih Backup untuk Di-Restore" - independen dari $filterTanggalBackup milik Tab Backup. */
     public string $restoreTanggalBackup = '';

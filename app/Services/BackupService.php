@@ -114,6 +114,75 @@ class BackupService
     }
 
     /**
+     * Simpan 1 file backup .zip yang diunggah SUPERADMIN dari Laptop/
+     * PC-nya sendiri (BUKAN dibuat oleh aplikasi ini lewat buat() di
+     * atas) - menu "Backup & Restore" tab "Restore Data & Aplikasi"
+     * (permintaan user 2026-10-18: "tombol restore ada pilihan restore
+     * dari backup yang di simpan di Laptop/PC komputer"). Dipakai oleh
+     * App\Livewire\Backup\Index::uploadBackupDariPc().
+     *
+     * Jawaban AskUserQuestion 2026-10-18:
+     * - "Simpan ke Riwayat Backup" -> "Simpan ke Riwayat Backup
+     *   (Recommended)": file yang diunggah DISIMPAN PERMANEN (bukan
+     *   sekali pakai) sebagai 1 baris `backups` biasa, muncul di
+     *   Riwayat Backup & bisa dipakai/diunduh lagi nanti - ditandai
+     *   `asal` = 'diunggah' (lihat migration add_asal_to_backups_table
+     *   & App\Models\Backup::diunggahDariPc()) supaya BEDA tampilannya
+     *   dari backup otomatis sebelum Restore (ditandai kolom `catatan`)
+     *   maupun backup manual biasa (keduanya `asal` = null).
+     * - "Batas ukuran unggahan" -> "Sampai 500 MB (Recommended)" - lihat
+     *   config/livewire.php (batas GLOBAL dinaikkan ke 500MB) & validasi
+     *   spesifik di App\Livewire\Backup\Index::uploadBackupDariPc().
+     *
+     * SENGAJA TIDAK memvalidasi isi zip di sini (apakah berisi
+     * "database/database.sql" yang valid) - App\Services\
+     * RestoreService::ekstrakDumpDariZip() SUDAH menangani ini dengan
+     * pesan error yang jelas tepat saat tombol "Restore dari File Ini"
+     * diklik nanti (zip rusak/bukan backup aplikasi ini baru ketahuan
+     * di langkah ITU, bukan saat unggah) - method ini HANYA mengurus
+     * penyimpanan filenya, konsisten dengan RestoreService yang memang
+     * sudah menangani validasi isi zip di satu tempat.
+     */
+    public function simpanUnggahan(\Illuminate\Http\UploadedFile $fileUnggahan, ?int $dibuatOlehId = null): Backup
+    {
+        $tahun = $this->tebakTahunDariNamaFile($fileUnggahan->getClientOriginalName()) ?? (int) now()->format('Y');
+        $namaAsliTanpaEkstensi = pathinfo($fileUnggahan->getClientOriginalName(), PATHINFO_FILENAME);
+        $namaFile = 'unggahan-'.now()->format('YmdHis').'-'.Str::slug($namaAsliTanpaEkstensi).'.zip';
+
+        $pathRelatif = $fileUnggahan->storeAs('backup/'.$tahun, $namaFile, 'local');
+        $pathAbsolut = Storage::disk('local')->path($pathRelatif);
+
+        return Backup::create([
+            'tahun' => $tahun,
+            'nama_file' => $namaFile,
+            'path' => $pathRelatif,
+            'ukuran' => filesize($pathAbsolut) ?: null,
+            'dibuat_oleh_id' => $dibuatOlehId,
+            'asal' => 'diunggah',
+        ]);
+    }
+
+    /**
+     * Tebak tahun dari nama file asli yang diunggah (mis.
+     * "backup-2026-20261016...zip" -> 2026) - MURNI kosmetik/pengelompokan
+     * tampilan (kolom `tahun` tidak dipakai sama sekali oleh logic Restore
+     * sesungguhnya, lihat docblock App\Services\RestoreService "Arti
+     * Restore per Tahun"). Null kalau tidak ketemu pola 4-digit tahun yang
+     * masuk akal - pemanggil akan jatuh ke tahun berjalan sbg default.
+     */
+    protected function tebakTahunDariNamaFile(string $namaAsli): ?int
+    {
+        if (preg_match('/(20\d{2})/', $namaAsli, $cocok)) {
+            $tahun = (int) $cocok[1];
+            if ($tahun >= 2020 && $tahun <= (int) now()->format('Y') + 1) {
+                return $tahun;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Unggah OTOMATIS backup yang baru saja dibuat ke Google Drive, KALAU
      * Superadmin sudah mengisi link folder Drive di menu Backup & Restore
      * (permintaan user 2026-10-14, jawaban AskUserQuestion "Otomatis

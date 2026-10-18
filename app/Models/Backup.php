@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * lihat docblock migration create_backups_table utk keputusan bisnis
  * lengkap (jawaban AskUserQuestion).
  */
-#[Fillable(['tahun', 'nama_file', 'path', 'ukuran', 'dibuat_oleh_id', 'catatan'])]
+#[Fillable(['tahun', 'nama_file', 'path', 'ukuran', 'dibuat_oleh_id', 'catatan', 'asal'])]
 class Backup extends Model
 {
     /** @use HasFactory<BackupFactory> */
@@ -39,6 +39,17 @@ class Backup extends Model
     public function otomatisSebelumRestore(): bool
     {
         return ! empty($this->catatan);
+    }
+
+    /**
+     * TRUE kalau baris ini adalah file .zip yang diunggah Superadmin dari
+     * Laptop/PC-nya sendiri (BUKAN dibuat oleh aplikasi ini lewat tombol
+     * "Buat Backup Sekarang") - lihat migration `add_asal_to_backups_table`
+     * & App\Services\BackupService::simpanUnggahan().
+     */
+    public function diunggahDariPc(): bool
+    {
+        return $this->asal === 'diunggah';
     }
 
     /** Ukuran paket backup ini dalam bentuk yang mudah dibaca manusia ("120.5 MB" dst). */
