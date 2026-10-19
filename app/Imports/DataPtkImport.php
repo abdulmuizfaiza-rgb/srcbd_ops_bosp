@@ -78,6 +78,23 @@ class DataPtkImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmp
 {
     use Importable;
 
+    /**
+     * SEJAK 2026-10-18, DataPtkExport menulis baris keterangan (kolom
+     * kuning) di baris 1 & menggeser baris header tabel yang
+     * sebenarnya ke baris 2 (lihat DataPtkExport::BARIS_HEADER_TABEL/
+     * startCell()) - TANPA perbaikan ini, WithHeadingRow (default
+     * membaca baris 1 sebagai header) salah membaca baris keterangan
+     * sebagai header, sehingga baris 2 (header tabel asli: "NIK",
+     * "Nama PTK", dst) malah dibaca sebagai BARIS DATA PERTAMA & gagal
+     * validasi (bug "Baris 2: NIK wajib diisi. | ..." dilaporkan user
+     * 2026-10-19). headingRow() di bawah mengarahkan WithHeadingRow ke
+     * baris header tabel yang benar.
+     */
+    public function headingRow(): int
+    {
+        return 2;
+    }
+
     public int $jumlahDibuat = 0;
 
     public int $jumlahDiperbarui = 0;

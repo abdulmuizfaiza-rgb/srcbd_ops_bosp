@@ -43,6 +43,26 @@ class ProfilSekolahImport implements ToModel, WithHeadingRow, WithValidation, Sk
 {
     use Importable;
 
+    /**
+     * SEJAK 2026-10-18, ProfilSekolahExport menulis baris keterangan
+     * (kolom kuning) di baris 1 & menggeser baris header tabel yang
+     * sebenarnya ke baris 2 (lihat ProfilSekolahExport::
+     * BARIS_HEADER_TABEL/startCell()) - TANPA perbaikan ini,
+     * WithHeadingRow (default membaca baris 1 sebagai header) salah
+     * membaca baris keterangan sebagai header, sehingga baris 2
+     * (header tabel asli: "NPSN", "Nama Sekolah", dst) malah dibaca
+     * sebagai BARIS DATA PERTAMA & gagal validasi - bug yang sama
+     * persis dengan DataPtkImport (dilaporkan user 2026-10-19 utk
+     * Data PTK, pola import sama jadi ikut diperbaiki di sini
+     * sekaligus supaya tidak menyusul jadi laporan terpisah).
+     * headingRow() di bawah mengarahkan WithHeadingRow ke baris header
+     * tabel yang benar.
+     */
+    public function headingRow(): int
+    {
+        return 2;
+    }
+
     public int $jumlahDibuat = 0;
 
     public int $jumlahDilewati = 0;
