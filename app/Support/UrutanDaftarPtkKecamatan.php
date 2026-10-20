@@ -7,54 +7,64 @@ use App\Models\ProfilSekolah;
 use Illuminate\Support\Collection as SupportCollection;
 
 /**
- * Urutan baku BARU untuk menu Lampiran 2a/2b/2c & Data PTK (termasuk
+ * Urutan baku untuk menu Lampiran 2a/2b/2c & Data PTK (termasuk
  * unduhan Excel/PDF Lampiran 2a/2b/2c di menu Unduhan) - permintaan
- * user 2026-10-20: "diurutkan berdasarkan Kecamatan (urutan
+ * awal user 2026-10-20: "diurutkan berdasarkan Kecamatan (urutan
  * kecamatannya Caringin-Cicantayan-Cibadak-Cikidang-Nagrak)-Nama
  * Sekolah, Nama PTK, Pangkat/Golongan-TMT Disekolah Induk-Tahun Lulus
  * Sertifikasi", DITAMBAH susulan (user lupa menyebutkan): "berdasarkan
  * Negeri kemudian swasta".
  *
- * RIWAYAT posisi Status (3 kali bolak-balik, SEKARANG SUDAH FINAL):
- * (1) AskUserQuestion pertama -> Kecamatan->Status->Nama Sekolah;
- * (2) user koreksi literal "Kecamatan-Nama Sekolah-Status" -> dipindah
- * ke SETELAH Nama Sekolah; (3) user laporkan "Negeri dulu kemudian
- * swasta belum berubah, masih swasta duluan" - diselidiki: dgn Status
- * SETELAH Nama Sekolah, Status PRAKTIS TIDAK PERNAH berpengaruh karena
- * Nama Sekolah SUDAH jadi pembeda unik antar sekolah (1 nama sekolah =
- * 1 baris ProfilSekolah), jadi daftar langsung urut abjad nama sekolah
- * tanpa peduli Negeri/Swasta - Status baru kepakai kalau ada 2 sekolah
- * bernama PERSIS sama (kasus langka). Dijelaskan ke user lewat
- * AskUserQuestion (pakai contoh "SMP Advent" Swasta vs "SMP Negeri 1"
- * Negeri tetap Advent duluan krn abjad) -> user KONFIRMASI balik ke
- * Kecamatan->Status->Nama Sekolah (opsi "Recommended") SUPAYA Status
- * benar-benar mengelompokkan Negeri sebelum Swasta secara kasat mata.
- * INI URUTAN FINAL, jangan diubah lagi tanpa permintaan eksplisit baru.
+ * RIWAYAT posisi Status vs Kecamatan (BANYAK kali bolak-balik,
+ * SEKARANG SUDAH FINAL - permintaan terakhir SANGAT eksplisit &
+ * tidak ambigu, lihat poin 5):
+ * (1) Kecamatan->Status->Nama Sekolah (jawaban AskUserQuestion
+ * pertama); (2) user koreksi literal "Kecamatan-Nama Sekolah-Status"
+ * -> Status dipindah SETELAH Nama Sekolah; (3) user laporkan "Negeri
+ * dulu kemudian swasta belum berubah" - diselidiki: dgn Status
+ * SETELAH Nama Sekolah, Status PRAKTIS TIDAK PERNAH berpengaruh
+ * (Nama Sekolah sudah jadi pembeda unik antar sekolah) -> AskUserQuestion
+ * -> user balik ke Kecamatan->Status->Nama Sekolah; (4) user LAPORKAN
+ * LAGI "masih swasta paling atas, bahkan beda antara online & lokal" ->
+ * diinvestigasi TUNTAS pakai data ASLI (script diagnosa dijalankan
+ * user di KEDUA environment, lihat Kecamatan Caringin yg kebetulan
+ * baru ada data Swasta) -> TERBUKTI kode SUDAH benar sesuai Kecamatan
+ * sbg prioritas utama (bukan bug) -> ditanya via AskUserQuestion mau
+ * dipertahankan (Kecamatan dulu) atau diganti total (Status dulu) ->
+ * user PERTAMA pilih "pertahankan Kecamatan dulu"; (5) TAPI LANGSUNG
+ * SETELAHNYA user mengoreksi lagi dgn kalimat SANGAT eksplisit: "saya
+ * ingin SMP Negeri dulu semua per kecamatan kemudian baru setelah SMP
+ * Negeri baru SMP Swasta Per kecamatan" - ini BERARTI Status jadi
+ * KRITERIA PERTAMA/TERATAS (SEMUA sekolah Negeri lintas kecamatan utuh
+ * sbg 1 blok besar duluan, BARU setelah blok Negeri habis baru blok
+ * Swasta, keduanya tetap urut Kecamatan DI DALAM blok masing-masing) -
+ * KEBALIKAN TOTAL dari posisi (1)-(4) di atas (yg semuanya Kecamatan
+ * sbg kriteria pertama). INI URUTAN FINAL (Status->Kecamatan), jangan
+ * diubah lagi tanpa permintaan eksplisit baru yg jelas bedanya.
  *
  * Klarifikasi (AskUserQuestion) yang masih berlaku: arah Pangkat/
  * Golongan = tertinggi ke terendah; arah TMT Di Sekolah Induk = paling
  * lama/senior dulu; arah Tahun Lulus Sertifikasi = paling lama (tahun
  * kecil) dulu - SEMUA konsisten "yang lebih senior/lama duluan".
  *
- * Urutan final: Kecamatan (custom, lihat URUTAN_KECAMATAN) -> Status
- * (Negeri dulu, lalu Swasta - dalam 1 kecamatan yang sama, benar-benar
- * mengelompokkan) -> Nama Sekolah (A-Z) -> Nama PTK (A-Z) -> Pangkat/
- * Golongan (tertinggi dulu) -> TMT Di Sekolah Induk (paling lama dulu)
- * -> Tahun Lulus Sertifikasi (paling lama/tahun kecil dulu).
+ * Urutan final: Status (Negeri dulu, lalu Swasta - SEMUA kecamatan,
+ * jadi 2 blok besar: blok Negeri lengkap duluan, baru blok Swasta) ->
+ * Kecamatan (custom, lihat URUTAN_KECAMATAN, berlaku DI DALAM
+ * masing-masing blok Status) -> Nama Sekolah (A-Z) -> Nama PTK (A-Z)
+ * -> Pangkat/Golongan (tertinggi dulu) -> TMT Di Sekolah Induk (paling
+ * lama dulu) -> Tahun Lulus Sertifikasi (paling lama/tahun kecil dulu).
  *
  * BEDA dari urutan baku lain yang SUDAH ADA di aplikasi
- * (ProfilSekolah::scopeUrutStandar() = Status->Kecamatan->Nama Sekolah,
- * dan urutan "semua sekolah" KHUSUS Lampiran 2a/2b/2c/Data PTK yang
- * SEBELUMNYA ada di terapkanUrutan()/terapkanUrutanPtk() = Status->Nama
- * Sekolah->Kecamatan, permintaan user 2026-10-16) - urutan BARU ini
- * MENGGANTI urutan lama tsb (bukan ditambah di atasnya); bedanya dgn
- * urutan lama: Kecamatan sekarang jadi kriteria PERTAMA (dgn urutan
- * KHUSUS/custom, bukan abjad), Status TETAP jadi kriteria KEDUA (sama
- * posisi relatifnya dgn urutan lama scopeUrutStandar(), hanya
- * Kecamatan yang "memotong antrian" ke depan Status). Berlaku juga
- * pada tampilan 1 sekolah terfilter (sebelumnya ->latest()) - level
- * Nama PTK/Pangkat-Golongan/TMT/Tahun Lulus Sertifikasi tetap relevan
- * di sana (Kecamatan/Status/Nama Sekolah otomatis jadi tidak
+ * (ProfilSekolah::scopeUrutStandar() = Status->Kecamatan->Nama Sekolah
+ * - SAMA PERSIS 2 kriteria pertamanya dgn urutan final di sini,
+ * kebetulan konvergen lagi ke pola yg sama; dan urutan "semua sekolah"
+ * KHUSUS Lampiran 2a/2b/2c/Data PTK yang SEBELUMNYA PERNAH ada di
+ * terapkanUrutan()/terapkanUrutanPtk() = Status->Nama Sekolah->
+ * Kecamatan, permintaan user 2026-10-16) - bedanya dgn scopeUrutStandar():
+ * Kecamatan di sini pakai urutan KHUSUS/custom (bukan abjad). Berlaku
+ * juga pada tampilan 1 sekolah terfilter (sebelumnya ->latest()) -
+ * level Nama PTK/Pangkat-Golongan/TMT/Tahun Lulus Sertifikasi tetap
+ * relevan di sana (Status/Kecamatan/Nama Sekolah otomatis jadi tidak
  * berpengaruh krn semua baris berasal dari 1 sekolah yang sama).
  *
  * Diimplementasikan sebagai SORT DI LEVEL PHP (bukan SQL ORDER BY) -
@@ -108,12 +118,12 @@ class UrutanDaftarPtkKecamatan
             $sekolahA = $sekolahPerId->get($a->profil_sekolah_id);
             $sekolahB = $sekolahPerId->get($b->profil_sekolah_id);
 
-            $cmp = self::indeksKecamatan($sekolahA?->kecamatan) <=> self::indeksKecamatan($sekolahB?->kecamatan);
+            $cmp = self::indeksStatus($sekolahA?->status) <=> self::indeksStatus($sekolahB?->status);
             if ($cmp !== 0) {
                 return $cmp;
             }
 
-            $cmp = self::indeksStatus($sekolahA?->status) <=> self::indeksStatus($sekolahB?->status);
+            $cmp = self::indeksKecamatan($sekolahA?->kecamatan) <=> self::indeksKecamatan($sekolahB?->kecamatan);
             if ($cmp !== 0) {
                 return $cmp;
             }
@@ -159,12 +169,12 @@ class UrutanDaftarPtkKecamatan
             $sekolahA = $sekolahPerId->get($a->profil_sekolah_id);
             $sekolahB = $sekolahPerId->get($b->profil_sekolah_id);
 
-            $cmp = self::indeksKecamatan($sekolahA?->kecamatan) <=> self::indeksKecamatan($sekolahB?->kecamatan);
+            $cmp = self::indeksStatus($sekolahA?->status) <=> self::indeksStatus($sekolahB?->status);
             if ($cmp !== 0) {
                 return $cmp;
             }
 
-            $cmp = self::indeksStatus($sekolahA?->status) <=> self::indeksStatus($sekolahB?->status);
+            $cmp = self::indeksKecamatan($sekolahA?->kecamatan) <=> self::indeksKecamatan($sekolahB?->kecamatan);
             if ($cmp !== 0) {
                 return $cmp;
             }
@@ -199,12 +209,10 @@ class UrutanDaftarPtkKecamatan
      * Status Negeri didahulukan dari Swasta (& status lain/kosong yang
      * tidak dikenal) - pola SAMA PERSIS dgn
      * ProfilSekolah::scopeUrutStandar() (CASE WHEN status = Negeri THEN
-     * 0 ELSE 1). Susulan permintaan user 2026-10-20 ("lupa untuk urutan
-     * juga tambahkan berdasarkan Negeri kemudian swasta"), posisi FINAL
-     * SEBELUM Nama Sekolah supaya benar-benar mengelompokkan Negeri vs
-     * Swasta (lihat riwayat lengkap di docblock kelas di atas - posisi
-     * ini sempat dipindah ke SETELAH Nama Sekolah lalu dikembalikan lagi
-     * krn di posisi itu Status tidak pernah berpengaruh).
+     * 0 ELSE 1). Posisi FINAL: kriteria PERTAMA/TERATAS (SEBELUM
+     * Kecamatan) - permintaan eksplisit user "SMP Negeri dulu semua...
+     * baru setelah SMP Negeri baru SMP Swasta" (lihat riwayat lengkap
+     * posisi Status vs Kecamatan di docblock kelas di atas, poin 5).
      */
     private static function indeksStatus(?string $status): int
     {
