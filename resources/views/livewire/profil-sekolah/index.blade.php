@@ -259,10 +259,8 @@
                                         <x-icon name="download" class="w-3.5 h-3.5 mr-1" />
                                         Export Excel
                                     </x-secondary-button>
-                                    <x-secondary-button wire:click="unduhPtk" wire:loading.attr="disabled" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
-                                        <x-icon name="download" class="w-3.5 h-3.5 mr-1" />
-                                        Unduh
-                                    </x-secondary-button>
+                                    {{-- Tombol "Unduh" (laporan rapi dengan garis tabel) DIPINDAHKAN ke
+                                         menu Unduhan > Pendataan OPS (permintaan user 2026-10-20 poin 8) --}}
                                     @if ($bolehTambahDataPtk)
                                         <x-primary-button wire:click="tambahPtk" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px]">
                                             <x-icon name="plus" class="w-3.5 h-3.5 mr-1" />
@@ -317,6 +315,7 @@
                                         <th class="px-3 py-2">Nama Sekolah</th>
                                         <th class="px-3 py-2">Status Dapodik</th>
                                         <th class="px-3 py-2">Status Keaktifan</th>
+                                        <th class="px-3 py-2">Keterangan</th>
                                     </tr>
                                 </thead>
                                 @forelse ($daftarPtk as $baris)
@@ -388,9 +387,10 @@
                                                     {{ $baris->status_keaktifan }}
                                                 </span>
                                             </td>
+                                            <td class="px-3 py-2 text-slate-600 max-w-[16rem] truncate" title="{{ $baris->keterangan }}">{{ $baris->keterangan ?: '-' }}</td>
                                         </tr>
                                         <tr x-show="terbuka" x-cloak>
-                                            <td colspan="26" class="px-3 pb-3 pt-0 bg-slate-50">
+                                            <td colspan="27" class="px-3 pb-3 pt-0 bg-slate-50">
                                                 <div class="rounded-md border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 grid grid-cols-1 sm:grid-cols-3 gap-2">
                                                     <div>
                                                         <p class="text-slate-400">Dibuat Oleh</p>
@@ -411,7 +411,7 @@
                                 @empty
                                     <tbody class="divide-y divide-slate-100">
                                         <tr>
-                                            <td colspan="26" class="px-3 py-6 text-center text-slate-400">Belum ada data PTK.</td>
+                                            <td colspan="27" class="px-3 py-6 text-center text-slate-400">Belum ada data PTK.</td>
                                         </tr>
                                     </tbody>
                                 @endforelse
@@ -747,7 +747,7 @@
 
                 <div>
                     <x-input-label for="nuptk" value="NUPTK" />
-                    <x-text-input wire:model="nuptk" id="nuptk" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="16" />
+                    <x-text-input wire:model="nuptk" id="nuptk" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="16" placeholder="Opsional, boleh dikosongkan" />
                     <x-input-error :messages="$errors->get('nuptk')" class="mt-2" />
                 </div>
 
@@ -801,7 +801,7 @@
                 @php $nipTerkunci = in_array($jabatan, \App\Models\DataPtk::jabatanTanpaPangkatGolongan(), true); @endphp
                 <div>
                     <x-input-label for="nip" value="NIP" />
-                    <x-text-input wire:model="nip" id="nip" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="18" :disabled="$nipTerkunci" />
+                    <x-text-input wire:model="nip" id="nip" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="18" :disabled="$nipTerkunci" placeholder="Isi tanda - jika PTK non-ASN" />
                     <x-input-error :messages="$errors->get('nip')" class="mt-2" />
                 </div>
 
@@ -869,7 +869,7 @@
 
                 <div>
                     <x-input-label for="npwp" value="NPWP" />
-                    <x-text-input wire:model="npwp" id="npwp" class="block mt-1 w-full" type="text" inputmode="numeric" />
+                    <x-text-input wire:model="npwp" id="npwp" class="block mt-1 w-full" type="text" inputmode="numeric" placeholder="Opsional, boleh dikosongkan" />
                     <x-input-error :messages="$errors->get('npwp')" class="mt-2" />
                 </div>
 
@@ -962,13 +962,34 @@
 
                 <div>
                     <x-input-label for="status_keaktifan" value="Status Keaktifan" />
-                    <select wire:model="status_keaktifan" id="status_keaktifan" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm block mt-1 w-full">
+                    {{--
+                        wire:model.live (permintaan user 2026-10-20 poin 5) -
+                        sebelumnya wire:model biasa (tidak reaktif langsung),
+                        diubah ke .live supaya hint "wajib diisi" di bawah
+                        field Keterangan langsung menyesuaikan begitu Status
+                        Keaktifan diganti, tanpa perlu submit form dulu -
+                        aturan WAJIB yang SEBENARNYA tetap diterapkan di
+                        simpanPtk() (server-side), bukan di sini.
+                    --}}
+                    <select wire:model.live="status_keaktifan" id="status_keaktifan" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm block mt-1 w-full">
                         <option value="">-- Pilih Status Keaktifan --</option>
                         @foreach ($statusKeaktifanOptions as $value => $label)
                             <option value="{{ $value }}">{{ $label }}</option>
                         @endforeach
                     </select>
                     <x-input-error :messages="$errors->get('status_keaktifan')" class="mt-2" />
+                </div>
+
+                {{--
+                    Keterangan (BARU 2026-10-20, permintaan user poin 5) -
+                    wajib diisi manual HANYA saat Status Keaktifan = "Tidak
+                    Aktif" (dikonfirmasi lewat AskUserQuestion "Tepat
+                    setelah Status Keaktifan"), boleh kosong saat "Aktif".
+                --}}
+                <div class="sm:col-span-2">
+                    <x-input-label for="keterangan" :value="'Keterangan'.($status_keaktifan === 'Tidak Aktif' ? ' (wajib)' : ' (opsional)')" />
+                    <textarea wire:model="keterangan" id="keterangan" rows="2" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm block mt-1 w-full" placeholder="{{ $status_keaktifan === 'Tidak Aktif' ? 'Wajib diisi karena Status Keaktifan Tidak Aktif' : 'Opsional, boleh dikosongkan' }}"></textarea>
+                    <x-input-error :messages="$errors->get('keterangan')" class="mt-2" />
                 </div>
             </div>
 
@@ -1001,6 +1022,39 @@
             <div class="mt-6 flex justify-end gap-3">
                 <x-secondary-button wire:click="batalHapusTerpilihPtk" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
                 <x-danger-button wire:click="hapusTerpilihPtk" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Hapus Semua Terpilih</x-danger-button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{--
+        Detail "Data PTK belum lengkap" per sekolah (BARU 2026-10-20,
+        permintaan user poin 1) - dibuka lewat badge nama sekolah pada
+        <x-ringkasan-negeri-swasta> (lihat
+        resources/views/components/ringkasan-negeri-swasta.blade.php),
+        diisi lewat ProfilSekolah\Index::detailBelumLengkapPtk().
+    --}}
+    <x-modal name="data-ptk-belum-lengkap-detail" :show="$sekolahBelumLengkapDipilih !== null" maxWidth="lg">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900">Data PTK Belum Lengkap - {{ $sekolahBelumLengkapDipilih }}</h2>
+            <p class="mt-1 text-xs text-slate-500">Daftar PTK beserta field yang belum diisi pada sekolah ini.</p>
+
+            <div class="mt-4 max-h-96 overflow-y-auto divide-y divide-slate-100">
+                @forelse ($detailBelumLengkapPtk as $baris)
+                    <div class="py-2.5">
+                        <p class="text-sm font-medium text-slate-800">{{ $baris->nama_ptk }}</p>
+                        <div class="mt-1 flex flex-wrap gap-1.5">
+                            @foreach ($baris->fieldBelumLengkap as $field)
+                                <span class="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700">{{ $field }}</span>
+                            @endforeach
+                        </div>
+                    </div>
+                @empty
+                    <p class="py-6 text-center text-sm text-slate-400">Tidak ada data PTK yang belum lengkap pada sekolah ini.</p>
+                @endforelse
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <x-secondary-button wire:click="tutupDetailBelumLengkapPtk" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Tutup</x-secondary-button>
             </div>
         </div>
     </x-modal>

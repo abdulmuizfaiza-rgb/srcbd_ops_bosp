@@ -182,6 +182,14 @@ class Index extends Component
 
         $this->nrg = $sumber->nomor_registrasi_guru ?? '';
         $this->nuptk = $sumber->nuptk ?? '';
+        // BARU 2026-10-20 (permintaan user poin 6): field "Keterangan"
+        // di sini diisi otomatis dari field Keterangan pada menu Data
+        // PTK (bukan diinput manual lagi) - dicocokkan lewat sumber yang
+        // SAMA dengan NRG/NUPTK di atas. Tampil di blade sbg field
+        // disabled (bukan textarea editable), nilai final yg disimpan
+        // tetap dihitung ulang server-side di simpan(), lihat komentar
+        // di sana.
+        $this->keterangan = $sumber->keterangan ?? '';
     }
 
     /**
@@ -305,6 +313,18 @@ class Index extends Component
             return;
         }
 
+        // BARU 2026-10-20 (permintaan user poin 6): Keterangan di sini
+        // WAJIB diambil dari Data PTK, jadi kalau sumbernya ternyata
+        // belum punya isian Keterangan (misal data lama sebelum field
+        // ini ada), ditolak di sini dgn pesan yg jelas - supaya tidak
+        // coba menyimpan NULL ke kolom keterangan (NOT NULL) di tabel
+        // lampiran_2b.
+        if (! $sumber->keterangan) {
+            $this->addError('nama_ptk', 'Data PTK untuk "'.$validated['nama_ptk'].'" belum memiliki isian Keterangan (wajib diisi karena Status Keaktifan "Tidak Aktif"). Silakan lengkapi dulu field Keterangan pada menu Data PTK sebelum menyimpan Lampiran 2b ini.');
+
+            return;
+        }
+
         // Sumber kebenaran tunggal aturan "1 PTK tidak bisa tersimpan 2x
         // di triwulan yang sama" (permintaan user 2026-10-16) - dicek
         // ulang di sini (bukan cuma di updatedNamaPtk()) supaya tidak
@@ -328,6 +348,11 @@ class Index extends Component
 
         $validated['nrg'] = $sumber->nomor_registrasi_guru;
         $validated['nuptk'] = $sumber->nuptk;
+        // BARU 2026-10-20 (permintaan user poin 6): "Keterangan" juga
+        // dihitung ulang di server dari Data PTK (pola sama dgn NRG/
+        // NUPTK di atas) - tidak dipercaya dari input client, meskipun
+        // di blade field ini sudah dibuat disabled/tidak bisa diketik.
+        $validated['keterangan'] = $sumber->keterangan;
         $validated['triwulan'] = $this->triwulan;
         $validated['created_by'] = auth()->id();
 

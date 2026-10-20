@@ -33,13 +33,23 @@
          "Daftar ringkas, hanya sekolah yang punya data belum lengkap").
          Dihitung dari 7 field: NUPTK, Tempat Lahir, Tanggal Lahir, TMT
          Sekolah Induk, Jurusan/Prodi, Tahun Lulus Ijazah, NPWP - lihat
-         DataPtk::FIELD_BELUM_LENGKAP. --}}
+         DataPtk::FIELD_BELUM_LENGKAP.
+
+         SEJAK 2026-10-20 (permintaan user poin 1): badge nama sekolah
+         ini sekarang bisa DIKLIK untuk membuka modal detail (daftar PTK
+         + field yang belum lengkap per PTK), lewat
+         wire:click="lihatDetailBelumLengkapPtk(...)" - method ini HANYA
+         ada pada App\Livewire\ProfilSekolah\Index (komponen yang
+         mengisi key 'belumLengkap'), bukan pada Lampiran 2a/2b/2c yang
+         juga memakai komponen Blade ini, jadi aman: tombol ini TIDAK
+         PERNAH ter-render pada komponen lain (key 'belumLengkap' selalu
+         kosong/tidak ada di sana). --}}
     @if (isset($ringkasan['belumLengkap']) && $ringkasan['belumLengkap']->isNotEmpty())
         <div class="mt-2 flex flex-wrap items-start gap-2 text-xs text-slate-500">
             <span class="mt-1">Data PTK belum lengkap isiannya:</span>
             <div class="flex flex-wrap gap-2">
                 @foreach ($ringkasan['belumLengkap'] as $baris)
-                    <span class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 font-medium text-rose-700">{{ $baris->nama_sekolah }}: {{ $baris->jumlah }}</span>
+                    <button type="button" wire:click="lihatDetailBelumLengkapPtk('{{ $baris->nama_sekolah }}')" class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 font-medium text-rose-700 hover:bg-rose-200 transition">{{ $baris->nama_sekolah }}: {{ $baris->jumlah }}</button>
                 @endforeach
             </div>
         </div>

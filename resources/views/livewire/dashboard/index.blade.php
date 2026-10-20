@@ -334,6 +334,41 @@
                     </div>
                 </div>
 
+                {{--
+                    ============ DATA PTK SEKOLAH SAYA BELUM LENGKAP ============
+                    BARU 2026-10-20 (permintaan user poin 1) - khusus sekolah
+                    Admin OPS yang sedang login (beda dari widget serupa milik
+                    Superadmin di menu Data Sekolah yang merekap semua
+                    sekolah). Dikonfirmasi lewat AskUserQuestion "Ringkasan +
+                    bisa diklik lihat detail" - dipakai Alpine.js toggle
+                    sederhana (bukan modal Livewire terpisah) karena cakupannya
+                    sudah otomatis 1 sekolah saja, tidak perlu pilih sekolah
+                    dulu seperti punya Superadmin.
+                --}}
+                @if ($detailPtkBelumLengkapSayaSendiri->isNotEmpty())
+                    <div class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-rose-200" x-data="{ terbukaBelumLengkap: false }">
+                        <button type="button" @click="terbukaBelumLengkap = !terbukaBelumLengkap" class="w-full flex items-center justify-between gap-3 text-left">
+                            <div>
+                                <p class="text-sm font-semibold text-slate-800">Data PTK Sekolah Saya Belum Lengkap</p>
+                                <p class="text-xs text-slate-500 mt-0.5">{{ $detailPtkBelumLengkapSayaSendiri->count() }} PTK masih punya isian yang belum lengkap - klik untuk lihat detail.</p>
+                            </div>
+                            <span class="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full bg-rose-100 text-rose-700 font-bold text-sm">{{ $detailPtkBelumLengkapSayaSendiri->count() }}</span>
+                        </button>
+                        <div x-show="terbukaBelumLengkap" x-cloak class="mt-4 pt-4 border-t border-slate-100 divide-y divide-slate-100 max-h-80 overflow-y-auto">
+                            @foreach ($detailPtkBelumLengkapSayaSendiri as $baris)
+                                <div class="py-2.5">
+                                    <p class="text-sm font-medium text-slate-800">{{ $baris->nama_ptk }}</p>
+                                    <div class="mt-1 flex flex-wrap gap-1.5">
+                                        @foreach ($baris->fieldBelumLengkap as $field)
+                                            <span class="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700">{{ $field }}</span>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
                 {{-- ============ PENDATAAN OPS PER TRIWULAN (BAR) ============ --}}
                 <div class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-slate-200/70">
                     <p class="text-sm font-semibold text-slate-800">Pendataan OPS per Triwulan</p>

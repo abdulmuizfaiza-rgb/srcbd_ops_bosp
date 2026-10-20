@@ -41,6 +41,7 @@ use App\Models\Concerns\Syncable;
     'nomor_peserta_sertifikasi',
     'status_dapodik',
     'status_keaktifan',
+    'keterangan',
     'created_by',
 ])]
 class DataPtk extends Model
@@ -96,6 +97,29 @@ class DataPtk extends Model
         'tahun_lulus_ijazah',
         'npwp',
     ];
+
+    /**
+     * Label tampilan (Indonesia) untuk setiap field pada
+     * FIELD_BELUM_LENGKAP - dipakai bersama oleh ProfilSekolah\Index
+     * (daftar "belum lengkap" per sekolah, Superadmin) & Dashboard\Index
+     * (widget sekolah sendiri, Admin OPS) supaya detail field yang
+     * belum diisi bisa ditampilkan dengan nama yang manusiawi, bukan
+     * nama kolom database mentah (permintaan user 2026-10-20 poin 1).
+     *
+     * @return array<string, string>
+     */
+    public static function labelFieldBelumLengkap(): array
+    {
+        return [
+            'nuptk' => 'NUPTK',
+            'tempat_lahir' => 'Tempat Lahir',
+            'tanggal_lahir' => 'Tanggal Lahir',
+            'tmt_sekolah_induk' => 'TMT Di Sekolah Induk',
+            'jurusan_prodi' => 'Jurusan / Prodi',
+            'tahun_lulus_ijazah' => 'Tahun Lulus Ijazah',
+            'npwp' => 'NPWP',
+        ];
+    }
 
     protected function casts(): array
     {

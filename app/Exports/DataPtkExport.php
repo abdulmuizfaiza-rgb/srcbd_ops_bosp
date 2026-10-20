@@ -139,6 +139,17 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithCustomStartCe
     private const KOLOM_STATUS_KEAKTIFAN = 'Y';
 
     /**
+     * Kolom Keterangan (BARU 2026-10-20, permintaan user poin 5 & 7) -
+     * ditambahkan sebagai kolom PALING TERAKHIR (setelah Status
+     * Keaktifan, dikonfirmasi lewat AskUserQuestion "Tepat setelah
+     * Status Keaktifan"). KARENA kolom ini menggeser kolom tersembunyi
+     * (daftar sumber dropdown) yang SEBELUMNYA mulai dari Z, kolom
+     * tersembunyi itu SEKARANG digeser mulai dari AA (lihat
+     * tulisDaftarPilihanTersembunyi()).
+     */
+    private const KOLOM_KETERANGAN = 'Z';
+
+    /**
      * Penghitung nomor urut baris untuk kolom "No" - diincrement tiap
      * map() dipanggil (urutannya mengikuti urutan $daftar apa adanya).
      */
@@ -179,7 +190,7 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithCustomStartCe
             'Pendidikan Terakhir', 'Jurusan / Prodi Sesuai Ijazah Terakhir', 'Tahun Lulus Ijazah', 'NPWP',
             'Status Sertifikasi', 'Bidang Studi Sertifikasi', 'Tahun Lulus Sertifikasi',
             'Nomor Sertifikat Sertifikasi', 'Nomor Registrasi Guru', 'Nomor Peserta Sertifikasi',
-            'Nama Sekolah', 'Status Dapodik', 'Status Keaktifan',
+            'Nama Sekolah', 'Status Dapodik', 'Status Keaktifan', 'Keterangan',
         ];
     }
 
@@ -216,6 +227,7 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithCustomStartCe
             $p->profilSekolah->nama_sekolah ?? '',
             $p->status_dapodik,
             $p->status_keaktifan,
+            $p->keterangan,
         ];
     }
 
@@ -269,6 +281,7 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithCustomStartCe
                 $this->tulisTanggal($sheet);
                 $this->tulisDaftarPilihanTersembunyi($sheet);
                 $this->tulisGarisBarisSelesai($sheet);
+                $this->tulisWarnaKondisionalWajib($sheet);
             },
         ];
     }
@@ -283,15 +296,18 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithCustomStartCe
      */
     private function tulisKeteranganKolomPilihan(Worksheet $sheet): void
     {
-        $rentang = 'A'.self::BARIS_KETERANGAN.':'.self::KOLOM_STATUS_KEAKTIFAN.self::BARIS_KETERANGAN;
+        $rentang = 'A'.self::BARIS_KETERANGAN.':'.self::KOLOM_KETERANGAN.self::BARIS_KETERANGAN;
 
         $sheet->mergeCells($rentang);
-        $sheet->setCellValue('A'.self::BARIS_KETERANGAN, 'Kolom berwarna kuning: silahkan pilih dari dropdown yang tersedia, jangan diketik manual atau copy-paste, untuk meminimalisir kesalahan saat diimpor kembali.');
+        $sheet->setCellValue('A'.self::BARIS_KETERANGAN,
+            'Kolom berwarna kuning: silahkan pilih dari dropdown yang tersedia, jangan diketik manual atau copy-paste, untuk meminimalisir kesalahan saat diimpor kembali. '
+            .'Kolom berwarna merah muda: Bidang Studi/Tahun Lulus/Nomor Sertifikat/Nomor Registrasi Guru/Nomor Peserta Sertifikasi WAJIB diisi apabila Status Sertifikasi "Sudah", dan Keterangan WAJIB diisi apabila Status Keaktifan "Tidak Aktif".'
+        );
         $sheet->getStyle($rentang)->applyFromArray([
             'font' => ['italic' => true, 'bold' => true, 'color' => ['rgb' => '9A3412']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'wrapText' => true],
         ]);
-        $sheet->getRowDimension(self::BARIS_KETERANGAN)->setRowHeight(30);
+        $sheet->getRowDimension(self::BARIS_KETERANGAN)->setRowHeight(45);
     }
 
     /**
@@ -346,7 +362,11 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithCustomStartCe
     {
         $barisMulai = self::BARIS_HEADER_TABEL + 1;
         $barisSelesai = $this->barisAkhirValidasi();
-        $rentang = self::KOLOM_PERTAMA.$barisMulai.':'.self::KOLOM_STATUS_KEAKTIFAN.$barisSelesai;
+        // SEJAK 2026-10-20: rentang digeser dari KOLOM_STATUS_KEAKTIFAN
+        // ('Y') ke KOLOM_KETERANGAN ('Z') supaya garis bawah "baris
+        // selesai" ikut mencakup kolom Keterangan yang baru ditambah
+        // (kolom Z kini menjadi kolom paling kanan pada tabel).
+        $rentang = self::KOLOM_PERTAMA.$barisMulai.':'.self::KOLOM_KETERANGAN.$barisSelesai;
 
         $kondisi = new Conditional();
         $kondisi->setConditionType(Conditional::CONDITION_EXPRESSION);
@@ -361,11 +381,63 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithCustomStartCe
     }
 
     /**
+     * Penanda visual (warna merah muda) untuk field yang WAJIB diisi
+     * SECARA BERSYARAT (permintaan user 2026-10-20 poin 4 & 7) - beda
+     * dari kolom kuning (yang artinya "wajib pilih dari dropdown"):
+     * - Kolom Bidang Studi s.d. Nomor Peserta Sertifikasi (R:V): wajib
+     *   diisi HANYA pada baris yang kolom Status Sertifikasi (Q)
+     *   bernilai "Sudah" - dikosongkan dulu atau isi "-" tetap boleh
+     *   pada baris Status Sertifikasi "Belum" (lihat DataPtk::
+     *   terapkanAturanSertifikasi()).
+     * - Kolom Keterangan (Z): wajib diisi HANYA pada baris yang kolom
+     *   Status Keaktifan (Y) bernilai "Tidak Aktif" (permintaan user
+     *   poin 5).
+     * Dibuat DINAMIS lewat Conditional Formatting (bukan warna statis)
+     * - pola sama persis dengan tulisGarisBarisSelesai() di atas -
+     * supaya warnanya otomatis menyesuaikan tiap baris sesuai isian
+     * Status Sertifikasi/Status Keaktifan baris tsb masing-masing,
+     * termasuk pada baris buffer kosong di bawah data (belum berwarna
+     * sampai diisi "Sudah"/"Tidak Aktif").
+     */
+    private function tulisWarnaKondisionalWajib(Worksheet $sheet): void
+    {
+        $barisMulai = self::BARIS_HEADER_TABEL + 1;
+        $barisSelesai = $this->barisAkhirValidasi();
+
+        $this->terapkanWarnaKondisionalWajib(
+            $sheet,
+            'R'.$barisMulai.':V'.$barisSelesai,
+            '$Q'.$barisMulai.'="'.DataPtk::STATUS_SERTIFIKASI_SUDAH.'"'
+        );
+
+        $this->terapkanWarnaKondisionalWajib(
+            $sheet,
+            self::KOLOM_KETERANGAN.$barisMulai.':'.self::KOLOM_KETERANGAN.$barisSelesai,
+            '$'.self::KOLOM_STATUS_KEAKTIFAN.$barisMulai.'="Tidak Aktif"'
+        );
+    }
+
+    private function terapkanWarnaKondisionalWajib(Worksheet $sheet, string $rentang, string $formula): void
+    {
+        $kondisi = new Conditional();
+        $kondisi->setConditionType(Conditional::CONDITION_EXPRESSION);
+        $kondisi->addCondition($formula);
+        $kondisi->getStyle()->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FEE2E2');
+
+        $gayaKondisional = $sheet->getStyle($rentang)->getConditionalStyles();
+        $gayaKondisional[] = $kondisi;
+        $sheet->getStyle($rentang)->setConditionalStyles($gayaKondisional);
+    }
+
+    /**
      * Dropdown (Data Validation Excel) untuk ke-9 kolom "pilihan" supaya
      * penulisannya selalu sama persis dengan pilihan yang ada di
      * aplikasi saat file ini diisi/diedit lalu diimport kembali. Daftar
-     * sumber tiap kolom ditulis ke kolom tersembunyi mulai Y - pola sama
-     * seperti ProfilSekolahExport/Lampiran2aExport.
+     * sumber tiap kolom ditulis ke kolom tersembunyi mulai AA (SEJAK
+     * 2026-10-20: sebelumnya mulai Z, digeser 1 kolom karena kolom Z
+     * sekarang dipakai kolom Keterangan yang baru ditambah, lihat
+     * KOLOM_KETERANGAN) - pola sama seperti ProfilSekolahExport/
+     * Lampiran2aExport.
      */
     private function tulisDaftarPilihanTersembunyi(Worksheet $sheet): void
     {
@@ -381,7 +453,7 @@ class DataPtkExport implements FromCollection, ShouldAutoSize, WithCustomStartCe
             'Y' => array_values(DataPtk::statusKeaktifanOptions()),
         ];
 
-        $indeksKolomTersembunyi = Coordinate::columnIndexFromString('Z');
+        $indeksKolomTersembunyi = Coordinate::columnIndexFromString('AA');
 
         foreach ($daftarPilihan as $kolomData => $pilihan) {
             $kolomTersembunyi = Coordinate::stringFromColumnIndex($indeksKolomTersembunyi);

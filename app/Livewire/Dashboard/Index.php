@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Dashboard;
 
+use App\Models\DataPtk;
 use App\Models\Lampiran2a;
 use App\Models\Lampiran2b;
 use App\Models\Lampiran2c;
@@ -398,7 +399,63 @@ class Index extends Component
             'sekolahSudahAktif' => $daftarSekolah->filter(fn (ProfilSekolah $s) => $idSelesaiAktif->contains($s->id))->values(),
             'sekolahBelumAktif' => $daftarSekolah->reject(fn (ProfilSekolah $s) => $idSelesaiAktif->contains($s->id))->values(),
             'registrasiOps' => $this->rekapNegeriSwasta($daftarSekolah, $this->idSekolahSudahRegistrasi(User::LEVEL_ADMIN_OPS)),
+            // BARU 2026-10-20 (permintaan user poin 1: "serta di
+            // munculkan pada login admin ops data yang belum lengkap
+            // nya") - khusus sekolah Admin OPS yang sedang login
+            // sendiri (BEDA dari widget serupa di menu Data Sekolah
+            // milik Superadmin yang merekap SEMUA sekolah sekaligus,
+            // lihat App\Livewire\ProfilSekolah\Index::
+            // daftarBelumLengkapPtk()), dikonfirmasi lewat
+            // AskUserQuestion "Ringkasan + bisa diklik lihat detail
+            // (sama seperti Superadmin)".
+            'detailPtkBelumLengkapSayaSendiri' => $this->detailPtkBelumLengkapSekolahSaya(),
         ];
+    }
+
+    /**
+     * Daftar PTK "belum lengkap" (+ field apa saja yang belum lengkap)
+     * khusus untuk sekolah milik Admin OPS yang sedang login (lihat
+     * dataAdminOps() di atas, permintaan user 2026-10-20 poin 1). Logika
+     * "belum lengkap"-nya SAMA PERSIS dengan App\Livewire\
+     * ProfilSekolah\Index::detailBelumLengkapPtk() (field DATE dicek
+     * NULL, field lain dicek NULL/'').
+     *
+     * @return \Illuminate\Support\Collection<int, object{nama_ptk: string, fieldBelumLengkap: array<int, string>}>
+     */
+    private function detailPtkBelumLengkapSekolahSaya(): Collection
+    {
+        $profilSekolahId = auth()->user()->profil_sekolah_id;
+
+        if (! $profilSekolahId) {
+            return collect();
+        }
+
+        $fieldTanggal = array_keys(array_filter((new DataPtk())->getCasts(), fn ($tipe) => $tipe === 'date'));
+        $labelField = DataPtk::labelFieldBelumLengkap();
+
+        return DataPtk::query()
+            ->where('profil_sekolah_id', $profilSekolahId)
+            ->orderBy('nama_ptk')
+            ->get()
+            ->map(function (DataPtk $ptk) use ($fieldTanggal, $labelField) {
+                $fieldBelumLengkap = [];
+
+                foreach (DataPtk::FIELD_BELUM_LENGKAP as $field) {
+                    $nilai = $ptk->{$field};
+                    $kosong = in_array($field, $fieldTanggal, true) ? $nilai === null : ($nilai === null || $nilai === '');
+
+                    if ($kosong) {
+                        $fieldBelumLengkap[] = $labelField[$field] ?? $field;
+                    }
+                }
+
+                return (object) [
+                    'nama_ptk' => $ptk->nama_ptk,
+                    'fieldBelumLengkap' => $fieldBelumLengkap,
+                ];
+            })
+            ->filter(fn ($baris) => count($baris->fieldBelumLengkap) > 0)
+            ->values();
     }
 
     /**

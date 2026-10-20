@@ -3,7 +3,9 @@
 namespace App\Livewire\PendataanOps\Unduhan;
 
 use App\Models\AksesDataLog;
+use App\Exports\DataPtkLaporanExport;
 use App\Exports\UnduhanLampiranExport;
+use App\Models\DataPtk;
 use App\Models\Lampiran2a;
 use App\Models\Lampiran2b;
 use App\Models\Lampiran2c;
@@ -109,6 +111,22 @@ class Index extends Component
      * tidak punya pemilihan sekolah utk Superadmin).
      */
     public ?int $suratTpgProfilSekolahId = null;
+
+    /**
+     * Pilihan sekolah KHUSUS bagian "Data PTK" (BARU 2026-10-20,
+     * permintaan user poin 8: "pada menu PTK tombol unduh pindahkan ke
+     * menu Unduhan pada menu pendataan ops") - HANYA dipakai/ditampilkan
+     * utk Superadmin, TERPISAH dari $filterSekolahUnduhan (Lampiran
+     * 2a/2b/2c) & $suratTpgProfilSekolahId (Surat TPG) di atas, karena
+     * Data PTK bukan data per-triwulan (beda konteks dari keduanya).
+     * null = "Semua Sekolah" (gabungan 1 sheet, perilaku lama sejak
+     * dipindah dari App\Livewire\ProfilSekolah\Index::unduhPtk()).
+     * Admin OPS selalu otomatis sekolahnya sendiri, lihat
+     * sekolahIdUntukUnduhanPtk().
+     */
+    public ?int $ptkUnduhanProfilSekolahId = null;
+
+    public ?string $errorUnduhDataPtk = null;
 
     /**
      * Pengaturan cetak (Jenis Kertas & Setting Margin) KHUSUS bagian
@@ -429,6 +447,83 @@ class Index extends Component
         ])->deleteFileAfterSend(true);
     }
 
+    /**
+     * Sekolah yang dipakai utk bagian "Data PTK" (BARU 2026-10-20, poin
+     * 8 - tombol "Unduh" dipindah dari App\Livewire\ProfilSekolah\Index
+     * ke sini). BEDA dgn sekolahIdUntukSuratTpg(): di sini null (utk
+     * Superadmin) BUKAN berarti "wajib pilih dulu", tapi berarti mode
+     * "Semua Sekolah" (1 file gabungan semua PTK) - perilaku lama sejak
+     * fitur Unduh Data PTK ini pertama dibuat, dipertahankan persis sama
+     * di sini. Admin OPS selalu otomatis sekolahnya sendiri.
+     */
+    protected function sekolahIdUntukUnduhanPtk(): ?int
+    {
+        return $this->bolehKelolaSemua() ? $this->ptkUnduhanProfilSekolahId : $this->sekolahSayaId();
+    }
+
+    public function pilihSekolahPtkUnduhan(?int $id): void
+    {
+        if (! $this->bolehKelolaSemua()) {
+            return;
+        }
+
+        if ($id !== null) {
+            abort_unless(ProfilSekolah::where('id', $id)->exists(), 404);
+        }
+
+        $this->ptkUnduhanProfilSekolahId = $id;
+    }
+
+    /**
+     * Unduh Data PTK (Excel, laporan rapi dgn garis tabel) - DIPINDAHKAN
+     * dari App\Livewire\ProfilSekolah\Index::unduhPtk() (permintaan
+     * user 2026-10-20 poin 8: "pada menu PTK tombol unduh pindahkan ke
+     * menu Unduhan pada menu pendataan ops"). Logika & urutan data PERSIS
+     * SAMA seperti method asalnya - termasuk urutan "Semua Sekolah"
+     * (Negeri dulu, lalu nama_sekolah, lalu kecamatan, lalu PTK terbaru
+     * dulu) yang semula ada di
+     * App\Livewire\ProfilSekolah\Index::terapkanUrutanPtk() - method
+     * itu protected & milik komponen lain sehingga tidak bisa dipanggil
+     * dari sini, jadi urutannya ditulis ulang persis sama di bawah ini.
+     */
+    public function unduhDataPtk()
+    {
+        $this->errorUnduhDataPtk = null;
+
+        if ($this->bolehKelolaSemua() && ! $this->ptkUnduhanProfilSekolahId) {
+            AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Data PTK', 'Excel (Laporan - Semua Sekolah)');
+
+            $daftar = DataPtk::query()
+                ->join('profil_sekolah', 'data_ptk.profil_sekolah_id', '=', 'profil_sekolah.id')
+                ->select('data_ptk.*')
+                ->with('profilSekolah')
+                ->orderByRaw('CASE WHEN profil_sekolah.status = ? THEN 0 ELSE 1 END', [ProfilSekolah::STATUS_NEGERI])
+                ->orderBy('profil_sekolah.nama_sekolah')
+                ->orderBy('profil_sekolah.kecamatan')
+                ->orderBy('data_ptk.created_at', 'desc')
+                ->get();
+
+            return Excel::download(new DataPtkLaporanExport($daftar, null), 'data-ptk-semua-sekolah.xlsx');
+        }
+
+        $sekolahId = $this->sekolahIdUntukUnduhanPtk();
+
+        if (! $sekolahId) {
+            $this->errorUnduhDataPtk = 'Pilih salah satu sekolah pada dropdown di atas terlebih dahulu sebelum Unduh, karena judul laporan "DATA PTK" hanya berlaku untuk 1 sekolah.';
+
+            return null;
+        }
+
+        $sekolah = ProfilSekolah::findOrFail($sekolahId);
+
+        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Data PTK', 'Excel (Laporan)');
+
+        return Excel::download(
+            new DataPtkLaporanExport(DataPtk::where('profil_sekolah_id', $sekolahId)->orderBy('nama_ptk')->get(), $sekolah),
+            'data-ptk-'.Str::slug($sekolah->nama_sekolah).'.xlsx'
+        );
+    }
+
     public function render()
     {
         [$baris2a, $baris2b, $baris2c] = $this->ambilData();
@@ -447,6 +542,13 @@ class Index extends Component
             'suratTpgProfilSekolahId' => $this->suratTpgProfilSekolahId,
             'urlCetakSuratTpgGabungan' => $this->urlCetakSuratTpgGabungan(),
             'kertasOptionsSuratTpg' => $this->daftarKertasOptionsSuratTpg(),
+            // "Data PTK" (BARU 2026-10-20 poin 8) - dropdown TERPISAH dari
+            // dropdown Lampiran 2a/2b/2c & Surat TPG di atas, lihat docblock
+            // sekolahIdUntukUnduhanPtk().
+            'sekolahOptionsPtkUnduhan' => $this->bolehKelolaSemua() ? ProfilSekolah::urutStandar()->get(['id', 'nama_sekolah']) : null,
+            'ptkUnduhanProfilSekolahId' => $this->ptkUnduhanProfilSekolahId,
+            'namaSekolahTampilPtkUnduhan' => $this->sekolahIdUntukUnduhanPtk() ? ProfilSekolah::find($this->sekolahIdUntukUnduhanPtk())?->nama_sekolah : 'Semua Sekolah',
+            'errorUnduhDataPtk' => $this->errorUnduhDataPtk,
         ]);
     }
 }

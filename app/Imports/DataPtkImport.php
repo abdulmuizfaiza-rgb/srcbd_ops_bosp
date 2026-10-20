@@ -182,6 +182,7 @@ class DataPtkImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmp
             'nomor_peserta_sertifikasi' => $this->kosongkanJikaKosong($row['nomor_peserta_sertifikasi'] ?? null),
             'status_dapodik' => (string) ($row['status_dapodik'] ?? ''),
             'status_keaktifan' => (string) ($row['status_keaktifan'] ?? ''),
+            'keterangan' => $this->kosongkanJikaKosong($row['keterangan'] ?? null),
         ];
 
         $data = DataPtk::terapkanAturanSertifikasi($data);
@@ -219,14 +220,72 @@ class DataPtkImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmp
             'tahun_lulus_ijazah' => ['nullable', 'regex:/^[0-9]{4}$/'],
             'npwp' => ['nullable', 'regex:/^[0-9]+$/'],
             'status_sertifikasi' => ['required', Rule::in(array_keys(DataPtk::statusSertifikasiOptions()))],
-            'tahun_lulus_sertifikasi' => ['nullable', 'regex:/^([0-9]{4}|-)$/'],
-            'nomor_registrasi_guru' => ['nullable', 'regex:/^([0-9]{1,12}|-)$/'],
+            // SEJAK 2026-10-20 (permintaan user poin 4): kelima field
+            // rincian sertifikasi WAJIB diisi saat Status Sertifikasi =
+            // "Sudah" ('required_if' - dibaca Maatwebsite Excel per
+            // baris lewat mekanisme wildcard '*.status_sertifikasi'nya
+            // sendiri, lihat RowValidator::formatRule()). Tanda "-" pada
+            // tahun_lulus_sertifikasi/nomor_registrasi_guru TETAP
+            // diperbolehkan lewat regex di bawah HANYA saat Status
+            // Sertifikasi = Belum - saat "Sudah", tanda "-" secara
+            // KHUSUS ditolak lewat withValidator() di bawah (regex saja
+            // tidak cukup karena regex ini juga dipakai saat Belum).
+            'bidang_studi_sertifikasi' => ['required_if:status_sertifikasi,Sudah', 'nullable', 'string', 'max:255'],
+            'tahun_lulus_sertifikasi' => ['required_if:status_sertifikasi,Sudah', 'nullable', 'regex:/^([0-9]{4}|-)$/'],
+            'nomor_sertifikat_sertifikasi' => ['required_if:status_sertifikasi,Sudah', 'nullable', 'string', 'max:255'],
+            'nomor_registrasi_guru' => ['required_if:status_sertifikasi,Sudah', 'nullable', 'regex:/^([0-9]{1,12}|-)$/'],
+            'nomor_peserta_sertifikasi' => ['required_if:status_sertifikasi,Sudah', 'nullable', 'string', 'max:255'],
             'nama_sekolah' => $this->sekolahDiperbolehkan === null
                 ? ['required', 'string', Rule::exists('profil_sekolah', 'nama_sekolah')]
                 : ['nullable'],
             'status_dapodik' => ['required', Rule::in(array_keys(DataPtk::statusDapodikOptions()))],
             'status_keaktifan' => ['required', Rule::in(array_keys(DataPtk::statusKeaktifanOptions()))],
+            // SEJAK 2026-10-20 (permintaan user poin 5): Keterangan WAJIB
+            // diisi saat Status Keaktifan = "Tidak Aktif", lihat juga
+            // DataPtk Fillable & migration add_keterangan_to_data_ptk_table.
+            'keterangan' => ['required_if:status_keaktifan,Tidak Aktif', 'nullable', 'string', 'max:1000'],
         ];
+    }
+
+    /**
+     * SEJAK 2026-10-20 (permintaan user poin 4, dikonfirmasi lewat
+     * AskUserQuestion): "untuk pilihannya Belum bisa di isi tanda strip
+     * secara manual, tapi apabila pilihannya Sudah maka Wajib tidak
+     * boleh tanda strip" - 'required_if' di rules() di atas HANYA
+     * memastikan field TIDAK KOSONG, tapi regex-nya (diwarisi dari
+     * aturan lama) masih mengizinkan literal "-" di KEDUA kondisi
+     * (Sudah maupun Belum). Hook withValidator() ini dipanggil
+     * Maatwebsite Excel (lihat vendor/maatwebsite/excel/src/Validators/
+     * RowValidator.php baris 34-36) dengan akses penuh ke SEMUA baris
+     * sekaligus lewat $validator->getData() - dipakai di sini untuk
+     * menolak SECARA KHUSUS nilai "-" pada tahun_lulus_sertifikasi &
+     * nomor_registrasi_guru, tapi HANYA pada baris yang Status
+     * Sertifikasi-nya "Sudah" (baris dengan Status Sertifikasi "Belum"
+     * TETAP boleh memakai "-", tidak terpengaruh pengecekan ini).
+     */
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $data = $validator->getData();
+
+            foreach ($data as $baris => $row) {
+                if (($row['status_sertifikasi'] ?? null) !== DataPtk::STATUS_SERTIFIKASI_SUDAH) {
+                    continue;
+                }
+
+                foreach ([
+                    'tahun_lulus_sertifikasi' => 'Tahun Lulus Sertifikasi',
+                    'nomor_registrasi_guru' => 'Nomor Registrasi Guru',
+                ] as $field => $label) {
+                    if (($row[$field] ?? null) === DataPtk::TANDA_KOSONG) {
+                        $validator->errors()->add(
+                            $baris.'.'.$field,
+                            $label.' wajib diisi dengan nilai yang sebenarnya (tidak boleh tanda "-") karena Status Sertifikasi "Sudah".'
+                        );
+                    }
+                }
+            }
+        });
     }
 
     public function customValidationMessages(): array
@@ -241,6 +300,12 @@ class DataPtkImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmp
             'tahun_lulus_sertifikasi.regex' => 'Tahun Lulus Sertifikasi harus berupa 4 digit angka tahun.',
             'nomor_registrasi_guru.regex' => 'Nomor Registrasi Guru harus berupa angka, maksimal 12 digit.',
             'nama_sekolah.exists' => 'Nama Sekolah tidak ditemukan di menu Data Sekolah.',
+            'bidang_studi_sertifikasi.required_if' => 'Bidang Studi Sertifikasi wajib diisi karena Status Sertifikasi "Sudah".',
+            'tahun_lulus_sertifikasi.required_if' => 'Tahun Lulus Sertifikasi wajib diisi karena Status Sertifikasi "Sudah".',
+            'nomor_sertifikat_sertifikasi.required_if' => 'Nomor Sertifikat Sertifikasi wajib diisi karena Status Sertifikasi "Sudah".',
+            'nomor_registrasi_guru.required_if' => 'Nomor Registrasi Guru wajib diisi karena Status Sertifikasi "Sudah".',
+            'nomor_peserta_sertifikasi.required_if' => 'Nomor Peserta Sertifikasi wajib diisi karena Status Sertifikasi "Sudah".',
+            'keterangan.required_if' => 'Keterangan wajib diisi karena Status Keaktifan "Tidak Aktif".',
             'jabatan.in' => 'Jabatan harus dipilih dari daftar pilihan yang tersedia.',
             'pangkat_golongan.in' => 'Pangkat / Golongan harus dipilih dari daftar pilihan yang tersedia.',
             'status_kepegawaian.in' => 'Status Kepegawaian harus dipilih dari daftar pilihan yang tersedia.',

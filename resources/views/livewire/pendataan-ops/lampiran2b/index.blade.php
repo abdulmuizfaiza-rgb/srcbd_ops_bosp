@@ -159,7 +159,10 @@
 
                 <div class="sm:col-span-2">
                     <x-input-label for="keterangan" value="Keterangan" />
-                    <textarea wire:model="keterangan" id="keterangan" rows="3" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm block mt-1 w-full"></textarea>
+                    {{-- BARU 2026-10-20 (permintaan user poin 6): diisi otomatis dari
+                         field Keterangan pada Data PTK (sama seperti NRG/NUPTK di atas),
+                         jadi dibuat disabled - tidak lagi diketik manual di sini. --}}
+                    <textarea id="keterangan" rows="3" class="border-slate-300 rounded-md shadow-sm block mt-1 w-full bg-slate-50 text-slate-500" disabled>{{ $keterangan }}</textarea>
                     <x-input-error :messages="$errors->get('keterangan')" class="mt-2" />
                 </div>
 

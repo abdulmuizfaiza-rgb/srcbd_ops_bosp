@@ -4,7 +4,6 @@ namespace App\Livewire\ProfilSekolah;
 
 use App\Models\AksesDataLog;
 use App\Exports\DataPtkExport;
-use App\Exports\DataPtkLaporanExport;
 use App\Exports\ProfilSekolahExport;
 use App\Exports\ProfilSekolahLaporanExport;
 use App\Imports\DataPtkImport;
@@ -762,6 +761,24 @@ class Index extends Component
 
     public string $status_keaktifan = '';
 
+    /**
+     * Keterangan (BARU 2026-10-20, permintaan user poin 5) - wajib
+     * diisi manual saat Status Keaktifan = "Tidak Aktif", boleh kosong
+     * saat "Aktif" (lihat validasi di simpanPtk()). Dipakai juga
+     * sebagai sumber otomatis field Keterangan pada Lampiran 2b (poin
+     * 6, lihat App\Livewire\PendataanOps\Lampiran2b\Index).
+     */
+    public string $keterangan = '';
+
+    /**
+     * Daftar PTK + field yang belum lengkap untuk 1 sekolah yang
+     * sedang dilihat detailnya (BARU 2026-10-20, permintaan user poin
+     * 1) - null berarti tidak sedang menampilkan modal detail. Diisi
+     * lewat lihatDetailBelumLengkapPtk(), dipakai di render()/blade
+     * (modal "data-ptk-belum-lengkap-detail").
+     */
+    public ?string $sekolahBelumLengkapDipilih = null;
+
     public bool $showFormPtk = false;
 
     public ?int $confirmingDeletePtkId = null;
@@ -965,6 +982,7 @@ class Index extends Component
         $this->nomor_peserta_sertifikasi = (string) $baris->nomor_peserta_sertifikasi;
         $this->status_dapodik = (string) $baris->status_dapodik;
         $this->status_keaktifan = (string) $baris->status_keaktifan;
+        $this->keterangan = (string) $baris->keterangan;
         $this->showFormPtk = true;
         $this->dispatch('open-modal', 'data-ptk-form');
     }
@@ -978,6 +996,7 @@ class Index extends Component
             'jurusan_prodi', 'tahun_lulus_ijazah', 'npwp', 'status_sertifikasi',
             'bidang_studi_sertifikasi', 'tahun_lulus_sertifikasi', 'nomor_sertifikat_sertifikasi',
             'nomor_registrasi_guru', 'nomor_peserta_sertifikasi', 'status_dapodik', 'status_keaktifan',
+            'keterangan',
         ]);
         $this->resetErrorBag();
     }
@@ -998,7 +1017,19 @@ class Index extends Component
         abort_unless($this->bolehTambahDataPtk(), 403);
         abort_unless($this->profil_sekolah_id && $this->bolehKelolaDataPtk($this->profil_sekolah_id), 403);
 
-        $rincianSertifikasiWajib = $this->status_sertifikasi !== DataPtk::STATUS_SERTIFIKASI_BELUM;
+        // DIPERBAIKI 2026-10-20 (permintaan user poin 4, dikonfirmasi lewat
+        // AskUserQuestion): SEBELUMNYA kondisi ini "true KECUALI Belum"
+        // (jadi ikut true saat status_sertifikasi masih kosong/belum
+        // dipilih) & field rincian sertifikasi di bawah TETAP selalu
+        // 'nullable' apapun hasilnya (jadi TIDAK PERNAH benar-benar
+        // wajib walau namanya "Wajib") - sekarang kondisinya persis
+        // "Sudah" SAJA, dan field rincian sertifikasi SUNGGUHAN memakai
+        // 'required' saat kondisi ini true (lihat di bawah).
+        $rincianSertifikasiWajib = $this->status_sertifikasi === DataPtk::STATUS_SERTIFIKASI_SUDAH;
+
+        // BARU 2026-10-20 (permintaan user poin 5): Keterangan wajib
+        // diisi manual hanya saat Status Keaktifan = "Tidak Aktif".
+        $keteranganWajib = $this->status_keaktifan === 'Tidak Aktif';
 
         $validated = $this->validate([
             'profil_sekolah_id' => ['required', Rule::exists('profil_sekolah', 'id')],
@@ -1021,13 +1052,23 @@ class Index extends Component
             'tahun_lulus_ijazah' => ['nullable', 'regex:/^[0-9]{4}$/'],
             'npwp' => ['nullable', 'regex:/^[0-9]+$/'],
             'status_sertifikasi' => ['required', Rule::in(array_keys(DataPtk::statusSertifikasiOptions()))],
-            'bidang_studi_sertifikasi' => $rincianSertifikasiWajib ? ['nullable', 'string', 'max:255'] : ['nullable'],
-            'tahun_lulus_sertifikasi' => $rincianSertifikasiWajib ? ['nullable', 'regex:/^([0-9]{4}|-)$/'] : ['nullable'],
-            'nomor_sertifikat_sertifikasi' => ['nullable', 'string', 'max:255'],
-            'nomor_registrasi_guru' => ['nullable', 'regex:/^([0-9]{1,12}|-)$/'],
-            'nomor_peserta_sertifikasi' => ['nullable', 'string', 'max:255'],
+            // SEJAK 2026-10-20 (permintaan user poin 4): WAJIB diisi
+            // (bukan lagi sekadar 'nullable') saat Status Sertifikasi =
+            // "Sudah". Tanda "-" pada tahun_lulus_sertifikasi/
+            // nomor_registrasi_guru HANYA diperbolehkan saat TIDAK
+            // wajib (Status Sertifikasi "Belum") - regex-nya langsung
+            // diperketat jadi angka murni (tanpa "-") saat wajib,
+            // dikonfirmasi lewat AskUserQuestion "Harus angka asli,
+            // tanda - tidak dianggap terisi".
+            'bidang_studi_sertifikasi' => $rincianSertifikasiWajib ? ['required', 'string', 'max:255'] : ['nullable', 'string', 'max:255'],
+            'tahun_lulus_sertifikasi' => $rincianSertifikasiWajib ? ['required', 'regex:/^[0-9]{4}$/'] : ['nullable', 'regex:/^([0-9]{4}|-)$/'],
+            'nomor_sertifikat_sertifikasi' => $rincianSertifikasiWajib ? ['required', 'string', 'max:255'] : ['nullable', 'string', 'max:255'],
+            'nomor_registrasi_guru' => $rincianSertifikasiWajib ? ['required', 'regex:/^[0-9]{1,12}$/'] : ['nullable', 'regex:/^([0-9]{1,12}|-)$/'],
+            'nomor_peserta_sertifikasi' => $rincianSertifikasiWajib ? ['required', 'string', 'max:255'] : ['nullable', 'string', 'max:255'],
             'status_dapodik' => ['required', Rule::in(array_keys(DataPtk::statusDapodikOptions()))],
             'status_keaktifan' => ['required', Rule::in(array_keys(DataPtk::statusKeaktifanOptions()))],
+            // BARU 2026-10-20 (permintaan user poin 5).
+            'keterangan' => $keteranganWajib ? ['required', 'string', 'max:1000'] : ['nullable', 'string', 'max:1000'],
         ], [
             'nik.regex' => 'NIK harus berupa 16 digit angka.',
             'nik.unique' => 'NIK ini sudah terdaftar pada data PTK lain.',
@@ -1035,8 +1076,18 @@ class Index extends Component
             'nip.regex' => 'NIP harus berupa 18 digit angka.',
             'tahun_lulus_ijazah.regex' => 'Tahun Lulus Ijazah harus berupa 4 digit angka tahun.',
             'npwp.regex' => 'NPWP harus berupa angka.',
-            'tahun_lulus_sertifikasi.regex' => 'Tahun Lulus Sertifikasi harus berupa 4 digit angka tahun.',
-            'nomor_registrasi_guru.regex' => 'Nomor Registrasi Guru harus berupa angka, maksimal 12 digit.',
+            'bidang_studi_sertifikasi.required' => 'Bidang Studi Sertifikasi wajib diisi karena Status Sertifikasi "Sudah".',
+            'tahun_lulus_sertifikasi.required' => 'Tahun Lulus Sertifikasi wajib diisi karena Status Sertifikasi "Sudah".',
+            'tahun_lulus_sertifikasi.regex' => $rincianSertifikasiWajib
+                ? 'Tahun Lulus Sertifikasi harus berupa 4 digit angka tahun (tidak boleh tanda "-" karena Status Sertifikasi "Sudah").'
+                : 'Tahun Lulus Sertifikasi harus berupa 4 digit angka tahun, atau tanda "-".',
+            'nomor_sertifikat_sertifikasi.required' => 'Nomor Sertifikat Sertifikasi wajib diisi karena Status Sertifikasi "Sudah".',
+            'nomor_registrasi_guru.required' => 'Nomor Registrasi Guru wajib diisi karena Status Sertifikasi "Sudah".',
+            'nomor_registrasi_guru.regex' => $rincianSertifikasiWajib
+                ? 'Nomor Registrasi Guru harus berupa angka, maksimal 12 digit (tidak boleh tanda "-" karena Status Sertifikasi "Sudah").'
+                : 'Nomor Registrasi Guru harus berupa angka (maksimal 12 digit), atau tanda "-".',
+            'nomor_peserta_sertifikasi.required' => 'Nomor Peserta Sertifikasi wajib diisi karena Status Sertifikasi "Sudah".',
+            'keterangan.required' => 'Keterangan wajib diisi karena Status Keaktifan "Tidak Aktif".',
         ]);
 
         // Sumber kebenaran tunggal aturan "Belum -> otomatis '-'" supaya
@@ -1045,7 +1096,7 @@ class Index extends Component
         $validated = DataPtk::terapkanAturanSertifikasi($validated);
         $validated = DataPtk::terapkanAturanPangkatGolongan($validated);
 
-        foreach (['nuptk', 'nip', 'tempat_lahir', 'jurusan_prodi', 'pangkat_golongan', 'tanggal_lahir', 'tmt_sekolah_induk', 'tahun_lulus_ijazah', 'npwp', 'nomor_sertifikat_sertifikasi', 'nomor_registrasi_guru', 'nomor_peserta_sertifikasi'] as $fieldOpsional) {
+        foreach (['nuptk', 'nip', 'tempat_lahir', 'jurusan_prodi', 'pangkat_golongan', 'tanggal_lahir', 'tmt_sekolah_induk', 'tahun_lulus_ijazah', 'npwp', 'nomor_sertifikat_sertifikasi', 'nomor_registrasi_guru', 'nomor_peserta_sertifikasi', 'keterangan'] as $fieldOpsional) {
             if (($validated[$fieldOpsional] ?? '') === '') {
                 $validated[$fieldOpsional] = null;
             }
@@ -1294,6 +1345,68 @@ class Index extends Component
     }
 
     /**
+     * Buka modal detail "Data PTK belum lengkap" untuk 1 sekolah
+     * (permintaan user 2026-10-20 poin 1: "ketika di klik Nama
+     * Sekolah nya muncul daftar PTK yang belum lengkap nya dan apa
+     * yang belum lengkap nya") - dipanggil dari badge nama sekolah
+     * pada komponen <x-ringkasan-negeri-swasta>, lihat
+     * resources/views/components/ringkasan-negeri-swasta.blade.php.
+     */
+    public function lihatDetailBelumLengkapPtk(string $namaSekolah): void
+    {
+        $this->sekolahBelumLengkapDipilih = $namaSekolah;
+        $this->dispatch('open-modal', 'data-ptk-belum-lengkap-detail');
+    }
+
+    public function tutupDetailBelumLengkapPtk(): void
+    {
+        $this->sekolahBelumLengkapDipilih = null;
+        $this->dispatch('close-modal', 'data-ptk-belum-lengkap-detail');
+    }
+
+    /**
+     * Daftar baris Data PTK "belum lengkap" untuk 1 sekolah tertentu,
+     * BESERTA nama field yang belum lengkap per baris (permintaan user
+     * 2026-10-20 poin 1) - dipakai untuk isi modal detail yang dibuka
+     * lewat lihatDetailBelumLengkapPtk(). Logika "belum lengkap"-nya
+     * SAMA PERSIS dengan daftarBelumLengkapPtk() di atas (field DATE
+     * dicek NULL, field lain dicek NULL/'' - lihat catatan perbaikan
+     * bug 2026-10-18 di method itu), supaya jumlah di badge ringkasan &
+     * jumlah baris pada modal detail ini selalu konsisten.
+     *
+     * @return \Illuminate\Support\Collection<int, object{nama_ptk: string, fieldBelumLengkap: array<int, string>}>
+     */
+    public function detailBelumLengkapPtk(string $namaSekolah): \Illuminate\Support\Collection
+    {
+        $fieldTanggal = array_keys(array_filter((new DataPtk())->getCasts(), fn ($tipe) => $tipe === 'date'));
+        $labelField = DataPtk::labelFieldBelumLengkap();
+
+        return DataPtk::query()
+            ->whereHas('profilSekolah', fn ($q) => $q->where('nama_sekolah', $namaSekolah))
+            ->orderBy('nama_ptk')
+            ->get()
+            ->map(function (DataPtk $ptk) use ($fieldTanggal, $labelField) {
+                $fieldBelumLengkap = [];
+
+                foreach (DataPtk::FIELD_BELUM_LENGKAP as $field) {
+                    $nilai = $ptk->{$field};
+                    $kosong = in_array($field, $fieldTanggal, true) ? $nilai === null : ($nilai === null || $nilai === '');
+
+                    if ($kosong) {
+                        $fieldBelumLengkap[] = $labelField[$field] ?? $field;
+                    }
+                }
+
+                return (object) [
+                    'nama_ptk' => $ptk->nama_ptk,
+                    'fieldBelumLengkap' => $fieldBelumLengkap,
+                ];
+            })
+            ->filter(fn ($baris) => count($baris->fieldBelumLengkap) > 0)
+            ->values();
+    }
+
+    /**
      * "Export Excel" - file polos sesuai urutan field aplikasi, untuk
      * diedit lalu diimport kembali (jawaban AskUserQuestion "Dua fungsi
      * berbeda" - berbeda dari unduhPtk() di bawah).
@@ -1309,55 +1422,13 @@ class Index extends Component
         );
     }
 
-    /**
-     * "Unduh" - laporan rapi dengan garis tabel. Dua mode (permintaan
-     * user 2026-10-16, jawaban AskUserQuestion "Filter sekolah yang
-     * sudah ada ditambah pilihan Semua Sekolah"):
-     * - Superadmin + filter sekolah KOSONG ("Semua Sekolah" pada
-     *   dropdown yang sudah ada) -> 1 sheet gabungan SEMUA sekolah,
-     *   berjudul "DATA PTK" / "SEMUA SEKOLAH", diurutkan SAMA seperti
-     *   tabel "semua sekolah" (Status -> Nama Sekolah -> Kecamatan,
-     *   lihat terapkanUrutanPtk()).
-     * - Superadmin + 1 sekolah difilter, ATAU Admin OPS (selalu
-     *   sekolahnya sendiri) -> laporan berjudul "DATA PTK (nama
-     *   sekolah)" seperti sebelumnya (jawaban AskUserQuestion lama "Dua
-     *   fungsi berbeda" - pola sama seperti export() pada Lampiran2a).
-     */
-    public function unduhPtk()
-    {
-        $this->errorExportPtk = null;
-
-        if ($this->bolehKelolaDataPtkSemua() && ! $this->filterSekolahPtk) {
-            AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Data PTK', 'Excel (Laporan - Semua Sekolah)');
-
-            $daftar = $this->terapkanUrutanPtk(DataPtk::query()->with('profilSekolah'))->get();
-
-            return Excel::download(
-                new DataPtkLaporanExport($daftar, null),
-                'data-ptk-semua-sekolah.xlsx'
-            );
-        }
-
-        $sekolahId = $this->bolehKelolaDataPtkSemua() ? $this->filterSekolahPtk : $this->sekolahSayaId();
-
-        if (! $sekolahId) {
-            $this->errorExportPtk = 'Pilih salah satu sekolah pada filter di atas terlebih dahulu sebelum Unduh, karena judul laporan "DATA PTK" hanya berlaku untuk 1 sekolah.';
-
-            return null;
-        }
-
-        $sekolah = ProfilSekolah::findOrFail($sekolahId);
-
-        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'Data PTK', 'Excel (Laporan)');
-
-        return Excel::download(
-            new DataPtkLaporanExport(
-                DataPtk::where('profil_sekolah_id', $sekolahId)->orderBy('nama_ptk')->get(),
-                $sekolah
-            ),
-            'data-ptk-'.\Illuminate\Support\Str::slug($sekolah->nama_sekolah).'.xlsx'
-        );
-    }
+    // "Unduh" (laporan rapi dengan garis tabel) DIPINDAHKAN ke menu
+    // Unduhan (App\Livewire\PendataanOps\Unduhan\Index::unduhDataPtk())
+    // - permintaan user 2026-10-20 poin 8: "pada menu PTK tombol unduh
+    // pindahkan ke menu Unduhan pada menu pendataan ops". Tombol
+    // "Export Excel" (exportPtk() di atas, format POLOS untuk
+    // diedit-lalu-diimport-kembali) TIDAK ikut dipindah - tetap di sini
+    // (fungsi beda, jawaban AskUserQuestion lama "Dua fungsi berbeda").
 
     public function importPtk(): void
     {
@@ -1451,6 +1522,14 @@ class Index extends Component
             // Tab Data PTK
             'daftarPtk' => $daftarPtk,
             'ringkasanPtk' => $this->ringkasanPtk(),
+            // BARU 2026-10-20 (permintaan user poin 1) - detail PTK
+            // belum lengkap untuk sekolah yang sedang dipilih (modal
+            // "data-ptk-belum-lengkap-detail"), lihat
+            // lihatDetailBelumLengkapPtk().
+            'sekolahBelumLengkapDipilih' => $this->sekolahBelumLengkapDipilih,
+            'detailBelumLengkapPtk' => $this->sekolahBelumLengkapDipilih
+                ? $this->detailBelumLengkapPtk($this->sekolahBelumLengkapDipilih)
+                : collect(),
             'semuaTerpilihPtk' => $semuaTerpilihPtk,
             'bolehKelolaDataPtkSemua' => $this->bolehKelolaDataPtkSemua(),
             'bolehTambahDataPtk' => $this->bolehTambahDataPtk(),

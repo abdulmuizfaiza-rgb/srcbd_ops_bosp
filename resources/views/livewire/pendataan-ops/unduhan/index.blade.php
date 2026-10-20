@@ -197,6 +197,70 @@
                     </div>
                 </div>
             </div>
+
+            {{--
+                "Data PTK" (BARU 2026-10-20, permintaan user poin 8:
+                "pada menu PTK tombol unduh pindahkan ke menu Unduhan
+                pada menu pendataan ops") - DIPINDAHKAN dari tab Data PTK
+                pada menu Data Sekolah
+                (App\Livewire\ProfilSekolah\Index::unduhPtk(), sudah
+                dihapus di sana). BUKAN per-triwulan (beda dari 2 bagian
+                di atas) - dropdown sekolah di sini TERPISAH dari filter
+                Lampiran 2a/2b/2c & Surat TPG, lihat docblock
+                App\Livewire\PendataanOps\Unduhan\Index::
+                sekolahIdUntukUnduhanPtk(). Superadmin BOLEH biarkan
+                "Semua Sekolah" (beda dari Surat TPG yang WAJIB pilih 1
+                sekolah).
+            --}}
+            <div class="bg-white shadow sm:rounded-lg overflow-hidden">
+                <div class="p-4 sm:p-8 space-y-4">
+                    <div>
+                        <h3 class="text-lg font-medium text-slate-900">Data PTK</h3>
+                        <p class="text-sm text-slate-500 mt-1">
+                            Unduh laporan Data PTK (Excel, rapi dengan garis tabel) - tidak terikat Triwulan/Tahun di
+                            atas.
+                        </p>
+                    </div>
+
+                    @if ($errorUnduhDataPtk)
+                        <div class="p-3 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-xs">
+                            {{ $errorUnduhDataPtk }}
+                        </div>
+                    @endif
+
+                    @if ($bolehKelolaSemua)
+                        <div>
+                            <x-input-label for="ptk_unduhan_sekolah" value="Pilih Sekolah" />
+                            <select wire:change="pilihSekolahPtkUnduhan($event.target.value ? $event.target.value : null)" id="ptk_unduhan_sekolah" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm block mt-1 w-full sm:w-80">
+                                <option value="" @selected(! $ptkUnduhanProfilSekolahId)>Semua Sekolah</option>
+                                @foreach ($sekolahOptionsPtkUnduhan as $opsiSekolah)
+                                    <option value="{{ $opsiSekolah->id }}" @selected($ptkUnduhanProfilSekolahId === $opsiSekolah->id)>{{ $opsiSekolah->nama_sekolah }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
+
+                    <div class="text-sm text-slate-500">
+                        Data untuk: <span class="font-medium text-slate-700">{{ $namaSekolahTampilPtkUnduhan }}</span>
+                        @if ($bolehKelolaSemua && ! $ptkUnduhanProfilSekolahId)
+                            <span class="block text-xs text-slate-400 mt-0.5">
+                                Gabungan data PTK seluruh sekolah yang terdaftar (diurutkan Status &rarr; Nama
+                                Sekolah &rarr; Kecamatan) dalam 1 file - pilih 1 sekolah di atas untuk mengunduh
+                                khusus sekolah itu saja.
+                            </span>
+                        @endif
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100">
+                        <x-primary-button wire:click="unduhDataPtk" wire:loading.attr="disabled" wire:target="unduhDataPtk" class="whitespace-nowrap">
+                            <x-icon name="download" class="w-4 h-4 mr-1.5" />
+                            Unduh Excel
+                        </x-primary-button>
+
+                        <span wire:loading wire:target="unduhDataPtk" class="text-xs text-slate-400">Menyiapkan file...</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
