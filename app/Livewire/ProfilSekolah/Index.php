@@ -1242,8 +1242,15 @@ class Index extends Component
      * Status (Negeri dulu semua, lalu Swasta semua - permintaan
      * eksplisit user "SMP Negeri dulu semua... baru setelah SMP Negeri
      * baru SMP Swasta")->Kecamatan (custom, DI DALAM masing-masing blok
-     * Status)->Nama Sekolah->Nama PTK->Pangkat/Golongan->TMT Di Sekolah
-     * Induk->Tahun Lulus Sertifikasi -
+     * Status)->Nama Sekolah->Pangkat/Golongan (tertinggi dulu, DI DALAM
+     * 1 sekolah yang sama)->Nama PTK (pembeda HANYA kalau pangkat/
+     * golongan persis sama)->TMT Di Sekolah Induk->Tahun Lulus
+     * Sertifikasi - urutan Pangkat/Golongan vs Nama PTK diperbaiki lagi
+     * 2026-10-20 (permintaan user: "dari pangkat/golongan tertinggi ke
+     * bawah per sekolah ... di atas", dikonfirmasi via AskUserQuestion)
+     * supaya Pangkat/Golongan benar-benar berpengaruh (sebelumnya Nama
+     * PTK duluan membuatnya praktis tidak pernah berpengaruh, sama
+     * seperti kasus Status vs Nama Sekolah) -
      * berlaku baik saat menampilkan semua sekolah MAUPUN saat terfilter
      * ke 1 sekolah (sebelumnya ->latest()). Diimplementasikan sebagai
      * sort di level PHP (bukan SQL ORDER BY) - lihat
