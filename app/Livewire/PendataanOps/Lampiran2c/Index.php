@@ -229,7 +229,11 @@ class Index extends Component
 
         $this->nama_ptk = $ptk->nama_ptk;
         $this->nrg = (string) ($ptk->nomor_registrasi_guru ?: '');
-        $this->nuptk = (string) ($ptk->nuptk ?: '');
+        // SEJAK 2026-10-20 (permintaan user susulan "NUPTK dan NPWP boleh
+        // diisi tanda '-' di Data PTK"): NUPTK WAJIB berupa 16 digit angka
+        // asli di form Lampiran 2c ini, jadi tanda '-' dari Data PTK
+        // SENGAJA TIDAK ikut diisi-otomatiskan ke sini (dibiarkan kosong).
+        $this->nuptk = $ptk->nuptk && $ptk->nuptk !== DataPtk::TANDA_KOSONG ? (string) $ptk->nuptk : '';
         $this->profil_sekolah_id = $ptk->profil_sekolah_id;
     }
 
@@ -495,8 +499,9 @@ class Index extends Component
      * BARU 2026-10-20 (permintaan user, MENGGANTI urutan "semua
      * sekolah" sebelumnya - lihat App\Support\UrutanDaftarPtkKecamatan
      * utk detail lengkap aturan & jawaban AskUserQuestion): urutan
-     * SEKARANG SELALU Kecamatan (custom)->Nama Sekolah->Nama PTK->
-     * Pangkat/Golongan->TMT Di Sekolah Induk->Tahun Lulus Sertifikasi -
+     * SEKARANG SELALU Kecamatan (custom)->Nama Sekolah->Status (Negeri
+     * dulu, lalu Swasta - susulan permintaan user)->Nama PTK->Pangkat/
+     * Golongan->TMT Di Sekolah Induk->Tahun Lulus Sertifikasi -
      * berlaku baik saat menampilkan semua sekolah MAUPUN saat terfilter
      * ke 1 sekolah (sebelumnya ->latest()). Diimplementasikan sebagai
      * sort di level PHP (bukan SQL ORDER BY) krn perlu JOIN NUPTK->Data
@@ -541,10 +546,26 @@ class Index extends Component
             ->whereHas('profilSekolah', fn ($q) => $q->where('status', ProfilSekolah::STATUS_SWASTA))
             ->count();
 
+        // BARU 2026-10-20 (permintaan user poin 4, "tambahkan Jumlah data
+        // tersimpan yang sudah input dan belum input berdasarkan Nama
+        // Sekolah dan berdasarkan Jumlah PTK di Negeri dan Swasta") -
+        // bagian "Jumlah PTK di Negeri dan Swasta" sudah ada di atas
+        // (negeri/swasta/total, sejak 2026-10-16), ini menambahkan
+        // bagian "berdasarkan Nama Sekolah": berapa SEKOLAH yang sudah
+        // punya minimal 1 baris Lampiran 2c utk triwulan ini vs 0
+        // sama sekali. SENGAJA dihitung dari SEMUA sekolah utk triwulan
+        // yang sedang dipilih (bukan $this->queryDasar(), tidak ikut
+        // filter pencarian yang sedang aktif - dikonfirmasi lewat
+        // AskUserQuestion, pola sama dgn "Data belum lengkap" pada Data
+        // PTK supaya jadi alat pantau menyeluruh).
+        $jumlahSekolahSudahInput = Lampiran2c::where('triwulan', $this->triwulan)->distinct()->count('profil_sekolah_id');
+
         return [
             'negeri' => $jumlahNegeri,
             'swasta' => $jumlahSwasta,
             'total' => $jumlahNegeri + $jumlahSwasta,
+            'sekolahSudahInput' => $jumlahSekolahSudahInput,
+            'sekolahBelumInput' => ProfilSekolah::count() - $jumlahSekolahSudahInput,
         ];
     }
 

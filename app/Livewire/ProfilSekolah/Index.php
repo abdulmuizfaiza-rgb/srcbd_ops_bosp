@@ -1039,7 +1039,7 @@ class Index extends Component
                 'required', 'regex:/^[0-9]{16}$/',
                 Rule::unique('data_ptk', 'nik')->ignore($this->editingPtkId),
             ],
-            'nuptk' => ['nullable', 'regex:/^[0-9]{16}$/'],
+            'nuptk' => ['nullable', 'regex:/^([0-9]{16}|-)$/'],
             'nip' => ['nullable', 'regex:/^([0-9]{18}|-)$/'],
             'nama_ptk' => ['required', 'string', 'max:255'],
             'tempat_lahir' => ['nullable', 'string', 'max:255'],
@@ -1052,7 +1052,7 @@ class Index extends Component
             'pendidikan_terakhir' => ['required', Rule::in(array_keys(DataPtk::pendidikanTerakhirOptions()))],
             'jurusan_prodi' => ['nullable', 'string', 'max:255'],
             'tahun_lulus_ijazah' => ['nullable', 'regex:/^[0-9]{4}$/'],
-            'npwp' => ['nullable', 'regex:/^[0-9]+$/'],
+            'npwp' => ['nullable', 'regex:/^([0-9]+|-)$/'],
             'status_sertifikasi' => ['required', Rule::in(array_keys(DataPtk::statusSertifikasiOptions()))],
             // SEJAK 2026-10-20 (permintaan user poin 4): WAJIB diisi
             // (bukan lagi sekadar 'nullable') saat Status Sertifikasi =
@@ -1074,10 +1074,10 @@ class Index extends Component
         ], [
             'nik.regex' => 'NIK harus berupa 16 digit angka.',
             'nik.unique' => 'NIK ini sudah terdaftar pada data PTK lain.',
-            'nuptk.regex' => 'NUPTK harus berupa 16 digit angka.',
+            'nuptk.regex' => 'NUPTK harus berupa 16 digit angka, atau tanda "-" apabila belum memiliki.',
             'nip.regex' => 'NIP harus berupa 18 digit angka.',
             'tahun_lulus_ijazah.regex' => 'Tahun Lulus Ijazah harus berupa 4 digit angka tahun.',
-            'npwp.regex' => 'NPWP harus berupa angka.',
+            'npwp.regex' => 'NPWP harus berupa angka, atau tanda "-" apabila belum memiliki.',
             'bidang_studi_sertifikasi.required' => 'Bidang Studi Sertifikasi wajib diisi karena Status Sertifikasi "Sudah".',
             'tahun_lulus_sertifikasi.required' => 'Tahun Lulus Sertifikasi wajib diisi karena Status Sertifikasi "Sudah".',
             'tahun_lulus_sertifikasi.regex' => $rincianSertifikasiWajib
@@ -1227,8 +1227,9 @@ class Index extends Component
      * BARU 2026-10-20 (permintaan user, MENGGANTI urutan "semua
      * sekolah" sebelumnya - lihat App\Support\UrutanDaftarPtkKecamatan
      * utk detail lengkap aturan & jawaban AskUserQuestion): urutan
-     * SEKARANG SELALU Kecamatan (custom)->Nama Sekolah->Nama PTK->
-     * Pangkat/Golongan->TMT Di Sekolah Induk->Tahun Lulus Sertifikasi -
+     * SEKARANG SELALU Kecamatan (custom)->Nama Sekolah->Status (Negeri
+     * dulu, lalu Swasta - susulan permintaan user)->Nama PTK->Pangkat/
+     * Golongan->TMT Di Sekolah Induk->Tahun Lulus Sertifikasi -
      * berlaku baik saat menampilkan semua sekolah MAUPUN saat terfilter
      * ke 1 sekolah (sebelumnya ->latest()). Diimplementasikan sebagai
      * sort di level PHP (bukan SQL ORDER BY) - lihat
@@ -1293,6 +1294,19 @@ class Index extends Component
             'total' => $jumlahNegeri + $jumlahSwasta,
             'sudahSertifikasi' => $jumlahSudahSertifikasi,
             'belumSertifikasi' => $jumlahBelumSertifikasi,
+            // BARU 2026-10-20 (permintaan user poin 3, "pada bagian Jumlah
+            // data tersimpan tambahkan berapa sekolah yang sudah input &
+            // belum input berdasarkan sekolah selain berdasarkan inputan
+            // PTK nya") - beda dgn negeri/swasta/sertifikasi di atas yang
+            // menghitung BARIS Data PTK, ini menghitung SEKOLAH (berapa
+            // sekolah yang punya minimal 1 baris Data PTK vs 0 sama
+            // sekali). SENGAJA dihitung dari SEMUA sekolah (bukan
+            // queryDasarPtk(), tidak ikut filter pencarian/status yang
+            // sedang aktif) - dikonfirmasi lewat AskUserQuestion, pola
+            // sama dgn belumLengkap di bawah supaya jadi alat pantau
+            // menyeluruh yg tidak berubah saat admin sedang memfilter.
+            'sekolahSudahInputPtk' => $this->jumlahSekolahSudahInputPtk(),
+            'sekolahBelumInputPtk' => ProfilSekolah::count() - $this->jumlahSekolahSudahInputPtk(),
             // BARU 2026-10-18 (permintaan user) - lihat daftarBelumLengkapPtk()
             // di bawah. SENGAJA TIDAK memakai queryDasarPtk() (mencakup
             // SELURUH data PTK, bukan hanya yang sedang terfilter) supaya
@@ -1301,6 +1315,15 @@ class Index extends Component
             // yang lain di tabel.
             'belumLengkap' => $this->daftarBelumLengkapPtk(),
         ];
+    }
+
+    /**
+     * Jumlah sekolah yang punya minimal 1 baris Data PTK (dari SEMUA
+     * sekolah, bukan terfilter) - dipakai ringkasanPtk() di atas.
+     */
+    protected function jumlahSekolahSudahInputPtk(): int
+    {
+        return DataPtk::query()->distinct()->count('profil_sekolah_id');
     }
 
     /**

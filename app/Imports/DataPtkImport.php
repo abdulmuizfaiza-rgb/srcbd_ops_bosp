@@ -209,7 +209,7 @@ class DataPtkImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmp
     {
         return [
             'nik' => ['required', 'regex:/^[0-9]{16}$/'],
-            'nuptk' => ['nullable', 'regex:/^[0-9]{16}$/'],
+            'nuptk' => ['nullable', 'regex:/^([0-9]{16}|-)$/'],
             'nip' => ['nullable', 'regex:/^([0-9]{18}|-)$/'],
             'nama_ptk' => ['required', 'string', 'max:255'],
             'jabatan' => ['required', Rule::in(array_keys(DataPtk::jabatanOptions()))],
@@ -218,7 +218,7 @@ class DataPtkImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmp
             'jenis_ptk' => ['required', Rule::in(array_keys(DataPtk::jenisPtkOptions()))],
             'pendidikan_terakhir' => ['required', Rule::in(array_keys(DataPtk::pendidikanTerakhirOptions()))],
             'tahun_lulus_ijazah' => ['nullable', 'regex:/^[0-9]{4}$/'],
-            'npwp' => ['nullable', 'regex:/^[0-9]+$/'],
+            'npwp' => ['nullable', 'regex:/^([0-9]+|-)$/'],
             'status_sertifikasi' => ['required', Rule::in(array_keys(DataPtk::statusSertifikasiOptions()))],
             // SEJAK 2026-10-20 (permintaan user poin 4): kelima field
             // rincian sertifikasi WAJIB diisi saat Status Sertifikasi =
@@ -293,10 +293,10 @@ class DataPtkImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmp
         return [
             'nik.required' => 'NIK wajib diisi.',
             'nik.regex' => 'NIK harus berupa 16 digit angka.',
-            'nuptk.regex' => 'NUPTK harus berupa 16 digit angka.',
+            'nuptk.regex' => 'NUPTK harus berupa 16 digit angka, atau tanda "-" apabila belum memiliki.',
             'nip.regex' => 'NIP harus berupa 18 digit angka.',
             'tahun_lulus_ijazah.regex' => 'Tahun Lulus Ijazah harus berupa 4 digit angka tahun.',
-            'npwp.regex' => 'NPWP harus berupa angka.',
+            'npwp.regex' => 'NPWP harus berupa angka, atau tanda "-" apabila belum memiliki.',
             'tahun_lulus_sertifikasi.regex' => 'Tahun Lulus Sertifikasi harus berupa 4 digit angka tahun.',
             'nomor_registrasi_guru.regex' => 'Nomor Registrasi Guru harus berupa angka, maksimal 12 digit.',
             'nama_sekolah.exists' => 'Nama Sekolah tidak ditemukan di menu Data Sekolah.',

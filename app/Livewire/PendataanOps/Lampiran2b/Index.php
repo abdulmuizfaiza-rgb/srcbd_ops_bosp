@@ -475,8 +475,9 @@ class Index extends Component
      * BARU 2026-10-20 (permintaan user, MENGGANTI urutan "semua
      * sekolah" sebelumnya - lihat App\Support\UrutanDaftarPtkKecamatan
      * utk detail lengkap aturan & jawaban AskUserQuestion): urutan
-     * SEKARANG SELALU Kecamatan (custom)->Nama Sekolah->Nama PTK->
-     * Pangkat/Golongan->TMT Di Sekolah Induk->Tahun Lulus Sertifikasi -
+     * SEKARANG SELALU Kecamatan (custom)->Nama Sekolah->Status (Negeri
+     * dulu, lalu Swasta - susulan permintaan user)->Nama PTK->Pangkat/
+     * Golongan->TMT Di Sekolah Induk->Tahun Lulus Sertifikasi -
      * berlaku baik saat menampilkan semua sekolah MAUPUN saat terfilter
      * ke 1 sekolah (sebelumnya ->latest()). Diimplementasikan sebagai
      * sort di level PHP (bukan SQL ORDER BY) krn perlu JOIN NUPTK->Data
@@ -521,10 +522,26 @@ class Index extends Component
             ->whereHas('profilSekolah', fn ($q) => $q->where('status', ProfilSekolah::STATUS_SWASTA))
             ->count();
 
+        // BARU 2026-10-20 (permintaan user poin 4, "tambahkan Jumlah data
+        // tersimpan yang sudah input dan belum input berdasarkan Nama
+        // Sekolah dan berdasarkan Jumlah PTK di Negeri dan Swasta") -
+        // bagian "Jumlah PTK di Negeri dan Swasta" sudah ada di atas
+        // (negeri/swasta/total, sejak 2026-10-16), ini menambahkan
+        // bagian "berdasarkan Nama Sekolah": berapa SEKOLAH yang sudah
+        // punya minimal 1 baris Lampiran 2b utk triwulan ini vs 0
+        // sama sekali. SENGAJA dihitung dari SEMUA sekolah utk triwulan
+        // yang sedang dipilih (bukan $this->queryDasar(), tidak ikut
+        // filter pencarian yang sedang aktif - dikonfirmasi lewat
+        // AskUserQuestion, pola sama dgn "Data belum lengkap" pada Data
+        // PTK supaya jadi alat pantau menyeluruh).
+        $jumlahSekolahSudahInput = Lampiran2b::where('triwulan', $this->triwulan)->distinct()->count('profil_sekolah_id');
+
         return [
             'negeri' => $jumlahNegeri,
             'swasta' => $jumlahSwasta,
             'total' => $jumlahNegeri + $jumlahSwasta,
+            'sekolahSudahInput' => $jumlahSekolahSudahInput,
+            'sekolahBelumInput' => ProfilSekolah::count() - $jumlahSekolahSudahInput,
         ];
     }
 

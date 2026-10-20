@@ -13,22 +13,26 @@ use Illuminate\Support\Collection as SupportCollection;
  * kecamatannya Caringin-Cicantayan-Cibadak-Cikidang-Nagrak)-Nama
  * Sekolah, Nama PTK, Pangkat/Golongan-TMT Disekolah Induk-Tahun Lulus
  * Sertifikasi", DITAMBAH susulan (user lupa menyebutkan): "berdasarkan
- * Negeri kemudian swasta" - dikonfirmasi lewat AskUserQuestion bahwa
- * Status disisipkan di ANTARA Kecamatan & Nama Sekolah (bukan paling
- * depan).
+ * Negeri kemudian swasta" - jawaban AskUserQuestion PERTAMA utk posisi
+ * Status adalah Kecamatan->Status->Nama Sekolah, TAPI user lalu
+ * mengoreksi lewat permintaan eksplisit berikutnya (literal): "Urutkan
+ * berdasarkan Kecamatan-Nama Sekolah-Status (Negeri-Swasta), Nama PTK,
+ * Pangkat/Golongan, TMT Disekolah Induk, Tahun Lulus Sertifikasi" -
+ * urutan FINAL yang dipakai mengikuti koreksi eksplisit ini (Status
+ * SETELAH Nama Sekolah, bukan sebelumnya).
  *
- * 5 klarifikasi (AskUserQuestion, 2 kali tanya - 4 pertanyaan awal + 1
- * susulan): posisi Status = Kecamatan -> Status -> Nama Sekolah (Negeri
- * dulu, lalu Swasta); arah Pangkat/Golongan = tertinggi ke terendah;
- * arah TMT Di Sekolah Induk = paling lama/senior dulu; arah Tahun Lulus
- * Sertifikasi = paling lama (tahun kecil) dulu - SEMUA konsisten "yang
- * lebih senior/lama duluan".
+ * Klarifikasi (AskUserQuestion) yang masih berlaku: arah Pangkat/
+ * Golongan = tertinggi ke terendah; arah TMT Di Sekolah Induk = paling
+ * lama/senior dulu; arah Tahun Lulus Sertifikasi = paling lama (tahun
+ * kecil) dulu - SEMUA konsisten "yang lebih senior/lama duluan".
  *
- * Urutan final: Kecamatan (custom, lihat URUTAN_KECAMATAN) -> Status
- * (Negeri dulu, lalu Swasta - dalam 1 kecamatan yang sama) -> Nama
- * Sekolah (A-Z) -> Nama PTK (A-Z) -> Pangkat/Golongan (tertinggi dulu)
- * -> TMT Di Sekolah Induk (paling lama dulu) -> Tahun Lulus Sertifikasi
- * (paling lama/tahun kecil dulu).
+ * Urutan final: Kecamatan (custom, lihat URUTAN_KECAMATAN) -> Nama
+ * Sekolah (A-Z) -> Status (Negeri dulu, lalu Swasta - dalam 1 sekolah
+ * yang persis sama Nama Sekolah-nya, kasus ini jarang terjadi krn 1
+ * nama sekolah biasanya hanya 1 baris ProfilSekolah, tapi tetap
+ * konsisten diterapkan) -> Nama PTK (A-Z) -> Pangkat/Golongan
+ * (tertinggi dulu) -> TMT Di Sekolah Induk (paling lama dulu) -> Tahun
+ * Lulus Sertifikasi (paling lama/tahun kecil dulu).
  *
  * BEDA dari urutan baku lain yang SUDAH ADA di aplikasi
  * (ProfilSekolah::scopeUrutStandar() = Status->Kecamatan->Nama Sekolah,
@@ -37,12 +41,12 @@ use Illuminate\Support\Collection as SupportCollection;
  * Sekolah->Kecamatan, permintaan user 2026-10-16) - urutan BARU ini
  * MENGGANTI urutan lama tsb (bukan ditambah di atasnya); bedanya dgn
  * urutan lama: Kecamatan sekarang jadi kriteria PERTAMA (dgn urutan
- * KHUSUS/custom, bukan abjad), Status jadi kriteria KEDUA (bukan
- * pertama seperti sebelumnya). Berlaku juga pada tampilan 1 sekolah
- * terfilter (sebelumnya ->latest()) - level Nama PTK/Pangkat-Golongan/
- * TMT/Tahun Lulus Sertifikasi tetap relevan di sana (Kecamatan/Status/
- * Nama Sekolah otomatis jadi tidak berpengaruh krn semua baris berasal
- * dari 1 sekolah yang sama).
+ * KHUSUS/custom, bukan abjad), Nama Sekolah jadi kriteria KEDUA, Status
+ * jadi kriteria KETIGA (bukan pertama seperti sebelumnya). Berlaku juga
+ * pada tampilan 1 sekolah terfilter (sebelumnya ->latest()) - level
+ * Nama PTK/Pangkat-Golongan/TMT/Tahun Lulus Sertifikasi tetap relevan
+ * di sana (Kecamatan/Nama Sekolah/Status otomatis jadi tidak
+ * berpengaruh krn semua baris berasal dari 1 sekolah yang sama).
  *
  * Diimplementasikan sebagai SORT DI LEVEL PHP (bukan SQL ORDER BY) -
  * pola SAMA PERSIS dgn App\Support\UrutanRosterTpg (round sebelumnya,
@@ -100,12 +104,12 @@ class UrutanDaftarPtkKecamatan
                 return $cmp;
             }
 
-            $cmp = self::indeksStatus($sekolahA?->status) <=> self::indeksStatus($sekolahB?->status);
+            $cmp = strcasecmp((string) $sekolahA?->nama_sekolah, (string) $sekolahB?->nama_sekolah);
             if ($cmp !== 0) {
                 return $cmp;
             }
 
-            $cmp = strcasecmp((string) $sekolahA?->nama_sekolah, (string) $sekolahB?->nama_sekolah);
+            $cmp = self::indeksStatus($sekolahA?->status) <=> self::indeksStatus($sekolahB?->status);
             if ($cmp !== 0) {
                 return $cmp;
             }
@@ -151,12 +155,12 @@ class UrutanDaftarPtkKecamatan
                 return $cmp;
             }
 
-            $cmp = self::indeksStatus($sekolahA?->status) <=> self::indeksStatus($sekolahB?->status);
+            $cmp = strcasecmp((string) $sekolahA?->nama_sekolah, (string) $sekolahB?->nama_sekolah);
             if ($cmp !== 0) {
                 return $cmp;
             }
 
-            $cmp = strcasecmp((string) $sekolahA?->nama_sekolah, (string) $sekolahB?->nama_sekolah);
+            $cmp = self::indeksStatus($sekolahA?->status) <=> self::indeksStatus($sekolahB?->status);
             if ($cmp !== 0) {
                 return $cmp;
             }
@@ -188,8 +192,8 @@ class UrutanDaftarPtkKecamatan
      * ProfilSekolah::scopeUrutStandar() (CASE WHEN status = Negeri THEN
      * 0 ELSE 1). Susulan permintaan user 2026-10-20 ("lupa untuk urutan
      * juga tambahkan berdasarkan Negeri kemudian swasta"), disisipkan
-     * di ANTARA Kecamatan & Nama Sekolah (dikonfirmasi lewat
-     * AskUserQuestion).
+     * SETELAH Nama Sekolah (dikoreksi eksplisit oleh user - lihat
+     * docblock kelas di atas).
      */
     private static function indeksStatus(?string $status): int
     {

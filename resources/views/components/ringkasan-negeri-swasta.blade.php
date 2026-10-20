@@ -25,6 +25,22 @@
             <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 font-medium text-emerald-700">Sudah Sertifikasi: {{ $ringkasan['sudahSertifikasi'] }}</span>
             <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-700">Belum Sertifikasi: {{ $ringkasan['belumSertifikasi'] }}</span>
         @endif
+
+        {{-- BARU 2026-10-20 (permintaan user poin 3 & 4): berapa SEKOLAH
+             yang sudah input vs belum (bukan jumlah baris PTK/Lampiran),
+             dihitung dari SEMUA sekolah (tidak ikut filter pencarian yang
+             sedang aktif, dikonfirmasi lewat AskUserQuestion). Key beda
+             nama antar menu ('sekolahSudahInput'/'sekolahBelumInput' utk
+             Lampiran 2a/2b/2c, 'sekolahSudahInputPtk'/'sekolahBelumInputPtk'
+             utk Data PTK) supaya tidak ambigu field "input" yang mana. --}}
+        @if (isset($ringkasan['sekolahSudahInput']))
+            <span class="inline-flex items-center rounded-full bg-sky-100 px-2.5 py-1 font-medium text-sky-700">Sekolah Sudah Input: {{ $ringkasan['sekolahSudahInput'] }}</span>
+            <span class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 font-medium text-rose-700">Sekolah Belum Input: {{ $ringkasan['sekolahBelumInput'] }}</span>
+        @endif
+        @if (isset($ringkasan['sekolahSudahInputPtk']))
+            <span class="inline-flex items-center rounded-full bg-sky-100 px-2.5 py-1 font-medium text-sky-700">Sekolah Sudah Input: {{ $ringkasan['sekolahSudahInputPtk'] }}</span>
+            <span class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 font-medium text-rose-700">Sekolah Belum Input: {{ $ringkasan['sekolahBelumInputPtk'] }}</span>
+        @endif
     </div>
 
     {{-- Daftar "data belum lengkap" per sekolah (permintaan user
