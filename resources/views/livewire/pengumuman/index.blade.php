@@ -55,6 +55,9 @@
                                             @endif
                                         </td>
                                         <td class="px-3 py-2 text-right space-x-2">
+                                            {{-- BARU 2026-10-20 (permintaan user) - lihat docblock
+                                                 tautanWhatsapp() di App\Livewire\Pengumuman\Index. --}}
+                                            <a href="{{ $this->tautanWhatsapp($item) }}" target="_blank" rel="noopener noreferrer" class="text-green-600 hover:underline">WhatsApp</a>
                                             <button wire:click="edit({{ $item->id }})" class="text-blue-600 hover:underline">Edit</button>
                                             <button wire:click="konfirmasiHapus({{ $item->id }})" class="text-red-600 hover:underline">Hapus</button>
                                         </td>

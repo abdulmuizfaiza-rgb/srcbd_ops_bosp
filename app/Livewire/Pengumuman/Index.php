@@ -124,6 +124,33 @@ class Index extends Component
         session()->flash('status', 'Pengumuman berhasil dihapus.');
     }
 
+    /**
+     * Tautan "Kirim ke WhatsApp" per pengumuman (BARU 2026-10-20,
+     * permintaan user: "pengumuman yang dibuat oleh superadmin bisa
+     * terkirim ke Whatsapp secara real time") - pola & alasan TEKNIS
+     * SAMA PERSIS dengan tombol "Kirim Rekap ke WhatsApp" pada
+     * App\Livewire\Beranda\Index, dikonfirmasi lewat AskUserQuestion:
+     * "Klik tombol, WhatsApp Anda sendiri yang kirim" (BUKAN otomatis
+     * terkirim sendiri tanpa diklik - opsi itu butuh berlangganan
+     * WhatsApp Business API pihak ketiga berbayar + kredensial, TIDAK
+     * dipilih user). Membuka https://api.whatsapp.com/send?text=...
+     * TANPA nomor tujuan - Superadmin sendiri yang pilih kontak/grup
+     * tujuan di WhatsApp-nya sendiri (app di HP / WhatsApp Web di
+     * desktop) lalu klik Kirim. TIDAK butuh API/kredensial/biaya apa
+     * pun.
+     */
+    public function tautanWhatsapp(Pengumuman $pengumuman): string
+    {
+        $pesan = implode("\n\n", [
+            "*Pengumuman: {$pengumuman->judul}*",
+            'Berlaku: '.$pengumuman->tanggal_aktif->format('d-m-Y').' s.d. '.$pengumuman->tanggal_nonaktif->format('d-m-Y'),
+            $pengumuman->isi,
+            'Sumber: '.url('/'),
+        ]);
+
+        return 'https://api.whatsapp.com/send?text='.rawurlencode($pesan);
+    }
+
     public function render()
     {
         $pengumuman = Pengumuman::query()

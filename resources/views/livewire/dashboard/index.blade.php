@@ -273,8 +273,25 @@
             @elseif ($peran === 'admin_ops')
                 @include('livewire.dashboard.partials.selector-triwulan', ['warna' => 'violet'])
 
+                {{--
+                    BARU 2026-10-20 (permintaan user): "Pendataan OPS"
+                    di Beranda langsung update real time ketika sekolah
+                    berhasil menyimpan Lampiran 2a - dikonfirmasi lewat
+                    AskUserQuestion: mekanisme REFRESH OTOMATIS BERKALA
+                    (polling, ~15 detik), BUKAN WebSocket/push instan
+                    (butuh proses server tambahan/Laravel Reverb di VPS
+                    - lebih kompleks, tidak dipilih user). wire:poll
+                    ditaruh di sini (HANYA muncul pada blok admin_ops)
+                    supaya Superadmin/Admin BOSP TIDAK ikut polling -
+                    seluruh halaman (termasuk Progres Keseluruhan,
+                    grafik Pendataan OPS per Triwulan, & daftar sekolah
+                    sudah/belum) otomatis ter-refresh tiap ~15 detik
+                    selagi dibuka, memanggil ulang render()/dataAdminOps()
+                    yang sudah menghitung ulang dari database setiap
+                    kali - tidak perlu perubahan lain di Index.php.
+                --}}
                 {{-- ============ HERO: DASHBOARD PENDATAAN OPS ============ --}}
-                <div class="relative overflow-hidden rounded-2xl shadow-lg bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600">
+                <div wire:poll.15s class="relative overflow-hidden rounded-2xl shadow-lg bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600">
                     <div class="pointer-events-none absolute -top-10 -right-10 w-56 h-56 rounded-full bg-white/10 blur-2xl animate-blob-a"></div>
                     <div class="pointer-events-none absolute -bottom-16 -left-10 w-64 h-64 rounded-full bg-fuchsia-300/20 blur-2xl animate-blob-b"></div>
                     <div class="pointer-events-none absolute top-8 right-28 w-24 h-24 rounded-full bg-white/10 blur-xl animate-blob-c"></div>
