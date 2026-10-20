@@ -32,14 +32,25 @@
              sedang aktif, dikonfirmasi lewat AskUserQuestion). Key beda
              nama antar menu ('sekolahSudahInput'/'sekolahBelumInput' utk
              Lampiran 2a/2b/2c, 'sekolahSudahInputPtk'/'sekolahBelumInputPtk'
-             utk Data PTK) supaya tidak ambigu field "input" yang mana. --}}
+             utk Data PTK) supaya tidak ambigu field "input" yang mana.
+
+             SEJAK 2026-10-20 (lanjutan, permintaan user: "Jumlah data
+             tersimpan ... bisa di cek Sekolah mana yang belum dan sekolah
+             mana yang sudah") - badge ini sekarang bisa DIKLIK untuk
+             membuka modal berisi daftar NAMA SEKOLAHNYA, lewat
+             wire:click="lihatDetailSekolahInput(...)" (Lampiran 2a/2b/2c)
+             atau wire:click="lihatDetailSekolahInputPtk(...)" (Data PTK) -
+             method yang dipakai beda nama persis sesuai komponen Livewire
+             mana yang sedang merender (aman, tidak saling tertukar krn
+             key 'sekolahSudahInput' & 'sekolahSudahInputPtk' tidak pernah
+             muncul bersamaan dari komponen yang sama). --}}
         @if (isset($ringkasan['sekolahSudahInput']))
-            <span class="inline-flex items-center rounded-full bg-sky-100 px-2.5 py-1 font-medium text-sky-700">Sekolah Sudah Input: {{ $ringkasan['sekolahSudahInput'] }}</span>
-            <span class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 font-medium text-rose-700">Sekolah Belum Input: {{ $ringkasan['sekolahBelumInput'] }}</span>
+            <button type="button" wire:click="lihatDetailSekolahInput('sudah')" class="inline-flex items-center rounded-full bg-sky-100 px-2.5 py-1 font-medium text-sky-700 hover:bg-sky-200 transition">Sekolah Sudah Input: {{ $ringkasan['sekolahSudahInput'] }}</button>
+            <button type="button" wire:click="lihatDetailSekolahInput('belum')" class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 font-medium text-rose-700 hover:bg-rose-200 transition">Sekolah Belum Input: {{ $ringkasan['sekolahBelumInput'] }}</button>
         @endif
         @if (isset($ringkasan['sekolahSudahInputPtk']))
-            <span class="inline-flex items-center rounded-full bg-sky-100 px-2.5 py-1 font-medium text-sky-700">Sekolah Sudah Input: {{ $ringkasan['sekolahSudahInputPtk'] }}</span>
-            <span class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 font-medium text-rose-700">Sekolah Belum Input: {{ $ringkasan['sekolahBelumInputPtk'] }}</span>
+            <button type="button" wire:click="lihatDetailSekolahInputPtk('sudah')" class="inline-flex items-center rounded-full bg-sky-100 px-2.5 py-1 font-medium text-sky-700 hover:bg-sky-200 transition">Sekolah Sudah Input: {{ $ringkasan['sekolahSudahInputPtk'] }}</button>
+            <button type="button" wire:click="lihatDetailSekolahInputPtk('belum')" class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 font-medium text-rose-700 hover:bg-rose-200 transition">Sekolah Belum Input: {{ $ringkasan['sekolahBelumInputPtk'] }}</button>
         @endif
     </div>
 

@@ -781,6 +781,17 @@ class Index extends Component
      */
     public ?string $sekolahBelumLengkapDipilih = null;
 
+    /**
+     * BARU 2026-10-20 (permintaan user: "Jumlah data tersimpan ...
+     * bisa di cek Sekolah mana yang belum dan sekolah mana yang
+     * sudah") - isi 'sudah'/'belum' berarti sedang menampilkan modal
+     * detail daftar NAMA SEKOLAH (bukan daftar PTK seperti
+     * $sekolahBelumLengkapDipilih di atas), null berarti modal
+     * tertutup. Diisi lewat lihatDetailSekolahInputPtk(), dipakai di
+     * render()/blade (modal "data-ptk-sekolah-input-detail").
+     */
+    public ?string $statusInputPtkDipilih = null;
+
     public bool $showFormPtk = false;
 
     public ?int $confirmingDeletePtkId = null;
@@ -1330,6 +1341,32 @@ class Index extends Component
     }
 
     /**
+     * Daftar NAMA SEKOLAH yang "sudah" (punya minimal 1 baris Data
+     * PTK) atau "belum" (0 baris sama sekali) - permintaan user
+     * 2026-10-20 ("Jumlah data tersimpan ... bisa di cek Sekolah mana
+     * yang belum dan sekolah mana yang sudah"), dipakai untuk isi
+     * modal detail yang dibuka lewat lihatDetailSekolahInputPtk().
+     * SAMA PERSIS sumber datanya dgn jumlahSekolahSudahInputPtk() di
+     * atas (SEMUA sekolah, tidak ikut filter pencarian yang sedang
+     * aktif) supaya jumlah di badge & jumlah baris pada modal detail
+     * ini selalu konsisten. Diurutkan sama seperti daftar sekolah
+     * standar aplikasi (ProfilSekolah::scopeUrutStandar()).
+     *
+     * @param  'sudah'|'belum'  $status
+     * @return \Illuminate\Support\Collection<int, string>
+     */
+    protected function daftarSekolahInputPtk(string $status): \Illuminate\Support\Collection
+    {
+        $idSudahInput = DataPtk::query()->distinct()->pluck('profil_sekolah_id');
+
+        $query = ProfilSekolah::query()->urutStandar();
+
+        return $status === 'sudah'
+            ? $query->whereIn('id', $idSudahInput)->pluck('nama_sekolah')
+            : $query->whereNotIn('id', $idSudahInput)->pluck('nama_sekolah');
+    }
+
+    /**
      * Daftar sekolah yang punya Data PTK "belum lengkap" (permintaan
      * user 2026-10-18, dikonfirmasi lewat AskUserQuestion) - sebuah
      * baris Data PTK dianggap belum lengkap kalau salah satu field di
@@ -1392,6 +1429,27 @@ class Index extends Component
     {
         $this->sekolahBelumLengkapDipilih = null;
         $this->dispatch('close-modal', 'data-ptk-belum-lengkap-detail');
+    }
+
+    /**
+     * Buka modal detail daftar NAMA SEKOLAH "sudah input"/"belum
+     * input" (permintaan user 2026-10-20) - dipanggil dari badge
+     * "Sekolah Sudah Input"/"Sekolah Belum Input" pada komponen
+     * <x-ringkasan-negeri-swasta>, lihat
+     * resources/views/components/ringkasan-negeri-swasta.blade.php.
+     *
+     * @param  'sudah'|'belum'  $status
+     */
+    public function lihatDetailSekolahInputPtk(string $status): void
+    {
+        $this->statusInputPtkDipilih = $status;
+        $this->dispatch('open-modal', 'data-ptk-sekolah-input-detail');
+    }
+
+    public function tutupDetailSekolahInputPtk(): void
+    {
+        $this->statusInputPtkDipilih = null;
+        $this->dispatch('close-modal', 'data-ptk-sekolah-input-detail');
     }
 
     /**
@@ -1559,6 +1617,13 @@ class Index extends Component
             'sekolahBelumLengkapDipilih' => $this->sekolahBelumLengkapDipilih,
             'detailBelumLengkapPtk' => $this->sekolahBelumLengkapDipilih
                 ? $this->detailBelumLengkapPtk($this->sekolahBelumLengkapDipilih)
+                : collect(),
+            // BARU 2026-10-20 (permintaan user) - daftar nama sekolah
+            // utk modal "data-ptk-sekolah-input-detail", lihat
+            // lihatDetailSekolahInputPtk().
+            'statusInputPtkDipilih' => $this->statusInputPtkDipilih,
+            'daftarSekolahInputPtk' => $this->statusInputPtkDipilih
+                ? $this->daftarSekolahInputPtk($this->statusInputPtkDipilih)
                 : collect(),
             'semuaTerpilihPtk' => $semuaTerpilihPtk,
             'bolehKelolaDataPtkSemua' => $this->bolehKelolaDataPtkSemua(),

@@ -97,6 +97,17 @@ class Index extends Component
 
     public int $perPage = 10;
 
+    /**
+     * BARU 2026-10-20 (permintaan user: "Jumlah data tersimpan ...
+     * bisa di cek Sekolah mana yang belum dan sekolah mana yang
+     * sudah", diterapkan juga pada Lampiran 2a/2b/2c) - isi
+     * 'sudah'/'belum' berarti sedang menampilkan modal detail daftar
+     * NAMA SEKOLAH, null berarti modal tertutup. Diisi lewat
+     * lihatDetailSekolahInput(), dipakai di render()/blade (modal
+     * "lampiran-2b-sekolah-input-detail").
+     */
+    public ?string $statusInputDipilih = null;
+
     protected function bolehKelolaSemua(): bool
     {
         return auth()->user()->isSuperadmin();
@@ -548,6 +559,54 @@ class Index extends Component
         ];
     }
 
+    /**
+     * Daftar NAMA SEKOLAH yang "sudah" (punya minimal 1 baris
+     * Lampiran2b untuk Triwulan yang sedang dipilih) atau "belum" (0
+     * baris sama sekali) - permintaan user 2026-10-20 ("Jumlah data
+     * tersimpan ... bisa di cek Sekolah mana yang belum dan sekolah
+     * mana yang sudah"), dipakai untuk isi modal detail yang dibuka
+     * lewat lihatDetailSekolahInput(). SAMA PERSIS sumber datanya dgn
+     * ringkasan() di atas (SEMUA sekolah utk Triwulan yang sedang
+     * dipilih, tidak ikut filter pencarian yang sedang aktif) supaya
+     * jumlah di badge & jumlah baris pada modal detail ini selalu
+     * konsisten. Diurutkan sama seperti daftar sekolah standar
+     * aplikasi (ProfilSekolah::scopeUrutStandar()).
+     *
+     * @param  'sudah'|'belum'  $status
+     * @return \Illuminate\Support\Collection<int, string>
+     */
+    protected function daftarSekolahInput(string $status): \Illuminate\Support\Collection
+    {
+        $idSudahInput = Lampiran2b::where('triwulan', $this->triwulan)->distinct()->pluck('profil_sekolah_id');
+
+        $query = ProfilSekolah::query()->urutStandar();
+
+        return $status === 'sudah'
+            ? $query->whereIn('id', $idSudahInput)->pluck('nama_sekolah')
+            : $query->whereNotIn('id', $idSudahInput)->pluck('nama_sekolah');
+    }
+
+    /**
+     * Buka modal detail daftar NAMA SEKOLAH "sudah input"/"belum
+     * input" (permintaan user 2026-10-20) - dipanggil dari badge
+     * "Sekolah Sudah Input"/"Sekolah Belum Input" pada komponen
+     * <x-ringkasan-negeri-swasta>, lihat
+     * resources/views/components/ringkasan-negeri-swasta.blade.php.
+     *
+     * @param  'sudah'|'belum'  $status
+     */
+    public function lihatDetailSekolahInput(string $status): void
+    {
+        $this->statusInputDipilih = $status;
+        $this->dispatch('open-modal', 'lampiran-2b-sekolah-input-detail');
+    }
+
+    public function tutupDetailSekolahInput(): void
+    {
+        $this->statusInputDipilih = null;
+        $this->dispatch('close-modal', 'lampiran-2b-sekolah-input-detail');
+    }
+
     public function render()
     {
         $daftar = $this->daftarTerurut();
@@ -559,6 +618,13 @@ class Index extends Component
         return view('livewire.pendataan-ops.lampiran2b.index', [
             'daftar' => $daftar,
             'ringkasan' => $this->ringkasan(),
+            // BARU 2026-10-20 (permintaan user) - daftar nama sekolah
+            // utk modal "lampiran-2b-sekolah-input-detail", lihat
+            // lihatDetailSekolahInput().
+            'statusInputDipilih' => $this->statusInputDipilih,
+            'daftarSekolahInput' => $this->statusInputDipilih
+                ? $this->daftarSekolahInput($this->statusInputDipilih)
+                : collect(),
             'triwulanOptions' => Lampiran2b::TRIWULAN_OPTIONS,
             'sekolahOptions' => ProfilSekolah::urutStandar()->get(['id', 'nama_sekolah']),
             'namaPtkOptions' => $this->namaPtkOptions(),

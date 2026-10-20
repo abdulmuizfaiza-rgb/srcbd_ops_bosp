@@ -1059,6 +1059,33 @@
         </div>
     </x-modal>
 
+    {{--
+        Detail daftar NAMA SEKOLAH "sudah input"/"belum input" (BARU
+        2026-10-20, permintaan user "Jumlah data tersimpan ... bisa di
+        cek Sekolah mana yang belum dan sekolah mana yang sudah") -
+        dibuka lewat badge "Sekolah Sudah Input"/"Sekolah Belum Input"
+        pada <x-ringkasan-negeri-swasta>, diisi lewat
+        ProfilSekolah\Index::daftarSekolahInputPtk().
+    --}}
+    <x-modal name="data-ptk-sekolah-input-detail" :show="$statusInputPtkDipilih !== null" maxWidth="lg">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900">{{ $statusInputPtkDipilih === 'sudah' ? 'Sekolah Sudah Input Data PTK' : 'Sekolah Belum Input Data PTK' }} ({{ $daftarSekolahInputPtk->count() }})</h2>
+            <p class="mt-1 text-xs text-slate-500">{{ $statusInputPtkDipilih === 'sudah' ? 'Sekolah yang sudah punya minimal 1 baris Data PTK.' : 'Sekolah yang belum punya Data PTK sama sekali.' }}</p>
+
+            <div class="mt-4 max-h-96 overflow-y-auto divide-y divide-slate-100">
+                @forelse ($daftarSekolahInputPtk as $namaSekolah)
+                    <p class="py-2 text-sm text-slate-800">{{ $namaSekolah }}</p>
+                @empty
+                    <p class="py-6 text-center text-sm text-slate-400">Tidak ada data.</p>
+                @endforelse
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <x-secondary-button wire:click="tutupDetailSekolahInputPtk" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Tutup</x-secondary-button>
+            </div>
+        </div>
+    </x-modal>
+
     {{-- Popup wajib: Profil Sekolah milik akun ini belum lengkap --}}
     <x-modal-wajib name="profil-belum-lengkap" :show="$tampilkanPeringatanBelumLengkap" maxWidth="md">
         <div class="p-6">
