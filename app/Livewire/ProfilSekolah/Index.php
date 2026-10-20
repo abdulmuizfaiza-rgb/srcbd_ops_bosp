@@ -1226,10 +1226,12 @@ class Index extends Component
     /**
      * BARU 2026-10-20 (permintaan user, MENGGANTI urutan "semua
      * sekolah" sebelumnya - lihat App\Support\UrutanDaftarPtkKecamatan
-     * utk detail lengkap aturan & jawaban AskUserQuestion): urutan
-     * SEKARANG SELALU Kecamatan (custom)->Nama Sekolah->Status (Negeri
-     * dulu, lalu Swasta - susulan permintaan user)->Nama PTK->Pangkat/
-     * Golongan->TMT Di Sekolah Induk->Tahun Lulus Sertifikasi -
+     * utk detail lengkap aturan, riwayat 3x koreksi posisi Status, &
+     * jawaban AskUserQuestion FINAL): urutan SEKARANG SELALU Kecamatan
+     * (custom)->Status (Negeri dulu, lalu Swasta - susulan permintaan
+     * user, posisi FINAL sebelum Nama Sekolah supaya benar-benar
+     * mengelompok)->Nama Sekolah->Nama PTK->Pangkat/Golongan->TMT Di
+     * Sekolah Induk->Tahun Lulus Sertifikasi -
      * berlaku baik saat menampilkan semua sekolah MAUPUN saat terfilter
      * ke 1 sekolah (sebelumnya ->latest()). Diimplementasikan sebagai
      * sort di level PHP (bukan SQL ORDER BY) - lihat

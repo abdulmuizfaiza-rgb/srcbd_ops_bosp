@@ -13,26 +13,34 @@ use Illuminate\Support\Collection as SupportCollection;
  * kecamatannya Caringin-Cicantayan-Cibadak-Cikidang-Nagrak)-Nama
  * Sekolah, Nama PTK, Pangkat/Golongan-TMT Disekolah Induk-Tahun Lulus
  * Sertifikasi", DITAMBAH susulan (user lupa menyebutkan): "berdasarkan
- * Negeri kemudian swasta" - jawaban AskUserQuestion PERTAMA utk posisi
- * Status adalah Kecamatan->Status->Nama Sekolah, TAPI user lalu
- * mengoreksi lewat permintaan eksplisit berikutnya (literal): "Urutkan
- * berdasarkan Kecamatan-Nama Sekolah-Status (Negeri-Swasta), Nama PTK,
- * Pangkat/Golongan, TMT Disekolah Induk, Tahun Lulus Sertifikasi" -
- * urutan FINAL yang dipakai mengikuti koreksi eksplisit ini (Status
- * SETELAH Nama Sekolah, bukan sebelumnya).
+ * Negeri kemudian swasta".
+ *
+ * RIWAYAT posisi Status (3 kali bolak-balik, SEKARANG SUDAH FINAL):
+ * (1) AskUserQuestion pertama -> Kecamatan->Status->Nama Sekolah;
+ * (2) user koreksi literal "Kecamatan-Nama Sekolah-Status" -> dipindah
+ * ke SETELAH Nama Sekolah; (3) user laporkan "Negeri dulu kemudian
+ * swasta belum berubah, masih swasta duluan" - diselidiki: dgn Status
+ * SETELAH Nama Sekolah, Status PRAKTIS TIDAK PERNAH berpengaruh karena
+ * Nama Sekolah SUDAH jadi pembeda unik antar sekolah (1 nama sekolah =
+ * 1 baris ProfilSekolah), jadi daftar langsung urut abjad nama sekolah
+ * tanpa peduli Negeri/Swasta - Status baru kepakai kalau ada 2 sekolah
+ * bernama PERSIS sama (kasus langka). Dijelaskan ke user lewat
+ * AskUserQuestion (pakai contoh "SMP Advent" Swasta vs "SMP Negeri 1"
+ * Negeri tetap Advent duluan krn abjad) -> user KONFIRMASI balik ke
+ * Kecamatan->Status->Nama Sekolah (opsi "Recommended") SUPAYA Status
+ * benar-benar mengelompokkan Negeri sebelum Swasta secara kasat mata.
+ * INI URUTAN FINAL, jangan diubah lagi tanpa permintaan eksplisit baru.
  *
  * Klarifikasi (AskUserQuestion) yang masih berlaku: arah Pangkat/
  * Golongan = tertinggi ke terendah; arah TMT Di Sekolah Induk = paling
  * lama/senior dulu; arah Tahun Lulus Sertifikasi = paling lama (tahun
  * kecil) dulu - SEMUA konsisten "yang lebih senior/lama duluan".
  *
- * Urutan final: Kecamatan (custom, lihat URUTAN_KECAMATAN) -> Nama
- * Sekolah (A-Z) -> Status (Negeri dulu, lalu Swasta - dalam 1 sekolah
- * yang persis sama Nama Sekolah-nya, kasus ini jarang terjadi krn 1
- * nama sekolah biasanya hanya 1 baris ProfilSekolah, tapi tetap
- * konsisten diterapkan) -> Nama PTK (A-Z) -> Pangkat/Golongan
- * (tertinggi dulu) -> TMT Di Sekolah Induk (paling lama dulu) -> Tahun
- * Lulus Sertifikasi (paling lama/tahun kecil dulu).
+ * Urutan final: Kecamatan (custom, lihat URUTAN_KECAMATAN) -> Status
+ * (Negeri dulu, lalu Swasta - dalam 1 kecamatan yang sama, benar-benar
+ * mengelompokkan) -> Nama Sekolah (A-Z) -> Nama PTK (A-Z) -> Pangkat/
+ * Golongan (tertinggi dulu) -> TMT Di Sekolah Induk (paling lama dulu)
+ * -> Tahun Lulus Sertifikasi (paling lama/tahun kecil dulu).
  *
  * BEDA dari urutan baku lain yang SUDAH ADA di aplikasi
  * (ProfilSekolah::scopeUrutStandar() = Status->Kecamatan->Nama Sekolah,
@@ -41,11 +49,12 @@ use Illuminate\Support\Collection as SupportCollection;
  * Sekolah->Kecamatan, permintaan user 2026-10-16) - urutan BARU ini
  * MENGGANTI urutan lama tsb (bukan ditambah di atasnya); bedanya dgn
  * urutan lama: Kecamatan sekarang jadi kriteria PERTAMA (dgn urutan
- * KHUSUS/custom, bukan abjad), Nama Sekolah jadi kriteria KEDUA, Status
- * jadi kriteria KETIGA (bukan pertama seperti sebelumnya). Berlaku juga
+ * KHUSUS/custom, bukan abjad), Status TETAP jadi kriteria KEDUA (sama
+ * posisi relatifnya dgn urutan lama scopeUrutStandar(), hanya
+ * Kecamatan yang "memotong antrian" ke depan Status). Berlaku juga
  * pada tampilan 1 sekolah terfilter (sebelumnya ->latest()) - level
  * Nama PTK/Pangkat-Golongan/TMT/Tahun Lulus Sertifikasi tetap relevan
- * di sana (Kecamatan/Nama Sekolah/Status otomatis jadi tidak
+ * di sana (Kecamatan/Status/Nama Sekolah otomatis jadi tidak
  * berpengaruh krn semua baris berasal dari 1 sekolah yang sama).
  *
  * Diimplementasikan sebagai SORT DI LEVEL PHP (bukan SQL ORDER BY) -
@@ -104,12 +113,12 @@ class UrutanDaftarPtkKecamatan
                 return $cmp;
             }
 
-            $cmp = strcasecmp((string) $sekolahA?->nama_sekolah, (string) $sekolahB?->nama_sekolah);
+            $cmp = self::indeksStatus($sekolahA?->status) <=> self::indeksStatus($sekolahB?->status);
             if ($cmp !== 0) {
                 return $cmp;
             }
 
-            $cmp = self::indeksStatus($sekolahA?->status) <=> self::indeksStatus($sekolahB?->status);
+            $cmp = strcasecmp((string) $sekolahA?->nama_sekolah, (string) $sekolahB?->nama_sekolah);
             if ($cmp !== 0) {
                 return $cmp;
             }
@@ -155,12 +164,12 @@ class UrutanDaftarPtkKecamatan
                 return $cmp;
             }
 
-            $cmp = strcasecmp((string) $sekolahA?->nama_sekolah, (string) $sekolahB?->nama_sekolah);
+            $cmp = self::indeksStatus($sekolahA?->status) <=> self::indeksStatus($sekolahB?->status);
             if ($cmp !== 0) {
                 return $cmp;
             }
 
-            $cmp = self::indeksStatus($sekolahA?->status) <=> self::indeksStatus($sekolahB?->status);
+            $cmp = strcasecmp((string) $sekolahA?->nama_sekolah, (string) $sekolahB?->nama_sekolah);
             if ($cmp !== 0) {
                 return $cmp;
             }
@@ -191,9 +200,11 @@ class UrutanDaftarPtkKecamatan
      * tidak dikenal) - pola SAMA PERSIS dgn
      * ProfilSekolah::scopeUrutStandar() (CASE WHEN status = Negeri THEN
      * 0 ELSE 1). Susulan permintaan user 2026-10-20 ("lupa untuk urutan
-     * juga tambahkan berdasarkan Negeri kemudian swasta"), disisipkan
-     * SETELAH Nama Sekolah (dikoreksi eksplisit oleh user - lihat
-     * docblock kelas di atas).
+     * juga tambahkan berdasarkan Negeri kemudian swasta"), posisi FINAL
+     * SEBELUM Nama Sekolah supaya benar-benar mengelompokkan Negeri vs
+     * Swasta (lihat riwayat lengkap di docblock kelas di atas - posisi
+     * ini sempat dipindah ke SETELAH Nama Sekolah lalu dikembalikan lagi
+     * krn di posisi itu Status tidak pernah berpengaruh).
      */
     private static function indeksStatus(?string $status): int
     {
