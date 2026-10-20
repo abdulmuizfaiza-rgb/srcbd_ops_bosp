@@ -14,6 +14,7 @@ use App\Support\LembarValidasiTpgUnduhanData;
 use App\Support\RekapCairTpgUnduhanData;
 use App\Support\SuratTpgGabunganData;
 use App\Support\UnduhanLampiranData;
+use App\Support\UrutanDaftarPtkKecamatan;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -206,10 +207,18 @@ class Index extends Component
     {
         $sekolahId = $this->sekolahIdUntukUnduhan();
 
+        // BARU 2026-10-20 (permintaan user): urutan baris Lampiran
+        // 2a/2b/2c pada Unduhan Excel & PDF SEKARANG ikut urutan baku
+        // yang sama dgn menu Lampiran 2a/2b/2c on-screen - lihat
+        // App\Support\UrutanDaftarPtkKecamatan utk detail aturan &
+        // jawaban AskUserQuestion. UnduhanLampiranData::ambil() di
+        // bawah TETAP dipakai apa adanya utk filter Triwulan+Tahun+
+        // sekolah (urutan SQL bawaannya SENGAJA DIABAIKAN - digantikan
+        // sort PHP ini yg jadi urutan final).
         return [
-            UnduhanLampiranData::ambil(Lampiran2a::query(), 'lampiran_2a', $this->triwulan, $this->tahun, $sekolahId),
-            UnduhanLampiranData::ambil(Lampiran2b::query(), 'lampiran_2b', $this->triwulan, $this->tahun, $sekolahId),
-            UnduhanLampiranData::ambil(Lampiran2c::query(), 'lampiran_2c', $this->triwulan, $this->tahun, $sekolahId),
+            UrutanDaftarPtkKecamatan::urutkanLampiran(UnduhanLampiranData::ambil(Lampiran2a::query(), 'lampiran_2a', $this->triwulan, $this->tahun, $sekolahId)),
+            UrutanDaftarPtkKecamatan::urutkanLampiran(UnduhanLampiranData::ambil(Lampiran2b::query(), 'lampiran_2b', $this->triwulan, $this->tahun, $sekolahId)),
+            UrutanDaftarPtkKecamatan::urutkanLampiran(UnduhanLampiranData::ambil(Lampiran2c::query(), 'lampiran_2c', $this->triwulan, $this->tahun, $sekolahId)),
         ];
     }
 

@@ -6,6 +6,8 @@ use App\Livewire\Concerns\HasZoomTampilan;
 use App\Models\DataPtk;
 use App\Models\Lampiran2b;
 use App\Models\ProfilSekolah;
+use App\Support\UrutanDaftarPtkKecamatan;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -398,7 +400,7 @@ class Index extends Component
 
     public function toggleSemua(): void
     {
-        $idHalamanIni = $this->terapkanUrutan($this->queryDasar())->paginate($this->perPage)->pluck('id')->all();
+        $idHalamanIni = $this->daftarTerurut()->pluck('id')->all();
         if (count($idHalamanIni) > 0 && count(array_diff($idHalamanIni, $this->dipilih)) === 0) {
             $this->dipilih = array_values(array_diff($this->dipilih, $idHalamanIni));
         } else {
@@ -470,37 +472,37 @@ class Index extends Component
     }
 
     /**
-     * Urutan KHUSUS utk tampilan "semua sekolah" (Superadmin, TANPA
-     * filter ke 1 sekolah tertentu) - permintaan user 2026-10-16:
-     * Status (Negeri dulu, Swasta sesudah) -> Nama Sekolah (A-Z) ->
-     * Kecamatan (A-Z). SENGAJA BEDA dari urutan baku aplikasi
-     * ProfilSekolah::scopeUrutStandar() (Status -> Kecamatan -> Nama
-     * Sekolah) - dikonfirmasi lewat AskUserQuestion bahwa user memang
-     * ingin urutan Nama Sekolah didahulukan dari Kecamatan KHUSUS di
-     * sini, jadi TIDAK memakai/mengubah scope yang sudah ada tsb.
-     * Kalau sedang memfilter ke 1 sekolah tertentu, urutan ini tidak
-     * relevan - tetap pakai urutan terbaru (->latest()) spt sebelumnya.
+     * BARU 2026-10-20 (permintaan user, MENGGANTI urutan "semua
+     * sekolah" sebelumnya - lihat App\Support\UrutanDaftarPtkKecamatan
+     * utk detail lengkap aturan & jawaban AskUserQuestion): urutan
+     * SEKARANG SELALU Kecamatan (custom)->Nama Sekolah->Nama PTK->
+     * Pangkat/Golongan->TMT Di Sekolah Induk->Tahun Lulus Sertifikasi -
+     * berlaku baik saat menampilkan semua sekolah MAUPUN saat terfilter
+     * ke 1 sekolah (sebelumnya ->latest()). Diimplementasikan sebagai
+     * sort di level PHP (bukan SQL ORDER BY) krn perlu JOIN NUPTK->Data
+     * PTK - makanya paginasi JUGA dilakukan manual lewat
+     * LengthAwarePaginator, BUKAN lewat Eloquent ->paginate() seperti
+     * sebelumnya.
      */
-    protected function terapkanUrutan($query)
+    protected function daftarTerurut(): LengthAwarePaginator
     {
-        if ($this->bolehKelolaSemua() && ! $this->filterSekolahId) {
-            return $query
-                ->join('profil_sekolah', 'lampiran_2b.profil_sekolah_id', '=', 'profil_sekolah.id')
-                ->select('lampiran_2b.*')
-                ->orderByRaw('CASE WHEN profil_sekolah.status = ? THEN 0 ELSE 1 END', [ProfilSekolah::STATUS_NEGERI])
-                ->orderBy('profil_sekolah.nama_sekolah')
-                ->orderBy('profil_sekolah.kecamatan')
-                ->orderBy('lampiran_2b.created_at', 'desc');
-        }
+        $semuaBaris = UrutanDaftarPtkKecamatan::urutkanLampiran($this->queryDasar()->get());
+        $halaman = $this->getPage();
 
-        return $query->latest();
+        return new LengthAwarePaginator(
+            $semuaBaris->forPage($halaman, $this->perPage)->values(),
+            $semuaBaris->count(),
+            $this->perPage,
+            $halaman,
+            ['pageName' => 'page', 'path' => request()->url(), 'query' => request()->query()]
+        );
     }
 
     /**
      * Ringkasan jumlah data tersimpan (permintaan user 2026-10-16),
      * dirinci per status sekolah (Negeri/Swasta) - HANYA dihitung &
      * ditampilkan saat tampilan "semua sekolah" aktif (sama dgn kondisi
-     * di terapkanUrutan() di atas), krn kalau sedang difilter ke 1
+     * di daftarTerurut() di atas), krn kalau sedang difilter ke 1
      * sekolah rinciannya tidak relevan (pasti 100% salah satu status
      * saja). Menghitung dari query dasar yang SAMA (semua filter lain
      * yang sedang aktif ikut terhitung), bukan cuma 1 halaman yang
@@ -528,7 +530,7 @@ class Index extends Component
 
     public function render()
     {
-        $daftar = $this->terapkanUrutan($this->queryDasar())->paginate($this->perPage);
+        $daftar = $this->daftarTerurut();
 
         $idHalamanIni = $daftar->pluck('id')->all();
         $this->dipilih = array_values(array_intersect($this->dipilih, $idHalamanIni));

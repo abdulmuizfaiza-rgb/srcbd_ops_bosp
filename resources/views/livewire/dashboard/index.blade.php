@@ -301,12 +301,12 @@
                             <p class="text-xs font-semibold uppercase tracking-wider text-violet-100">Dashboard Pendataan OPS</p>
                             <p class="text-2xl sm:text-3xl font-bold mt-1">Rekap Seluruh Sekolah</p>
                             <p class="text-sm text-violet-100 mt-2 max-w-md">
-                                Progres pengisian Lampiran 2a, 2b, dan 2c seluruh sekolah - Tahun {{ $tahun }}, Triwulan {{ $triwulanAktif }}.
+                                Progres pengisian Lampiran 2a seluruh sekolah - Tahun {{ $tahun }}, Triwulan {{ $triwulanAktif }}.
                             </p>
                         </div>
                         <div class="shrink-0 bg-white/15 backdrop-blur rounded-xl px-7 py-4 text-center animate-fade-in-up">
                             <p class="text-4xl font-bold leading-none">{{ $persenSelesaiAktif }}%</p>
-                            <p class="text-[11px] text-violet-100 mt-1">Sekolah Selesai<br>Triwulan {{ $triwulanAktif }}</p>
+                            <p class="text-[11px] text-violet-100 mt-1">Sekolah Sudah Input 2a<br>Triwulan {{ $triwulanAktif }}</p>
                         </div>
                     </div>
                 </div>
@@ -346,7 +346,7 @@
                         </div>
                         <div>
                             <p class="text-2xl font-bold text-slate-800 leading-none">{{ $sekolahSudahAktif->count() }}</p>
-                            <p class="text-xs text-slate-500 mt-1">Sudah Selesai TW-{{ $triwulanAktif }}</p>
+                            <p class="text-xs text-slate-500 mt-1">Sudah Input 2a TW-{{ $triwulanAktif }}</p>
                         </div>
                     </div>
                 </div>
@@ -390,7 +390,7 @@
                 <div class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-slate-200/70">
                     <p class="text-sm font-semibold text-slate-800">Pendataan OPS per Triwulan</p>
                     <p class="text-xs text-slate-500 mb-4">
-                        Jumlah sekolah sudah vs belum mengerjakan (Lampiran 2a, 2b, dan 2c lengkap) - seluruh sekolah, Tahun {{ $tahun }}.
+                        Jumlah sekolah sudah vs belum input Lampiran 2a - seluruh sekolah, Tahun {{ $tahun }}.
                     </p>
                     <div wire:ignore
                          x-data="{
@@ -504,7 +504,7 @@
                     'sekolahSudah' => $sekolahSudahAktif,
                     'sekolahBelum' => $sekolahBelumAktif,
                     'triwulanAktif' => $triwulanAktif,
-                    'catatanSudah' => 'Lampiran 2a, 2b, dan 2c lengkap',
+                    'catatanSudah' => 'Lampiran 2a sudah diisi',
                 ])
             @elseif ($peran === 'admin_bosp')
                 @include('livewire.dashboard.partials.selector-triwulan', ['warna' => 'blue'])

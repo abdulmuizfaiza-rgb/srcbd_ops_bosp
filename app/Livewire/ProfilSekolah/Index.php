@@ -12,7 +12,9 @@ use App\Livewire\Concerns\HasZoomTampilan;
 use App\Models\DataPtk;
 use App\Models\ProfilSekolah;
 use App\Models\User;
+use App\Support\UrutanDaftarPtkKecamatan;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -1145,7 +1147,7 @@ class Index extends Component
 
     public function togglePtkSemua(): void
     {
-        $idHalamanIni = $this->terapkanUrutanPtk($this->queryDasarPtk())->paginate($this->perPagePtk, ['*'], 'ptkPage')->pluck('id')->all();
+        $idHalamanIni = $this->daftarPtkTerurut()->pluck('id')->all();
         if (count($idHalamanIni) > 0 && count(array_diff($idHalamanIni, $this->dipilihPtk)) === 0) {
             $this->dipilihPtk = array_values(array_diff($this->dipilihPtk, $idHalamanIni));
         } else {
@@ -1222,38 +1224,40 @@ class Index extends Component
     }
 
     /**
-     * Urutan KHUSUS utk tampilan Data PTK "semua sekolah" (Superadmin,
-     * TANPA filter ke 1 sekolah tertentu) - permintaan user 2026-10-16:
-     * Status (Negeri dulu, Swasta sesudah) -> Nama Sekolah (A-Z) ->
-     * Kecamatan (A-Z). SENGAJA BEDA dari urutan baku aplikasi
-     * ProfilSekolah::scopeUrutStandar() (Status -> Kecamatan -> Nama
-     * Sekolah) - dikonfirmasi lewat AskUserQuestion bahwa user memang
-     * ingin urutan Nama Sekolah didahulukan dari Kecamatan KHUSUS di
-     * sini, jadi TIDAK memakai/mengubah scope yang sudah ada tsb.
-     * Kalau Admin OPS (hanya 1 sekolah) atau Superadmin sedang
-     * memfilter ke 1 sekolah tertentu, urutan ini tidak relevan -
-     * tetap pakai urutan terbaru (->latest()) seperti sebelumnya.
+     * BARU 2026-10-20 (permintaan user, MENGGANTI urutan "semua
+     * sekolah" sebelumnya - lihat App\Support\UrutanDaftarPtkKecamatan
+     * utk detail lengkap aturan & jawaban AskUserQuestion): urutan
+     * SEKARANG SELALU Kecamatan (custom)->Nama Sekolah->Nama PTK->
+     * Pangkat/Golongan->TMT Di Sekolah Induk->Tahun Lulus Sertifikasi -
+     * berlaku baik saat menampilkan semua sekolah MAUPUN saat terfilter
+     * ke 1 sekolah (sebelumnya ->latest()). Diimplementasikan sebagai
+     * sort di level PHP (bukan SQL ORDER BY) - lihat
+     * UrutanDaftarPtkKecamatan::urutkanDataPtk() (field Pangkat/
+     * Golongan, TMT Di Sekolah Induk, & Tahun Lulus Sertifikasi semua
+     * native di tabel Data PTK sendiri, TIDAK perlu JOIN NUPTK seperti
+     * urutkanLampiran() yang dipakai menu Lampiran 2a/2b/2c) - makanya
+     * paginasi JUGA dilakukan manual lewat LengthAwarePaginator, BUKAN
+     * lewat Eloquent ->paginate() seperti sebelumnya.
      */
-    protected function terapkanUrutanPtk($query)
+    protected function daftarPtkTerurut(): LengthAwarePaginator
     {
-        if ($this->bolehKelolaDataPtkSemua() && ! $this->filterSekolahPtk) {
-            return $query
-                ->join('profil_sekolah', 'data_ptk.profil_sekolah_id', '=', 'profil_sekolah.id')
-                ->select('data_ptk.*')
-                ->orderByRaw('CASE WHEN profil_sekolah.status = ? THEN 0 ELSE 1 END', [ProfilSekolah::STATUS_NEGERI])
-                ->orderBy('profil_sekolah.nama_sekolah')
-                ->orderBy('profil_sekolah.kecamatan')
-                ->orderBy('data_ptk.created_at', 'desc');
-        }
+        $semuaBaris = UrutanDaftarPtkKecamatan::urutkanDataPtk($this->queryDasarPtk()->get());
+        $halaman = $this->getPage('ptkPage');
 
-        return $query->latest();
+        return new LengthAwarePaginator(
+            $semuaBaris->forPage($halaman, $this->perPagePtk)->values(),
+            $semuaBaris->count(),
+            $this->perPagePtk,
+            $halaman,
+            ['pageName' => 'ptkPage', 'path' => request()->url(), 'query' => request()->query()]
+        );
     }
 
     /**
      * Ringkasan jumlah data PTK tersimpan (permintaan user 2026-10-16),
      * dirinci per status sekolah (Negeri/Swasta) - HANYA dihitung &
      * ditampilkan saat tampilan "semua sekolah" Superadmin aktif (sama
-     * dgn kondisi di terapkanUrutanPtk() di atas), krn kalau sedang
+     * dgn kondisi di daftarPtkTerurut() di atas), krn kalau sedang
      * difilter ke 1 sekolah rinciannya tidak relevan (pasti 100% salah
      * satu status saja). Menghitung dari query dasar yang SAMA (semua
      * filter lain yang sedang aktif ikut terhitung), bukan cuma 1
@@ -1473,7 +1477,7 @@ class Index extends Component
             ->urutStandar()
             ->get();
 
-        $daftarPtk = $this->terapkanUrutanPtk($this->queryDasarPtk())->paginate($this->perPagePtk, ['*'], 'ptkPage');
+        $daftarPtk = $this->daftarPtkTerurut();
 
         $idHalamanIniPtk = $daftarPtk->pluck('id')->all();
         $this->dipilihPtk = array_values(array_intersect($this->dipilihPtk, $idHalamanIniPtk));

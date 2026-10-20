@@ -103,7 +103,18 @@ class DashboardTest extends TestCase
             ->assertViewHas('totalSwasta', 1);
     }
 
-    public function test_admin_ops_sekolah_dianggap_selesai_hanya_jika_ketiga_lampiran_lengkap(): void
+    /**
+     * BARU 2026-10-20 (lanjutan) - MENGGANTI test lama
+     * "test_admin_ops_sekolah_dianggap_selesai_hanya_jika_ketiga_lampiran_lengkap":
+     * definisi "Sudah Pendataan OPS" pada Dashboard Admin OPS SEKARANG
+     * cukup Lampiran 2a saja (permintaan user, dikonfirmasi lewat
+     * AskUserQuestion "Cukup Lampiran 2a saja") - 2b/2c TIDAK LAGI jadi
+     * syarat status ini. Widget "Validasi Pendataan OPS" milik
+     * Superadmin (diuji terpisah di
+     * test_superadmin_melihat_validasi_ops_pakai_definisi_selesai_lampiran_lengkap)
+     * TIDAK ikut berubah.
+     */
+    public function test_admin_ops_sekolah_dianggap_sudah_jika_lampiran_2a_saja(): void
     {
         $tahun = now()->year;
 
@@ -112,12 +123,10 @@ class DashboardTest extends TestCase
         Lampiran2b::factory()->create(['profil_sekolah_id' => $sekolahLengkap->id, 'tahun' => $tahun, 'triwulan' => 1]);
         Lampiran2c::factory()->create(['profil_sekolah_id' => $sekolahLengkap->id, 'tahun' => $tahun, 'triwulan' => 1]);
 
-        // Sengaja HANYA 2a & 2b, Lampiran 2c TIDAK diisi - harus TETAP
-        // dihitung "belum" walau 2 dari 3 lampiran sudah ada (jawaban
-        // AskUserQuestion "Selesai OPS" -> harus SEMUA 3 lampiran).
-        $sekolahKurangSatu = ProfilSekolah::factory()->create(['nama_sekolah' => 'SR Kurang Lampiran 2c']);
-        Lampiran2a::factory()->create(['profil_sekolah_id' => $sekolahKurangSatu->id, 'tahun' => $tahun, 'triwulan' => 1]);
-        Lampiran2b::factory()->create(['profil_sekolah_id' => $sekolahKurangSatu->id, 'tahun' => $tahun, 'triwulan' => 1]);
+        // HANYA Lampiran 2a yang diisi (2b/2c TIDAK) - harus TETAP
+        // dihitung "sudah" karena kriteria baru cukup 2a saja.
+        $sekolahHanya2a = ProfilSekolah::factory()->create(['nama_sekolah' => 'SR Hanya Lampiran 2a']);
+        Lampiran2a::factory()->create(['profil_sekolah_id' => $sekolahHanya2a->id, 'tahun' => $tahun, 'triwulan' => 1]);
 
         $sekolahBelumSamaSekali = ProfilSekolah::factory()->create(['nama_sekolah' => 'SR Belum Isi Apapun']);
 
@@ -132,12 +141,12 @@ class DashboardTest extends TestCase
         $belum = $component->viewData('sekolahBelumAktif');
 
         $this->assertTrue($sudah->contains('id', $sekolahLengkap->id));
-        $this->assertFalse($sudah->contains('id', $sekolahKurangSatu->id));
+        $this->assertTrue($sudah->contains('id', $sekolahHanya2a->id));
         $this->assertFalse($sudah->contains('id', $sekolahBelumSamaSekali->id));
 
-        $this->assertTrue($belum->contains('id', $sekolahKurangSatu->id));
         $this->assertTrue($belum->contains('id', $sekolahBelumSamaSekali->id));
         $this->assertFalse($belum->contains('id', $sekolahLengkap->id));
+        $this->assertFalse($belum->contains('id', $sekolahHanya2a->id));
     }
 
     public function test_admin_ops_registrasi_hanya_hitung_akun_yang_sudah_disetujui(): void

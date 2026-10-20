@@ -48,9 +48,92 @@
 
     {{-- ============================= LAMPIRAN 2A ============================= --}}
     {{--
-        Kolom: A=NRG B=NUPTK C=Nama PTK D=Status Kepegawaian E=Nama Sekolah
-        F=Gaji Pokok Bulan Januari G=NPWP (7 kolom).
-        Tanda tangan: Pengawas mulai kolom B (span B-E), Kepala Sekolah
+        Kolom: A=No B=NRG C=NUPTK D=Nama PTK E=Status Kepegawaian
+        F=Nama Sekolah G=Gaji Pokok Bulan Januari H=NPWP (8 kolom - kolom
+        "No" ditambahkan 2026-10-20, kolom lain bergeser 1 huruf).
+        Tanda tangan: Pengawas mulai kolom C (span C-F), Kepala Sekolah
+        mulai kolom G (span G-H) - sesuai permintaan user.
+    --}}
+    <div class="section">
+        <div class="judul-1">
+            LAMPIRAN SURAT REKOMENDASI TENTANG USULAN PENERIMA TUNJANGAN PROFESI GURU
+            @if ($sekolah === null) - REKAP SELURUH SEKOLAH @endif
+        </div>
+        <div class="judul-2">TRIWULAN {{ $triwulan }} TAHUN ANGGARAN {{ $tahun }}</div>
+        <div class="judul-3">KOMISARIAT/KECAMATAN CIBADAK</div>
+
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>NRG</th>
+                    <th>NUPTK</th>
+                    <th>Nama PTK</th>
+                    <th>Status Kepegawaian</th>
+                    <th>Nama Sekolah</th>
+                    <th>Gaji Pokok Bulan Januari {{ $tahun }}</th>
+                    <th>NPWP</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($baris2a as $item)
+                    <tr>
+                        <td class="tengah">{{ $loop->iteration }}</td>
+                        <td>{{ $item->nrg }}</td>
+                        <td>{{ $item->nuptk }}</td>
+                        <td>{{ $item->nama_ptk }}</td>
+                        <td class="tengah">{{ $item->status_kepegawaian }}</td>
+                        <td>{{ $item->profilSekolah->nama_sekolah ?? $sekolah?->nama_sekolah }}</td>
+                        <td class="kanan">Rp {{ number_format($item->gaji_pokok_januari, 0, ',', '.') }}</td>
+                        <td>{{ $item->npwp }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="8" class="kosong">Belum ada data.</td></tr>
+                @endforelse
+
+                @if ($sekolah !== null)
+                    <tr class="baris-spasi-ttd"><td colspan="8"></td></tr>
+                    <tr class="baris-ttd">
+                        <td></td>
+                        <td></td>
+                        <td colspan="4">Mengetahui/Menyetujui :</td>
+                        <td colspan="2">Sukabumi, .................... {{ $tahun }}</td>
+                    </tr>
+                    <tr class="baris-ttd">
+                        <td></td>
+                        <td></td>
+                        <td colspan="4">Pengawas</td>
+                        <td colspan="2">Kepala Sekolah,</td>
+                    </tr>
+                    <tr class="baris-ttd">
+                        <td></td>
+                        <td></td>
+                        <td colspan="4" class="spasi-nama"></td>
+                        <td colspan="2" class="spasi-nama"></td>
+                    </tr>
+                    <tr class="baris-ttd">
+                        <td></td>
+                        <td></td>
+                        <td colspan="4">{{ $sekolah->nama_pengawas ?: '...................................' }}</td>
+                        <td colspan="2">{{ $sekolah->nama_kepala_sekolah ?: '...................................' }}</td>
+                    </tr>
+                    <tr class="baris-ttd">
+                        <td></td>
+                        <td></td>
+                        <td colspan="4">NIP. {{ $sekolah->nip_pengawas ?: '...................................' }}</td>
+                        <td colspan="2">NIP. {{ $sekolah->nip_kepala_sekolah ?: '...................................' }}</td>
+                    </tr>
+                @endif
+            </tbody>
+        </table>
+    </div>
+
+    {{-- ============================= LAMPIRAN 2B ============================= --}}
+    {{--
+        Kolom: A=No B=NRG C=NUPTK D=Nama PTK E=Nama Sekolah F=Keterangan
+        G=TMT (7 kolom - kolom "No" ditambahkan 2026-10-20, kolom lain
+        bergeser 1 huruf).
+        Tanda tangan: Pengawas mulai kolom C (span C-E), Kepala Sekolah
         mulai kolom F (span F-G) - sesuai permintaan user.
     --}}
     <div class="section">
@@ -64,80 +147,7 @@
         <table class="data">
             <thead>
                 <tr>
-                    <th>NRG</th>
-                    <th>NUPTK</th>
-                    <th>Nama PTK</th>
-                    <th>Status Kepegawaian</th>
-                    <th>Nama Sekolah</th>
-                    <th>Gaji Pokok Bulan Januari {{ $tahun }}</th>
-                    <th>NPWP</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($baris2a as $item)
-                    <tr>
-                        <td>{{ $item->nrg }}</td>
-                        <td>{{ $item->nuptk }}</td>
-                        <td>{{ $item->nama_ptk }}</td>
-                        <td class="tengah">{{ $item->status_kepegawaian }}</td>
-                        <td>{{ $item->profilSekolah->nama_sekolah ?? $sekolah?->nama_sekolah }}</td>
-                        <td class="kanan">Rp {{ number_format($item->gaji_pokok_januari, 0, ',', '.') }}</td>
-                        <td>{{ $item->npwp }}</td>
-                    </tr>
-                @empty
-                    <tr><td colspan="7" class="kosong">Belum ada data.</td></tr>
-                @endforelse
-
-                @if ($sekolah !== null)
-                    <tr class="baris-spasi-ttd"><td colspan="7"></td></tr>
-                    <tr class="baris-ttd">
-                        <td></td>
-                        <td colspan="4">Mengetahui/Menyetujui :</td>
-                        <td colspan="2">Sukabumi, .................... {{ $tahun }}</td>
-                    </tr>
-                    <tr class="baris-ttd">
-                        <td></td>
-                        <td colspan="4">Pengawas</td>
-                        <td colspan="2">Kepala Sekolah,</td>
-                    </tr>
-                    <tr class="baris-ttd">
-                        <td></td>
-                        <td colspan="4" class="spasi-nama"></td>
-                        <td colspan="2" class="spasi-nama"></td>
-                    </tr>
-                    <tr class="baris-ttd">
-                        <td></td>
-                        <td colspan="4">{{ $sekolah->nama_pengawas ?: '...................................' }}</td>
-                        <td colspan="2">{{ $sekolah->nama_kepala_sekolah ?: '...................................' }}</td>
-                    </tr>
-                    <tr class="baris-ttd">
-                        <td></td>
-                        <td colspan="4">NIP. {{ $sekolah->nip_pengawas ?: '...................................' }}</td>
-                        <td colspan="2">NIP. {{ $sekolah->nip_kepala_sekolah ?: '...................................' }}</td>
-                    </tr>
-                @endif
-            </tbody>
-        </table>
-    </div>
-
-    {{-- ============================= LAMPIRAN 2B ============================= --}}
-    {{--
-        Kolom: A=NRG B=NUPTK C=Nama PTK D=Nama Sekolah E=Keterangan F=TMT
-        (6 kolom).
-        Tanda tangan: Pengawas mulai kolom B (span B-D), Kepala Sekolah
-        mulai kolom E (span E-F) - sesuai permintaan user.
-    --}}
-    <div class="section">
-        <div class="judul-1">
-            LAMPIRAN SURAT REKOMENDASI TENTANG USULAN PENERIMA TUNJANGAN PROFESI GURU
-            @if ($sekolah === null) - REKAP SELURUH SEKOLAH @endif
-        </div>
-        <div class="judul-2">TRIWULAN {{ $triwulan }} TAHUN ANGGARAN {{ $tahun }}</div>
-        <div class="judul-3">KOMISARIAT/KECAMATAN CIBADAK</div>
-
-        <table class="data">
-            <thead>
-                <tr>
+                    <th>No</th>
                     <th>NRG</th>
                     <th>NUPTK</th>
                     <th>Nama PTK</th>
@@ -149,6 +159,7 @@
             <tbody>
                 @forelse ($baris2b as $item)
                     <tr>
+                        <td class="tengah">{{ $loop->iteration }}</td>
                         <td>{{ $item->nrg }}</td>
                         <td>{{ $item->nuptk }}</td>
                         <td>{{ $item->nama_ptk }}</td>
@@ -157,32 +168,37 @@
                         <td class="tengah">{{ optional($item->tmt)->format('d-m-Y') }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="kosong">Belum ada data.</td></tr>
+                    <tr><td colspan="7" class="kosong">Belum ada data.</td></tr>
                 @endforelse
 
                 @if ($sekolah !== null)
-                    <tr class="baris-spasi-ttd"><td colspan="6"></td></tr>
+                    <tr class="baris-spasi-ttd"><td colspan="7"></td></tr>
                     <tr class="baris-ttd">
+                        <td></td>
                         <td></td>
                         <td colspan="3">Mengetahui/Menyetujui :</td>
                         <td colspan="2">Sukabumi, ................................ {{ $tahun }}</td>
                     </tr>
                     <tr class="baris-ttd">
                         <td></td>
+                        <td></td>
                         <td colspan="3">Pengawas</td>
                         <td colspan="2">Kepala Sekolah</td>
                     </tr>
                     <tr class="baris-ttd">
+                        <td></td>
                         <td></td>
                         <td colspan="3" class="spasi-nama"></td>
                         <td colspan="2" class="spasi-nama"></td>
                     </tr>
                     <tr class="baris-ttd">
                         <td></td>
+                        <td></td>
                         <td colspan="3">{{ $sekolah->nama_pengawas ?: '................................' }}</td>
                         <td colspan="2">{{ $sekolah->nama_kepala_sekolah ?: '................................' }}</td>
                     </tr>
                     <tr class="baris-ttd">
+                        <td></td>
                         <td></td>
                         <td colspan="3">NIP. {{ $sekolah->nip_pengawas ?: '...................................' }}</td>
                         <td colspan="2">NIP. {{ $sekolah->nip_kepala_sekolah ?: '...................................' }}</td>
@@ -194,12 +210,13 @@
 
     {{-- ============================= LAMPIRAN 2C ============================= --}}
     {{--
-        Kolom: A=NRG B=NUPTK C=Nama PTK D=Tempat Tugas E=Kecamatan
-        F=Jenis Kepangkatan G=Golongan H=Masa Kerja I=Pangkat/Berkala J=TMT
-        K=Gaji Pokok Lama L=Gaji Pokok Baru M=Keterangan (13 kolom).
-        Tanda tangan: Pengawas mulai kolom B (span B-K), Kepala Sekolah
-        mulai kolom L (span L-M) - sesuai permintaan user. Tabel memakai
-        class "tabel-lebar" (huruf & padding lebih kecil) supaya 13 kolom
+        Kolom: A=No B=NRG C=NUPTK D=Nama PTK E=Tempat Tugas F=Kecamatan
+        G=Jenis Kepangkatan H=Golongan I=Masa Kerja J=Pangkat/Berkala K=TMT
+        L=Gaji Pokok Lama M=Gaji Pokok Baru N=Keterangan (14 kolom - kolom
+        "No" ditambahkan 2026-10-20, kolom lain bergeser 1 huruf).
+        Tanda tangan: Pengawas mulai kolom C (span C-L), Kepala Sekolah
+        mulai kolom M (span M-N) - sesuai permintaan user. Tabel memakai
+        class "tabel-lebar" (huruf & padding lebih kecil) supaya 14 kolom
         tetap muat rapi dalam 1 halaman.
     --}}
     <div class="section">
@@ -214,6 +231,7 @@
         <table class="data tabel-lebar">
             <thead>
                 <tr>
+                    <th>No</th>
                     <th>NRG</th>
                     <th>NUPTK</th>
                     <th>Nama PTK</th>
@@ -232,6 +250,7 @@
             <tbody>
                 @forelse ($baris2c as $item)
                     <tr>
+                        <td class="tengah">{{ $loop->iteration }}</td>
                         <td>{{ $item->nrg }}</td>
                         <td>{{ $item->nuptk }}</td>
                         <td>{{ $item->nama_ptk }}</td>
@@ -247,32 +266,37 @@
                         <td>{{ $item->keterangan }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="13" class="kosong">Belum ada data.</td></tr>
+                    <tr><td colspan="14" class="kosong">Belum ada data.</td></tr>
                 @endforelse
 
                 @if ($sekolah !== null)
-                    <tr class="baris-spasi-ttd"><td colspan="13"></td></tr>
+                    <tr class="baris-spasi-ttd"><td colspan="14"></td></tr>
                     <tr class="baris-ttd">
+                        <td></td>
                         <td></td>
                         <td colspan="10">Mengetahui/Menyetujui :</td>
                         <td colspan="2">Sukabumi, .................... {{ $tahun }}</td>
                     </tr>
                     <tr class="baris-ttd">
                         <td></td>
+                        <td></td>
                         <td colspan="10">Pengawas</td>
                         <td colspan="2">Kepala Sekolah</td>
                     </tr>
                     <tr class="baris-ttd">
+                        <td></td>
                         <td></td>
                         <td colspan="10" class="spasi-nama"></td>
                         <td colspan="2" class="spasi-nama"></td>
                     </tr>
                     <tr class="baris-ttd">
                         <td></td>
+                        <td></td>
                         <td colspan="10">{{ $sekolah->nama_pengawas ?: '...........................' }}</td>
                         <td colspan="2">{{ $sekolah->nama_kepala_sekolah ?: '...........................' }}</td>
                     </tr>
                     <tr class="baris-ttd">
+                        <td></td>
                         <td></td>
                         <td colspan="10">NIP. {{ $sekolah->nip_pengawas ?: '...................................' }}</td>
                         <td colspan="2">NIP. {{ $sekolah->nip_kepala_sekolah ?: '...................................' }}</td>

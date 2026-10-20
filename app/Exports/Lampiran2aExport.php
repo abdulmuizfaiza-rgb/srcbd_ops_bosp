@@ -26,8 +26,8 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  *
  * Formatnya mengikuti "Lampiran Surat Rekomendasi tentang Usulan Penerima
  * Tunjangan Profesi Guru": judul di baris 1-3, tabel mulai baris 5, dan
- * lembar tanda tangan Pengawas (kolom B, NIP diisi manual) & Kepala
- * Sekolah (kolom E, NIP otomatis dari Profil Sekolah) di bagian bawah.
+ * lembar tanda tangan Pengawas (kolom C, NIP diisi manual) & Kepala
+ * Sekolah (kolom G, NIP otomatis dari Profil Sekolah) di bagian bawah.
  *
  * SEJAK 2026-10-15: Status Kepegawaian Lampiran 2a sekarang diambil
  * OTOMATIS dari Data PTK (permintaan user) begitu baris terhubung ke
@@ -44,15 +44,25 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * setelah baris data terakhir sebelum lembar tanda tangan Pengawas &
  * Kepala Sekolah (baris tanda tangan sendiri TIDAK bergaris tabel).
  *
- * Urutan kolom data WAJIB mengikuti: NRG, NUPTK, Nama PTK, Status
- * Kepegawaian, Nama Sekolah, Gaji Pokok Bulan Januari, NPWP - jangan
- * diubah urutannya tanpa persetujuan.
+ * SEJAK 2026-10-20 (permintaan user poin 2, "tambahkan kolom No pada
+ * kolom pertamanya"): kolom BARU "No" ditambahkan sebagai kolom
+ * PERTAMA (A) - SEMUA kolom lain (sebelumnya A-G) bergeser 1 huruf
+ * jadi B-H. Nomor urut mengikuti urutan baris SETELAH diurutkan lewat
+ * App\Support\UrutanDaftarPtkKecamatan (lihat App\Livewire\
+ * PendataanOps\Unduhan\Index::ambilData() - koleksi $baris yang
+ * diterima constructor ini SUDAH terurut final).
+ *
+ * Urutan kolom data (SETELAH No) WAJIB mengikuti: NRG, NUPTK, Nama PTK,
+ * Status Kepegawaian, Nama Sekolah, Gaji Pokok Bulan Januari, NPWP -
+ * jangan diubah urutannya tanpa persetujuan.
  */
 class Lampiran2aExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithCustomValueBinder, WithEvents, WithHeadings, WithMapping, WithTitle
 {
     private const BARIS_HEADER_TABEL = 5;
 
     private const BARIS_KOSONG_SEBELUM_TANDA_TANGAN = 4;
+
+    private int $nomorBerikutnya = 1;
 
     /**
      * @param  SupportCollection<int, Lampiran2a>  $baris
@@ -82,6 +92,7 @@ class Lampiran2aExport implements FromCollection, ShouldAutoSize, WithCustomStar
     public function headings(): array
     {
         return [
+            'No',
             'NRG',
             'NUPTK',
             'Nama PTK',
@@ -95,6 +106,7 @@ class Lampiran2aExport implements FromCollection, ShouldAutoSize, WithCustomStar
     public function map($baris): array
     {
         return [
+            $this->nomorBerikutnya++,
             $baris->nrg,
             $baris->nuptk,
             $baris->nama_ptk,
@@ -127,7 +139,7 @@ class Lampiran2aExport implements FromCollection, ShouldAutoSize, WithCustomStar
     /** @return string[] kolom NRG, NUPTK, NPWP - urutan kolom tabel ini tetap, lihat headings()/map(). */
     private function kolomDipaksaTeks(): array
     {
-        return ['A', 'B', 'G'];
+        return ['B', 'C', 'H'];
     }
 
     public function registerEvents(): array
@@ -155,7 +167,7 @@ class Lampiran2aExport implements FromCollection, ShouldAutoSize, WithCustomStar
         $sheet->setCellValue('A3', 'KOMISARIAT/KECAMATAN CIBADAK');
 
         foreach ([1, 2, 3] as $baris) {
-            $rentang = 'A'.$baris.':G'.$baris;
+            $rentang = 'A'.$baris.':H'.$baris;
             $sheet->mergeCells($rentang);
             $sheet->getStyle($rentang)->applyFromArray([
                 'font' => ['bold' => true, 'size' => $baris === 1 ? 12 : 11],
@@ -172,7 +184,7 @@ class Lampiran2aExport implements FromCollection, ShouldAutoSize, WithCustomStar
     private function rapikanTabel(Worksheet $sheet): void
     {
         $barisTerakhir = $this->barisTerakhirTabel();
-        $rentangHeader = 'A'.self::BARIS_HEADER_TABEL.':G'.self::BARIS_HEADER_TABEL;
+        $rentangHeader = 'A'.self::BARIS_HEADER_TABEL.':H'.self::BARIS_HEADER_TABEL;
 
         $sheet->getStyle($rentangHeader)->applyFromArray([
             'font' => ['bold' => true],
@@ -185,13 +197,13 @@ class Lampiran2aExport implements FromCollection, ShouldAutoSize, WithCustomStar
         // Garis tabel diteruskan sampai 4 baris kosong setelah baris data
         // terakhir, supaya format kolomnya tetap kelihatan meski baris itu
         // belum diisi.
-        $sheet->getStyle('A'.self::BARIS_HEADER_TABEL.':G'.($barisTerakhir + self::BARIS_KOSONG_SEBELUM_TANDA_TANGAN))
+        $sheet->getStyle('A'.self::BARIS_HEADER_TABEL.':H'.($barisTerakhir + self::BARIS_KOSONG_SEBELUM_TANDA_TANGAN))
             ->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
 
         if ($this->baris->count() > 0) {
             // Format Rupiah (mis. "Rp 1.000.000") supaya sama dengan tampilan
             // di aplikasi.
-            $sheet->getStyle('F'.(self::BARIS_HEADER_TABEL + 1).':F'.$barisTerakhir)
+            $sheet->getStyle('G'.(self::BARIS_HEADER_TABEL + 1).':G'.$barisTerakhir)
                 ->getNumberFormat()->setFormatCode('"Rp" #,##0');
         }
 
@@ -201,8 +213,8 @@ class Lampiran2aExport implements FromCollection, ShouldAutoSize, WithCustomStar
     }
 
     /**
-     * Lembar "Mengetahui/Menyetujui" Pengawas (kolom B) & "Kepala Sekolah,"
-     * (kolom F) - 4 baris kosong (bergaris tabel) setelah baris terakhir
+     * Lembar "Mengetahui/Menyetujui" Pengawas (kolom C) & "Kepala Sekolah,"
+     * (kolom G) - 4 baris kosong (bergaris tabel) setelah baris terakhir
      * tabel, lalu jabatan, lalu 2 baris kosong untuk tempat tanda tangan
      * basah (TIDAK bergaris tabel). Nama & NIP Pengawas dan Nama & NIP
      * Kepala Sekolah otomatis diambil dari menu Profil Sekolah.
@@ -225,23 +237,23 @@ class Lampiran2aExport implements FromCollection, ShouldAutoSize, WithCustomStar
         $barisNamaKepsek = $barisJabatan + 3;
         $barisNipKepsek = $barisNamaKepsek + 1;
 
-        $sheet->setCellValue('B'.$barisMengetahui, 'Mengetahui/Menyetujui :');
-        $sheet->setCellValue('F'.$barisMengetahui, 'Sukabumi, .................... '.$this->tahun);
+        $sheet->setCellValue('C'.$barisMengetahui, 'Mengetahui/Menyetujui :');
+        $sheet->setCellValue('G'.$barisMengetahui, 'Sukabumi, .................... '.$this->tahun);
 
-        $sheet->setCellValue('B'.$barisJabatan, 'Pengawas');
-        $sheet->setCellValue('F'.$barisJabatan, 'Kepala Sekolah,');
+        $sheet->setCellValue('C'.$barisJabatan, 'Pengawas');
+        $sheet->setCellValue('G'.$barisJabatan, 'Kepala Sekolah,');
 
-        $sheet->setCellValue('B'.$barisNamaPengawas, $this->sekolah->nama_pengawas ?: '...................................');
-        $sheet->setCellValue('B'.$barisNipPengawas, 'NIP. '.($this->sekolah->nip_pengawas ?: '...................................'));
-        $sheet->setCellValue('F'.$barisNamaKepsek, $this->sekolah->nama_kepala_sekolah ?: '...................................');
-        $sheet->setCellValue('F'.$barisNipKepsek, 'NIP. '.($this->sekolah->nip_kepala_sekolah ?: '...................................'));
+        $sheet->setCellValue('C'.$barisNamaPengawas, $this->sekolah->nama_pengawas ?: '...................................');
+        $sheet->setCellValue('C'.$barisNipPengawas, 'NIP. '.($this->sekolah->nip_pengawas ?: '...................................'));
+        $sheet->setCellValue('G'.$barisNamaKepsek, $this->sekolah->nama_kepala_sekolah ?: '...................................');
+        $sheet->setCellValue('G'.$barisNipKepsek, 'NIP. '.($this->sekolah->nip_kepala_sekolah ?: '...................................'));
 
         foreach ([$barisMengetahui, $barisJabatan, $barisNamaPengawas, $barisNipPengawas] as $baris) {
-            $sheet->mergeCells('B'.$baris.':D'.$baris);
+            $sheet->mergeCells('C'.$baris.':E'.$baris);
         }
 
         foreach ([$barisMengetahui, $barisJabatan, $barisNamaKepsek, $barisNipKepsek] as $baris) {
-            $sheet->mergeCells('F'.$baris.':G'.$baris);
+            $sheet->mergeCells('G'.$baris.':H'.$baris);
         }
     }
 

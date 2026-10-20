@@ -47,7 +47,16 @@ use Livewire\WithPagination;
  *   bersama) di bawah supaya App\Livewire\Dashboard\Index yang sudah
  *   berjalan & teruji SAMA SEKALI TIDAK disentuh (prinsip "jangan
  *   merubah yang sudah berfungsi") - duplikasi kecil (13 baris) dipilih
- *   drpd refactor lintas kelas yang berisiko. "Sudah pendataan BOSP"
+ *   drpd refactor lintas kelas yang berisiko.
+ *   SEJAK 2026-10-20 (lanjutan): definisi "sudah pendataan OPS" di
+ *   halaman ini DIUBAH - method idSekolahSelesaiOps() DIHAPUS (diganti
+ *   idSekolahSudahInputOps() di bawah, cukup Lampiran 2a saja) -
+ *   permintaan user "ketika admin ops sudah input lampiran 2a dan
+ *   berhasil tersimpan maka dianggap sudah input", dikonfirmasi lewat
+ *   AskUserQuestion (opsi "Cukup Lampiran 2a saja"). Widget "Validasi
+ *   Pendataan OPS" milik Superadmin di Dashboard (beda widget, tujuan
+ *   verifikasi) TETAP pakai idSekolahSelesaiOps() (2a+2b+2c lengkap),
+ *   TIDAK ikut berubah. "Sudah pendataan BOSP"
  *   pakai VervalRealisasiBosp::idSekolahAdaDataUntukTriwulan() (method
  *   PUBLIC STATIC yang SUDAH ADA sejak round 13, dipakai ulang APA
  *   ADANYA - ada data di SALAH SATU dari 11 menu BOSP per triwulan).
@@ -234,13 +243,13 @@ class Index extends Component
 
         $totalSekolah = ProfilSekolah::count();
 
-        $idSekolahSelesaiOps = $this->idSekolahSelesaiOps($tahun, $triwulan);
+        $idSekolahSudahInputOps = $this->idSekolahSudahInputOps($tahun, $triwulan);
 
         $halamanOps = ProfilSekolah::urutStandar()
             ->paginate($perHalaman, ['*'], 'halamanOps')
             ->through(fn (ProfilSekolah $s) => [
                 'sekolah' => $s,
-                'sudah' => $idSekolahSelesaiOps->contains($s->id),
+                'sudah' => $idSekolahSudahInputOps->contains($s->id),
             ]);
 
         $idSekolahSelesaiBosp = VervalRealisasiBosp::idSekolahAdaDataUntukTriwulan($tahun, $triwulan);
@@ -252,7 +261,7 @@ class Index extends Component
                 'sudah' => $idSekolahSelesaiBosp->contains($s->id),
             ]);
 
-        $opsSudah = $idSekolahSelesaiOps->count();
+        $opsSudah = $idSekolahSudahInputOps->count();
         $opsBelum = max($totalSekolah - $opsSudah, 0);
         $opsPersen = $totalSekolah > 0 ? (int) round(($opsSudah / $totalSekolah) * 100) : 0;
 
@@ -288,7 +297,7 @@ class Index extends Component
 
         $pesanWhatsapp = implode("\n\n", [
             "*Rekap Pendataan & Registrasi SR CBD*\nTriwulan {$triwulan}, Tahun {$tahun}\nSumber: ".url('/'),
-            $this->barisRekapWhatsapp('Pendataan OPS', $opsSudah, $opsBelum, $opsPersen, $this->daftarNamaBelum($semuaSekolah, $idSekolahSelesaiOps)),
+            $this->barisRekapWhatsapp('Pendataan OPS', $opsSudah, $opsBelum, $opsPersen, $this->daftarNamaBelum($semuaSekolah, $idSekolahSudahInputOps)),
             $this->barisRekapWhatsapp('Pendataan BOSP', $bospSudah, $bospBelum, $bospPersen, $this->daftarNamaBelum($semuaSekolah, $idSekolahSelesaiBosp)),
             $this->barisRekapWhatsapp('Registrasi Admin OPS', $registrasiOpsSudah, $registrasiOpsBelum, $registrasiOpsPersen, $this->daftarNamaBelum($semuaSekolah, $idSekolahRegistrasiOps)),
             $this->barisRekapWhatsapp('Registrasi Admin BOSP', $registrasiBospSudah, $registrasiBospBelum, $registrasiBospPersen, $this->daftarNamaBelum($semuaSekolah, $idSekolahRegistrasiBosp)),
@@ -322,20 +331,17 @@ class Index extends Component
     }
 
     /**
-     * Sama persis dgn
-     * App\Livewire\Dashboard\Index::idSekolahSelesaiOps() (definisi
-     * "selesai OPS": Lampiran 2a+2b+2c SEMUA lengkap) - SENGAJA
-     * diduplikasi, lihat docblock kelas di atas.
+     * BARU 2026-10-20 (lanjutan, MENGGANTI idSekolahSelesaiOps() yang
+     * sebelumnya ada di sini - lihat docblock kelas di atas): profil_
+     * sekolah_id yang SUDAH punya Lampiran 2a utk 1 tahun+triwulan -
+     * definisi BARU "Sudah Pendataan OPS" di halaman ini, dikonfirmasi
+     * lewat AskUserQuestion ("Cukup Lampiran 2a saja").
      *
      * @return Collection<int, int>
      */
-    private function idSekolahSelesaiOps(int $tahun, int $triwulan): Collection
+    private function idSekolahSudahInputOps(int $tahun, int $triwulan): Collection
     {
-        $punya2a = Lampiran2a::where('tahun', $tahun)->where('triwulan', $triwulan)->distinct()->pluck('profil_sekolah_id');
-        $punya2b = Lampiran2b::where('tahun', $tahun)->where('triwulan', $triwulan)->distinct()->pluck('profil_sekolah_id');
-        $punya2c = Lampiran2c::where('tahun', $tahun)->where('triwulan', $triwulan)->distinct()->pluck('profil_sekolah_id');
-
-        return $punya2a->intersect($punya2b)->intersect($punya2c)->values();
+        return Lampiran2a::where('tahun', $tahun)->where('triwulan', $triwulan)->distinct()->pluck('profil_sekolah_id');
     }
 
     /**

@@ -296,11 +296,24 @@ class Index extends Component
 
     /**
      * profil_sekolah_id yang SEMUA (Lampiran 2a DAN 2b DAN 2c) sudah ada
-     * datanya utk 1 tahun+triwulan - definisi "sudah mengerjakan
-     * pendataan OPS" (jawaban AskUserQuestion 2026-09-24 "Selesai OPS" ->
-     * "Isi SEMUA Lampiran 2a, 2b, dan 2c"). Ditulis lewat 3 query
-     * borongan (bukan per sekolah) supaya murah dipanggil 4x (1x per
-     * triwulan) di dataAdminOps() di bawah.
+     * datanya utk 1 tahun+triwulan - definisi "paket data OPS lengkap/
+     * siap divalidasi" (jawaban AskUserQuestion 2026-09-24 "Selesai
+     * OPS" -> "Isi SEMUA Lampiran 2a, 2b, dan 2c"). Ditulis lewat 3
+     * query borongan (bukan per sekolah) supaya murah dipanggil 4x (1x
+     * per triwulan) di dataAdminOps() di bawah.
+     *
+     * SEJAK 2026-10-20 (lanjutan): method ini HANYA dipakai lagi oleh
+     * widget "Validasi Pendataan OPS" milik Superadmin
+     * (dataSuperadmin() di atas) - definisi "siap divalidasi" itu
+     * SENGAJA TETAP 2a+2b+2c lengkap (dikonfirmasi lewat
+     * AskUserQuestion, TIDAK ikut berubah). Widget "Sudah Pendataan
+     * OPS" pada dataAdminOps() di bawah & App\Livewire\Beranda\Index
+     * SEKARANG memakai idSekolahSudahInputOps() (lihat method baru di
+     * bawah) - permintaan user: "ketika admin ops sudah input lampiran
+     * 2a dan berhasil tersimpan maka dianggap sudah input", dikonfirmasi
+     * lewat AskUserQuestion (opsi "Cukup Lampiran 2a saja") - 2b/2c
+     * TIDAK LAGI jadi syarat status itu, TAPI tetap wajib diisi
+     * terpisah seperti biasa (tidak ada perubahan aturan pengisian).
      *
      * @return Collection<int, int>
      */
@@ -311,6 +324,24 @@ class Index extends Component
         $punya2c = Lampiran2c::where('tahun', $tahun)->where('triwulan', $triwulan)->distinct()->pluck('profil_sekolah_id');
 
         return $punya2a->intersect($punya2b)->intersect($punya2c)->values();
+    }
+
+    /**
+     * profil_sekolah_id yang SUDAH punya Lampiran 2a utk 1 tahun+
+     * triwulan - definisi BARU "Sudah Pendataan OPS" (round 2026-10-20
+     * lanjutan, permintaan user poin 1, dikonfirmasi lewat
+     * AskUserQuestion "Cukup Lampiran 2a saja"), dipakai widget
+     * "Progres Keseluruhan"/"Pendataan OPS per Triwulan"/daftar sekolah
+     * sudah-belum pada dataAdminOps() di bawah. BUKAN pengganti
+     * idSekolahSelesaiOps() di atas - widget "Validasi Pendataan OPS"
+     * Superadmin TETAP memakai method itu (2a+2b+2c lengkap), TIDAK
+     * ikut berubah.
+     *
+     * @return Collection<int, int>
+     */
+    private function idSekolahSudahInputOps(int $tahun, int $triwulan): Collection
+    {
+        return Lampiran2a::where('tahun', $tahun)->where('triwulan', $triwulan)->distinct()->pluck('profil_sekolah_id');
     }
 
     /**
@@ -376,7 +407,7 @@ class Index extends Component
         // triwulan aktif di bawah (hindari hitung 2x utk triwulan yang
         // sama).
         $idSelesaiPerTriwulan = collect(range(1, 4))
-            ->mapWithKeys(fn (int $tw) => [$tw => $this->idSekolahSelesaiOps($tahun, $tw)]);
+            ->mapWithKeys(fn (int $tw) => [$tw => $this->idSekolahSudahInputOps($tahun, $tw)]);
 
         $opsPerTriwulan = $idSelesaiPerTriwulan->map(fn (Collection $ids, int $tw) => [
             'triwulan' => $tw,

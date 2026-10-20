@@ -63,7 +63,15 @@ class BerandaTest extends TestCase
             ->assertSee(route('verifikasi-akses'), false);
     }
 
-    public function test_sekolah_selesai_pendataan_ops_pakai_definisi_lampiran_2a_2b_2c_lengkap(): void
+    /**
+     * BARU 2026-10-20 (lanjutan) - MENGGANTI test lama
+     * "test_sekolah_selesai_pendataan_ops_pakai_definisi_lampiran_2a_2b_2c_lengkap":
+     * definisi "Sudah Pendataan OPS" di landing page SEKARANG cukup
+     * Lampiran 2a saja (permintaan user, dikonfirmasi lewat
+     * AskUserQuestion "Cukup Lampiran 2a saja") - 2b/2c TIDAK LAGI jadi
+     * syarat status ini.
+     */
+    public function test_sekolah_sudah_pendataan_ops_pakai_definisi_lampiran_2a_saja(): void
     {
         $tahun = now()->year;
         $triwulan = 1; // default landing page sejak round ketujuh belas
@@ -73,21 +81,24 @@ class BerandaTest extends TestCase
         Lampiran2b::factory()->create(['profil_sekolah_id' => $sekolahLengkap->id, 'tahun' => $tahun, 'triwulan' => $triwulan]);
         Lampiran2c::factory()->create(['profil_sekolah_id' => $sekolahLengkap->id, 'tahun' => $tahun, 'triwulan' => $triwulan]);
 
-        $sekolahKurangSatu = ProfilSekolah::factory()->create(['nama_sekolah' => 'SR OPS Kurang Satu']);
-        Lampiran2a::factory()->create(['profil_sekolah_id' => $sekolahKurangSatu->id, 'tahun' => $tahun, 'triwulan' => $triwulan]);
-        Lampiran2b::factory()->create(['profil_sekolah_id' => $sekolahKurangSatu->id, 'tahun' => $tahun, 'triwulan' => $triwulan]);
-        // Lampiran 2c SENGAJA tidak diisi - harus dihitung "belum".
+        // HANYA Lampiran 2a yang diisi (2b/2c TIDAK) - harus TETAP
+        // dihitung "sudah" karena kriteria baru cukup 2a saja.
+        $sekolahHanya2a = ProfilSekolah::factory()->create(['nama_sekolah' => 'SR OPS Hanya 2a']);
+        Lampiran2a::factory()->create(['profil_sekolah_id' => $sekolahHanya2a->id, 'tahun' => $tahun, 'triwulan' => $triwulan]);
+
+        $sekolahBelumSamaSekali = ProfilSekolah::factory()->create(['nama_sekolah' => 'SR OPS Belum Isi Apapun']);
 
         $component = Livewire::test(Index::class);
 
-        $this->assertSame(1, $component->viewData('opsSudah'));
+        $this->assertSame(2, $component->viewData('opsSudah'));
         $this->assertSame(1, $component->viewData('opsBelum'));
 
         $halamanOps = $component->viewData('halamanOps');
         $baris = collect($halamanOps->items())->keyBy(fn ($b) => $b['sekolah']->id);
 
         $this->assertTrue($baris[$sekolahLengkap->id]['sudah']);
-        $this->assertFalse($baris[$sekolahKurangSatu->id]['sudah']);
+        $this->assertTrue($baris[$sekolahHanya2a->id]['sudah']);
+        $this->assertFalse($baris[$sekolahBelumSamaSekali->id]['sudah']);
     }
 
     public function test_sekolah_selesai_pendataan_bosp_pakai_definisi_ada_data_di_salah_satu_menu(): void

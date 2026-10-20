@@ -159,7 +159,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 pb-4">
         @include('livewire.dashboard.partials.daftar-status-sekolah', [
             'judul' => 'Daftar Sekolah - Pendataan OPS',
-            'keterangan' => 'Lampiran 2a, 2b, dan 2c lengkap - Triwulan '.$triwulan.', Tahun '.$tahun.'.',
+            'keterangan' => 'Lampiran 2a sudah diisi - Triwulan '.$triwulan.', Tahun '.$tahun.'.',
             'daftarStatus' => $halamanOps,
             'labelSudah' => 'Sudah Pendataan',
             'labelBelum' => 'Belum Pendataan',

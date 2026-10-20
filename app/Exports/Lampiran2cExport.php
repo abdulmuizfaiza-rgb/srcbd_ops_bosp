@@ -28,13 +28,13 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  *
  * Formatnya: judul "DAFTAR PENYESUAIAN GAJI POKOK" di baris 1, "KECAMATAN :"
  * (otomatis dari data baris pertama) di baris 2, "SUBRAYON : CIBADAK" di
- * baris 3 (semua pada kolom A), baris judul kolom di baris 5-6: kolom G:H
- * dinaungi judul grup "Pangkat & Masa Kerja yang dimiliki" dan kolom I:J
+ * baris 3 (semua pada kolom A), baris judul kolom di baris 5-6: kolom H:I
+ * dinaungi judul grup "Pangkat & Masa Kerja yang dimiliki" dan kolom J:K
  * dinaungi "TMT SK Terbaru yang dimiliki" (baris 5 merge horizontal, baris
  * 6 judul per-field Golongan/Masa Kerja/Pangkat-Berkala/TMT); kolom lain
  * (yang tidak punya judul grup) di-merge cell vertikal baris 5:6 supaya
  * tinggi judulnya seragam. Tabel data mulai baris 7, dan lembar tanda
- * tangan Pengawas (kolom B, diisi manual) & Kepala Sekolah (kolom K,
+ * tangan Pengawas (kolom C, diisi manual) & Kepala Sekolah (kolom L,
  * otomatis dari Profil Sekolah) di bagian bawah.
  *
  * SEJAK 2026-10-16 (permintaan user): kolom Tempat Tugas, Jenis
@@ -53,10 +53,18 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * teks) dengan format kalender dd-mm-yyyy, supaya sama dengan input
  * tanggal (kalender) yang dipakai di aplikasi.
  *
- * Urutan kolom data WAJIB mengikuti: NRG, NUPTK, Nama PTK, Tempat Tugas,
- * Kecamatan, Jenis Kepangkatan, Golongan, Masa Kerja, Pangkat/Berkala, TMT,
- * Gaji Pokok Lama, Gaji Pokok Baru, Keterangan - jangan diubah urutannya
- * tanpa persetujuan.
+ * SEJAK 2026-10-20 (permintaan user poin 2, "tambahkan kolom No pada
+ * kolom pertamanya"): kolom BARU "No" ditambahkan sebagai kolom
+ * PERTAMA (A) - SEMUA kolom lain (sebelumnya A-M) bergeser 1 huruf
+ * jadi B-N. Nomor urut mengikuti urutan baris SETELAH diurutkan lewat
+ * App\Support\UrutanDaftarPtkKecamatan (lihat App\Livewire\
+ * PendataanOps\Unduhan\Index::ambilData() - koleksi $baris yang
+ * diterima constructor ini SUDAH terurut final).
+ *
+ * Urutan kolom data (SETELAH No) WAJIB mengikuti: NRG, NUPTK, Nama PTK,
+ * Tempat Tugas, Kecamatan, Jenis Kepangkatan, Golongan, Masa Kerja,
+ * Pangkat/Berkala, TMT, Gaji Pokok Lama, Gaji Pokok Baru, Keterangan -
+ * jangan diubah urutannya tanpa persetujuan.
  */
 class Lampiran2cExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithCustomValueBinder, WithEvents, WithHeadings, WithMapping, WithTitle
 {
@@ -65,6 +73,8 @@ class Lampiran2cExport implements FromCollection, ShouldAutoSize, WithCustomStar
     private const BARIS_HEADER_TABEL = 6;
 
     private const BARIS_KOSONG_SEBELUM_TANDA_TANGAN = 4;
+
+    private int $nomorBerikutnya = 1;
 
     /**
      * @param  SupportCollection<int, Lampiran2c>  $baris
@@ -94,6 +104,7 @@ class Lampiran2cExport implements FromCollection, ShouldAutoSize, WithCustomStar
     public function headings(): array
     {
         return [
+            'No',
             'NRG',
             'NUPTK',
             'Nama PTK',
@@ -113,6 +124,7 @@ class Lampiran2cExport implements FromCollection, ShouldAutoSize, WithCustomStar
     public function map($baris): array
     {
         return [
+            $this->nomorBerikutnya++,
             $baris->nrg,
             $baris->nuptk,
             $baris->nama_ptk,
@@ -151,7 +163,7 @@ class Lampiran2cExport implements FromCollection, ShouldAutoSize, WithCustomStar
     /** @return string[] kolom NRG, NUPTK - urutan kolom tabel ini tetap, lihat headings()/map(). */
     private function kolomDipaksaTeks(): array
     {
-        return ['A', 'B'];
+        return ['B', 'C'];
     }
 
     public function registerEvents(): array
@@ -181,8 +193,8 @@ class Lampiran2cExport implements FromCollection, ShouldAutoSize, WithCustomStar
 
         foreach ($this->baris as $item) {
             if ($item->tmt) {
-                $sheet->setCellValue('J'.$baris, Date::dateTimeToExcel($item->tmt));
-                $sheet->getStyle('J'.$baris)->getNumberFormat()->setFormatCode('dd-mm-yyyy');
+                $sheet->setCellValue('K'.$baris, Date::dateTimeToExcel($item->tmt));
+                $sheet->getStyle('K'.$baris)->getNumberFormat()->setFormatCode('dd-mm-yyyy');
             }
 
             $baris++;
@@ -219,21 +231,21 @@ class Lampiran2cExport implements FromCollection, ShouldAutoSize, WithCustomStar
     }
 
     /**
-     * Judul kolom grup di atas judul kolom per-field: kolom G:H "Pangkat &
-     * Masa Kerja yang dimiliki" (menaungi Golongan & Masa Kerja), kolom I:J
+     * Judul kolom grup di atas judul kolom per-field: kolom H:I "Pangkat &
+     * Masa Kerja yang dimiliki" (menaungi Golongan & Masa Kerja), kolom J:K
      * "TMT SK Terbaru yang dimiliki" (menaungi Pangkat/Berkala & TMT).
      */
     private function tulisJudulKolomGrup(Worksheet $sheet): void
     {
         $baris = self::BARIS_JUDUL_KOLOM_GRUP;
 
-        $sheet->setCellValue('G'.$baris, 'Pangkat & Masa Kerja yang dimiliki');
-        $sheet->setCellValue('I'.$baris, 'TMT SK Terbaru yang dimiliki');
+        $sheet->setCellValue('H'.$baris, 'Pangkat & Masa Kerja yang dimiliki');
+        $sheet->setCellValue('J'.$baris, 'TMT SK Terbaru yang dimiliki');
 
-        $sheet->mergeCells('G'.$baris.':H'.$baris);
-        $sheet->mergeCells('I'.$baris.':J'.$baris);
+        $sheet->mergeCells('H'.$baris.':I'.$baris);
+        $sheet->mergeCells('J'.$baris.':K'.$baris);
 
-        $sheet->getStyle('G'.$baris.':J'.$baris)->applyFromArray([
+        $sheet->getStyle('H'.$baris.':K'.$baris)->applyFromArray([
             'font' => ['bold' => true],
             'alignment' => [
                 'vertical' => Alignment::VERTICAL_CENTER,
@@ -242,23 +254,24 @@ class Lampiran2cExport implements FromCollection, ShouldAutoSize, WithCustomStar
             ],
         ]);
 
-        $sheet->getStyle('G'.$baris.':J'.$baris)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        $sheet->getStyle('H'.$baris.':K'.$baris)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
         $sheet->getRowDimension($baris)->setRowHeight(20);
     }
 
     /**
-     * Kolom yang TIDAK punya judul grup (semua kolom kecuali G,H,I,J yang
-     * sudah di-merge oleh tulisJudulKolomGrup()) di-merge cell vertikal
-     * antara baris judul grup & baris judul per-field, supaya tinggi judul
-     * kolomnya seragam dengan kolom yang sudah punya judul grup.
+     * Kolom yang TIDAK punya judul grup (semua kolom kecuali H,I,J,K yang
+     * sudah di-merge oleh tulisJudulKolomGrup(), termasuk kolom No) di-merge
+     * cell vertikal antara baris judul grup & baris judul per-field, supaya
+     * tinggi judul kolomnya seragam dengan kolom yang sudah punya judul
+     * grup.
      */
     private function gabungkanJudulKolomStandalone(Worksheet $sheet): void
     {
-        $kolomSudahDigabung = ['G', 'H', 'I', 'J'];
+        $kolomSudahDigabung = ['H', 'I', 'J', 'K'];
         $barisAtas = self::BARIS_JUDUL_KOLOM_GRUP;
         $barisBawah = self::BARIS_HEADER_TABEL;
 
-        foreach (range('A', 'M') as $kolom) {
+        foreach (range('A', 'N') as $kolom) {
             if (in_array($kolom, $kolomSudahDigabung, true)) {
                 continue;
             }
@@ -286,7 +299,7 @@ class Lampiran2cExport implements FromCollection, ShouldAutoSize, WithCustomStar
     private function rapikanTabel(Worksheet $sheet): void
     {
         $barisTerakhir = $this->barisTerakhirTabel();
-        $rentangHeader = 'A'.self::BARIS_HEADER_TABEL.':M'.self::BARIS_HEADER_TABEL;
+        $rentangHeader = 'A'.self::BARIS_HEADER_TABEL.':N'.self::BARIS_HEADER_TABEL;
 
         $sheet->getStyle($rentangHeader)->applyFromArray([
             'font' => ['bold' => true],
@@ -299,13 +312,13 @@ class Lampiran2cExport implements FromCollection, ShouldAutoSize, WithCustomStar
         // Garis tabel diteruskan sampai 4 baris kosong setelah baris data
         // terakhir (BARIS_KOSONG_SEBELUM_TANDA_TANGAN), supaya format
         // kolomnya tetap kelihatan meski baris itu belum diisi.
-        $sheet->getStyle('A'.self::BARIS_JUDUL_KOLOM_GRUP.':M'.($barisTerakhir + self::BARIS_KOSONG_SEBELUM_TANDA_TANGAN))
+        $sheet->getStyle('A'.self::BARIS_JUDUL_KOLOM_GRUP.':N'.($barisTerakhir + self::BARIS_KOSONG_SEBELUM_TANDA_TANGAN))
             ->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
 
         if ($this->baris->count() > 0) {
             // Format Rupiah (mis. "Rp 1.000.000") supaya sama dengan tampilan
             // di aplikasi.
-            $sheet->getStyle('K'.(self::BARIS_HEADER_TABEL + 1).':L'.$barisTerakhir)
+            $sheet->getStyle('L'.(self::BARIS_HEADER_TABEL + 1).':M'.$barisTerakhir)
                 ->getNumberFormat()->setFormatCode('"Rp" #,##0');
         }
 
@@ -315,8 +328,8 @@ class Lampiran2cExport implements FromCollection, ShouldAutoSize, WithCustomStar
     }
 
     /**
-     * Lembar "Mengetahui/Menyetujui" Pengawas (kolom B, Nama & NIP otomatis
-     * dari Profil Sekolah) & "Kepala Sekolah" (kolom K, Nama & NIP otomatis
+     * Lembar "Mengetahui/Menyetujui" Pengawas (kolom C, Nama & NIP otomatis
+     * dari Profil Sekolah) & "Kepala Sekolah" (kolom L, Nama & NIP otomatis
      * dari Profil Sekolah) - 4 baris kosong (bergaris tabel) setelah baris
      * terakhir tabel, lalu jabatan, lalu 2 baris kosong (tempat tanda
      * tangan basah, TIDAK bergaris tabel), lalu baris tanda tangan/nama,
@@ -338,21 +351,21 @@ class Lampiran2cExport implements FromCollection, ShouldAutoSize, WithCustomStar
         $barisTandaTangan = $barisJabatan + 3;
         $barisNip = $barisTandaTangan + 1;
 
-        $sheet->setCellValue('B'.$barisMengetahui, 'Mengetahui/Menyetujui :');
-        $sheet->setCellValue('K'.$barisMengetahui, 'Sukabumi, .................... '.$this->tahun);
+        $sheet->setCellValue('C'.$barisMengetahui, 'Mengetahui/Menyetujui :');
+        $sheet->setCellValue('L'.$barisMengetahui, 'Sukabumi, .................... '.$this->tahun);
 
-        $sheet->setCellValue('B'.$barisJabatan, 'Pengawas');
-        $sheet->setCellValue('K'.$barisJabatan, 'Kepala Sekolah');
+        $sheet->setCellValue('C'.$barisJabatan, 'Pengawas');
+        $sheet->setCellValue('L'.$barisJabatan, 'Kepala Sekolah');
 
-        $sheet->setCellValue('B'.$barisTandaTangan, $this->sekolah->nama_pengawas ?: '...........................');
-        $sheet->setCellValue('K'.$barisTandaTangan, $this->sekolah->nama_kepala_sekolah ?: '...........................');
+        $sheet->setCellValue('C'.$barisTandaTangan, $this->sekolah->nama_pengawas ?: '...........................');
+        $sheet->setCellValue('L'.$barisTandaTangan, $this->sekolah->nama_kepala_sekolah ?: '...........................');
 
-        $sheet->setCellValue('B'.$barisNip, 'NIP. '.($this->sekolah->nip_pengawas ?: '...................................'));
-        $sheet->setCellValue('K'.$barisNip, 'NIP. '.($this->sekolah->nip_kepala_sekolah ?: '...................................'));
+        $sheet->setCellValue('C'.$barisNip, 'NIP. '.($this->sekolah->nip_pengawas ?: '...................................'));
+        $sheet->setCellValue('L'.$barisNip, 'NIP. '.($this->sekolah->nip_kepala_sekolah ?: '...................................'));
 
         foreach ([$barisMengetahui, $barisJabatan, $barisTandaTangan, $barisNip] as $baris) {
-            $sheet->getStyle('B'.$baris)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-            $sheet->getStyle('K'.$baris)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+            $sheet->getStyle('C'.$baris)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+            $sheet->getStyle('L'.$baris)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
         }
     }
 }
