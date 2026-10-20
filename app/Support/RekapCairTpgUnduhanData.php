@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\DataPtk;
 use App\Models\Lampiran2a;
+use App\Models\ProfilSekolah;
 use App\Models\RekapCairTpg;
 use App\Models\RekapCairTpgBulan;
 use Illuminate\Support\Collection as SupportCollection;
@@ -61,6 +62,18 @@ class RekapCairTpgUnduhanData
         $rosterUnik = $daftarLampiran
             ->unique(fn (Lampiran2a $ptk) => $ptk->profil_sekolah_id.'|'.$ptk->nuptk)
             ->values();
+
+        // BARU 2026-10-20 (permintaan user) - urutan baris roster PTK
+        // (Kepala Sekolah dulu, lalu Pangkat/Golongan utk sekolah
+        // Negeri atau Abjad utk sekolah Swasta, + TMT Di Sekolah
+        // Induk), lihat docblock App\Support\UrutanRosterTpg utk
+        // rincian lengkap aturan & jawaban klarifikasinya. Mode "Semua
+        // Sekolah" (urutkanGabungan()) HANYA mengurutkan ULANG baris
+        // PTK DI DALAM masing2 kelompok sekolah - urutan ANTAR sekolah
+        // (Status -> Kecamatan -> Nama Sekolah di atas) TIDAK berubah.
+        $rosterUnik = $profilSekolahId !== null
+            ? UrutanRosterTpg::urutkanSatuSekolah($rosterUnik, $profilSekolahId, ProfilSekolah::where('id', $profilSekolahId)->value('status'))
+            : UrutanRosterTpg::urutkanGabungan($rosterUnik);
 
         $nipPerKunci = DataPtk::query()
             ->whereIn('profil_sekolah_id', $rosterUnik->pluck('profil_sekolah_id')->unique())

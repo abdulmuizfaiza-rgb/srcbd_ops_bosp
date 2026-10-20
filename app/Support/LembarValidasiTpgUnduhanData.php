@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Lampiran2a;
 use App\Models\LembarValidasiTpg;
 use App\Models\LembarValidasiTpgCeklist;
+use App\Models\ProfilSekolah;
 use Illuminate\Support\Collection as SupportCollection;
 
 /**
@@ -54,6 +55,18 @@ class LembarValidasiTpgUnduhanData
         }
 
         $daftarLampiran = $queryLampiran->get();
+
+        // BARU 2026-10-20 (permintaan user) - urutan baris roster PTK
+        // (Kepala Sekolah dulu, lalu Pangkat/Golongan utk sekolah
+        // Negeri atau Abjad utk sekolah Swasta, + TMT Di Sekolah
+        // Induk), lihat docblock App\Support\UrutanRosterTpg utk
+        // rincian lengkap aturan & jawaban klarifikasinya. Mode "Semua
+        // Sekolah" (urutkanGabungan()) HANYA mengurutkan ULANG baris
+        // PTK DI DALAM masing2 kelompok sekolah - urutan ANTAR sekolah
+        // (Status -> Kecamatan -> Nama Sekolah di atas) TIDAK berubah.
+        $daftarLampiran = $profilSekolahId !== null
+            ? UrutanRosterTpg::urutkanSatuSekolah($daftarLampiran, $profilSekolahId, ProfilSekolah::where('id', $profilSekolahId)->value('status'))
+            : UrutanRosterTpg::urutkanGabungan($daftarLampiran);
 
         $ceklistTersimpan = LembarValidasiTpgCeklist::query()
             ->where('tahun', $tahun)

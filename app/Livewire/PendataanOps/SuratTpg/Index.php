@@ -12,6 +12,7 @@ use App\Models\ProfilSekolah;
 use App\Models\RekapCairTpg;
 use App\Models\RekapCairTpgBulan;
 use App\Models\SuratTpg;
+use App\Support\UrutanRosterTpg;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -582,6 +583,17 @@ class Index extends Component
             return;
         }
 
+        // BARU 2026-10-20 (permintaan user) - urutan baris roster PTK
+        // (Kepala Sekolah dulu, lalu Pangkat/Golongan utk sekolah
+        // Negeri atau Abjad utk sekolah Swasta, + TMT Di Sekolah
+        // Induk), lihat docblock App\Support\UrutanRosterTpg utk
+        // rincian lengkap aturan & jawaban klarifikasinya.
+        $daftarLampiran = UrutanRosterTpg::urutkanSatuSekolah(
+            $daftarLampiran,
+            $sekolahId,
+            ProfilSekolah::where('id', $sekolahId)->value('status')
+        );
+
         $ceklistTersimpan = LembarValidasiTpgCeklist::query()
             ->where('profil_sekolah_id', $sekolahId)
             ->where('tahun', $this->tahun)
@@ -659,6 +671,26 @@ class Index extends Component
             $namaPerNuptk[$ptk->nuptk] = $ptk->nama_ptk;
         }
 
+        // BARU 2026-10-20 (permintaan user) - urutan baris roster PTK
+        // (Kepala Sekolah dulu, lalu Pangkat/Golongan utk sekolah
+        // Negeri atau Abjad utk sekolah Swasta, + TMT Di Sekolah
+        // Induk), lihat docblock App\Support\UrutanRosterTpg utk
+        // rincian lengkap aturan & jawaban klarifikasinya. Dibungkus
+        // jadi koleksi model Lampiran2a sementara (BUKAN disimpan ke
+        // database) supaya bisa dipakai lewat helper yang sama dgn
+        // muatLembarValidasi() di atas - urutan "ejaan dari triwulan
+        // TERAKHIR" pada $namaPerNuptk TETAP dipertahankan (lihat
+        // komentar di atas), hanya urutan BARISNYA yang berubah.
+        $rosterUntukUrutan = collect($namaPerNuptk)
+            ->map(fn ($namaPtk, $nuptk) => new Lampiran2a(['nuptk' => $nuptk, 'nama_ptk' => $namaPtk]))
+            ->values();
+
+        $rosterTerurut = UrutanRosterTpg::urutkanSatuSekolah(
+            $rosterUntukUrutan,
+            $sekolahId,
+            ProfilSekolah::where('id', $sekolahId)->value('status')
+        );
+
         $nipPerNuptk = DataPtk::query()
             ->where('profil_sekolah_id', $sekolahId)
             ->whereIn('nuptk', array_keys($namaPerNuptk))
@@ -675,7 +707,9 @@ class Index extends Component
             ->get()
             ->keyBy('nuptk');
 
-        foreach ($namaPerNuptk as $nuptk => $namaPtk) {
+        foreach ($rosterTerurut as $ptk) {
+            $nuptk = $ptk->nuptk;
+            $namaPtk = $ptk->nama_ptk;
             $dataBulan = $bulanTersimpan->get($nuptk);
 
             $baris = [
