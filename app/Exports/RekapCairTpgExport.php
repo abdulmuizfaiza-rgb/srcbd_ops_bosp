@@ -34,12 +34,24 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * docblock class tsb utk penjelasan lengkap pola judul/tabel/tanda
  * tangan 3-kolom & kenapa rekap gabungan semua sekolah melewati
  * Catatan Hasil Verifikasi + tanda tangan).
+ *
+ * SEJAK 2026-10-21 (permintaan user: "tambahkan kolom No" pada hasil
+ * unduhan Excel & PDF Lembar Validasi dan Data Cair-Belum TPG - PDF
+ * ("Format Surat Rekomendasi & Pembatalan TPG", lihat resources/views/
+ * pdf/partials/surat-tpg-rekap-cair-isi.blade.php) SUDAH punya kolom
+ * No sejak awal, jadi perubahan round ini KHUSUS Excel): kolom BARU
+ * "No" ditambahkan sebagai kolom PERTAMA - kolom "Nama Sekolah"
+ * (opsional)/"Nama PTK"/"NIP PTK"/12 kolom bulan semuanya bergeser 1
+ * kolom ke kanan. Nomor urut mengikuti urutan baris pada koleksi yang
+ * diterima (SupportCollection asli dari RekapCairTpgUnduhanData::ambil()).
  */
 class RekapCairTpgExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithCustomValueBinder, WithEvents, WithHeadings, WithMapping, WithTitle
 {
     private const BARIS_HEADER_TABEL = 5;
 
     private const BARIS_KOSONG_SEBELUM_TANDA_TANGAN = 2;
+
+    private int $nomorBerikutnya = 1;
 
     /**
      * @param  SupportCollection<int, array<string, mixed>>  $baris  dari App\Support\RekapCairTpgUnduhanData::ambil()
@@ -88,7 +100,10 @@ class RekapCairTpgExport implements FromCollection, ShouldAutoSize, WithCustomSt
 
     public function headings(): array
     {
-        $kolom = $this->sekolah === null ? ['Nama Sekolah'] : [];
+        $kolom = ['No'];
+        if ($this->sekolah === null) {
+            $kolom[] = 'Nama Sekolah';
+        }
         $kolom[] = 'Nama PTK';
         $kolom[] = 'NIP PTK';
 
@@ -98,7 +113,10 @@ class RekapCairTpgExport implements FromCollection, ShouldAutoSize, WithCustomSt
     /** @param  array<string, mixed>  $baris */
     public function map($baris): array
     {
-        $kolom = $this->sekolah === null ? [$baris['nama_sekolah']] : [];
+        $kolom = [$this->nomorBerikutnya++];
+        if ($this->sekolah === null) {
+            $kolom[] = $baris['nama_sekolah'];
+        }
         $kolom[] = $baris['nama_ptk'];
         $kolom[] = $baris['nip'] ?: '-';
 
@@ -129,15 +147,15 @@ class RekapCairTpgExport implements FromCollection, ShouldAutoSize, WithCustomSt
         return (new DefaultValueBinder())->bindValue($cell, $value);
     }
 
-    /** @return string[] kolom "NIP PTK" - posisinya bergeser kalau ada kolom "Nama Sekolah" (rekap gabungan Superadmin), lihat headings()/map(). */
+    /** @return string[] kolom "NIP PTK" - posisinya bergeser kalau ada kolom "Nama Sekolah" (rekap gabungan Superadmin) & kolom "No", lihat headings()/map(). */
     private function kolomDipaksaTeks(): array
     {
-        return [Coordinate::stringFromColumnIndex(($this->sekolah === null ? 1 : 0) + 2)];
+        return [Coordinate::stringFromColumnIndex(1 + ($this->sekolah === null ? 1 : 0) + 2)];
     }
 
     private function jumlahKolom(): int
     {
-        return ($this->sekolah === null ? 1 : 0) + 2 + count($this->labelBulan());
+        return 1 + ($this->sekolah === null ? 1 : 0) + 2 + count($this->labelBulan());
     }
 
     private function kolomTerakhir(): string

@@ -34,12 +34,24 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Verifikasi/lembar tanda tangan DILEWATI (lihat docblock App\Support\
  * LembarValidasiTpgUnduhanData utk alasannya - sama pola dgn
  * Lampiran2aExport::tulisLembarTandaTangan() saat rekap gabungan).
+ *
+ * SEJAK 2026-10-21 (permintaan user: "tambahkan kolom No" pada hasil
+ * unduhan Excel & PDF Lembar Validasi dan Data Cair-Belum TPG - PDF
+ * ("Format Surat Rekomendasi & Pembatalan TPG", lihat resources/views/
+ * pdf/partials/surat-tpg-lembar-validasi-isi.blade.php) SUDAH punya
+ * kolom No sejak awal, jadi perubahan round ini KHUSUS Excel): kolom
+ * BARU "No" ditambahkan sebagai kolom PERTAMA - kolom "Nama Sekolah"
+ * (opsional)/"Nama PTK"/8 ceklist semuanya bergeser 1 kolom ke kanan.
+ * Nomor urut mengikuti urutan baris pada koleksi yang diterima
+ * (SupportCollection asli dari LembarValidasiTpgUnduhanData::ambil()).
  */
 class LembarValidasiTpgExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping, WithTitle
 {
     private const BARIS_HEADER_TABEL = 5;
 
     private const BARIS_KOSONG_SEBELUM_TANDA_TANGAN = 2;
+
+    private int $nomorBerikutnya = 1;
 
     /**
      * @param  SupportCollection<int, array<string, mixed>>  $baris  dari App\Support\LembarValidasiTpgUnduhanData::ambil()
@@ -85,7 +97,10 @@ class LembarValidasiTpgExport implements FromCollection, ShouldAutoSize, WithCus
 
     public function headings(): array
     {
-        $kolom = $this->sekolah === null ? ['Nama Sekolah'] : [];
+        $kolom = ['No'];
+        if ($this->sekolah === null) {
+            $kolom[] = 'Nama Sekolah';
+        }
         $kolom[] = 'Nama PTK';
 
         return array_merge($kolom, array_values($this->labelKolom()));
@@ -103,7 +118,10 @@ class LembarValidasiTpgExport implements FromCollection, ShouldAutoSize, WithCus
      */
     public function map($baris): array
     {
-        $kolom = $this->sekolah === null ? [$baris['nama_sekolah']] : [];
+        $kolom = [$this->nomorBerikutnya++];
+        if ($this->sekolah === null) {
+            $kolom[] = $baris['nama_sekolah'];
+        }
         $kolom[] = $baris['nama_ptk'];
 
         foreach (array_keys($this->labelKolom()) as $nama) {
@@ -115,7 +133,7 @@ class LembarValidasiTpgExport implements FromCollection, ShouldAutoSize, WithCus
 
     private function jumlahKolom(): int
     {
-        return ($this->sekolah === null ? 1 : 0) + 1 + count(LembarValidasiTpgCeklist::KOLOM_CEKLIST);
+        return 1 + ($this->sekolah === null ? 1 : 0) + 1 + count(LembarValidasiTpgCeklist::KOLOM_CEKLIST);
     }
 
     private function kolomTerakhir(): string
@@ -123,10 +141,10 @@ class LembarValidasiTpgExport implements FromCollection, ShouldAutoSize, WithCus
         return Coordinate::stringFromColumnIndex($this->jumlahKolom());
     }
 
-    /** Kolom pertama ceklist (setelah kolom Nama Sekolah opsional & Nama PTK) - dipakai utk perataan tengah tanda 'V'. */
+    /** Kolom pertama ceklist (setelah kolom No, Nama Sekolah opsional, & Nama PTK) - dipakai utk perataan tengah tanda 'V'. */
     private function kolomPertamaCeklist(): string
     {
-        $indeks = ($this->sekolah === null ? 1 : 0) + 1 + 1;
+        $indeks = 1 + ($this->sekolah === null ? 1 : 0) + 1 + 1;
 
         return Coordinate::stringFromColumnIndex($indeks);
     }
