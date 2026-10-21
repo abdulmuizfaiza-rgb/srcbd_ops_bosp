@@ -133,44 +133,55 @@
                 <div class="sm:col-span-2">
                     <x-input-label for="dataPtkId" value="Pilih PTK (dari Data PTK)" />
                     <select wire:model.live="dataPtkId" id="dataPtkId" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm block mt-1 w-full" @disabled(! $profil_sekolah_id)>
-                        <option value="">-- Ketik Manual / Belum Ada di Data PTK --</option>
+                        <option value="">-- Pilih PTK --</option>
                         @foreach ($daftarPtkOptions as $ptk)
                             <option value="{{ $ptk->id }}">{{ $ptk->nama_ptk }} ({{ $ptk->jabatan }})</option>
                         @endforeach
                     </select>
                     <p class="text-xs text-slate-400 mt-1">
                         Hanya menampilkan PTK pada sekolah ini dengan Status Sertifikasi "Sudah" &amp; Status Keaktifan "Aktif".
-                        Kalau PTK yang dicari tidak ada di daftar, biarkan "Ketik Manual" lalu isi Nama PTK/NRG/NUPTK di bawah sendiri.
                     </p>
                 </div>
 
-                {{-- Perbaikan 2026-10-16: NRG/NUPTK/Nama PTK/NPWP di bawah ini
-                     sebelumnya memakai @disabled($dataPtkId) LANGSUNG di
-                     tag komponen <x-text-input> - pola ini rusak saat
-                     dikompilasi Blade (sama seperti bug "Nama Yayasan" &
-                     "Status Sertifikasi" yang sudah diperbaiki sebelumnya),
-                     sehingga field selalu non-aktif & nilai otomatis dari
-                     Data PTK tidak pernah benar-benar tampil/tersimpan.
-                     Diganti ke :disabled="$dataPtkId" (binding prop Blade
-                     yang benar). --}}
+                {{-- SEJAK 2026-10-21 (permintaan user: "NRG, NUPTK dan Nama
+                     PTK tidak boleh input manual tapi harus berdasarkan
+                     pilihan Nama Sekolah dan Pilih PTK (dari Data PTK)"):
+                     ketiga field ini SEKARANG SELALU terkunci (disabled
+                     TANPA SYARAT, bukan lagi :disabled="$dataPtkId")
+                     - supaya data NRG/NUPTK/Nama PTK hanya bisa masuk
+                     lewat SATU tempat (tab Data PTK), tidak ada jalur
+                     kedua (ketik manual di sini) yang berisiko bikin data
+                     dobel/tidak konsisten. Riwayat sebelumnya (2026-10-16):
+                     field2 ini sempat memakai @disabled($dataPtkId)
+                     LANGSUNG di tag komponen <x-text-input> - pola itu
+                     rusak saat dikompilasi Blade (sama seperti bug "Nama
+                     Yayasan" & "Status Sertifikasi" yang sudah diperbaiki
+                     sebelumnya), lalu diganti ke :disabled="$dataPtkId"
+                     (binding prop yang benar, field terkunci HANYA saat
+                     PTK terpilih) - sekarang disederhanakan jadi disabled
+                     tanpa syarat sama sekali (CATATAN: perubahan ini
+                     SENGAJA dibatasi hanya 3 field ini sesuai permintaan
+                     eksplisit user - field Status Kepegawaian & NPWP di
+                     bawah TIDAK disentuh, masih memakai pola lama
+                     :disabled="$dataPtkId"/kondisional seperti sebelumnya). --}}
                 <div>
                     <x-input-label for="nrg" value="NRG" />
-                    <x-text-input wire:model="nrg" id="nrg" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="12" :disabled="$dataPtkId" />
-                    <p class="text-xs text-slate-400 mt-1" @if (! $dataPtkId) style="display:none" @endif>Otomatis dari Nomor Registrasi Guru pada Data PTK.</p>
+                    <x-text-input wire:model="nrg" id="nrg" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="12" disabled />
+                    <p class="text-xs text-slate-400 mt-1">Otomatis dari Nomor Registrasi Guru pada Data PTK.</p>
                     <x-input-error :messages="$errors->get('nrg')" class="mt-2" />
                 </div>
 
                 <div>
                     <x-input-label for="nuptk" value="NUPTK" />
-                    <x-text-input wire:model="nuptk" id="nuptk" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="16" :disabled="$dataPtkId" />
-                    <p class="text-xs text-slate-400 mt-1" @if (! $dataPtkId) style="display:none" @endif>Otomatis dari Data PTK.</p>
+                    <x-text-input wire:model="nuptk" id="nuptk" class="block mt-1 w-full" type="text" inputmode="numeric" maxlength="16" disabled />
+                    <p class="text-xs text-slate-400 mt-1">Otomatis dari Data PTK.</p>
                     <x-input-error :messages="$errors->get('nuptk')" class="mt-2" />
                 </div>
 
                 <div class="sm:col-span-2">
                     <x-input-label for="nama_ptk" value="Nama PTK" />
-                    <x-text-input wire:model="nama_ptk" id="nama_ptk" class="block mt-1 w-full" type="text" :disabled="$dataPtkId" />
-                    <p class="text-xs text-slate-400 mt-1" @if (! $dataPtkId) style="display:none" @endif>Otomatis dari Data PTK.</p>
+                    <x-text-input wire:model="nama_ptk" id="nama_ptk" class="block mt-1 w-full" type="text" disabled />
+                    <p class="text-xs text-slate-400 mt-1">Otomatis dari Data PTK.</p>
                     <x-input-error :messages="$errors->get('nama_ptk')" class="mt-2" />
                 </div>
 
