@@ -59,7 +59,7 @@
             LAMPIRAN SURAT REKOMENDASI TENTANG USULAN PENERIMA TUNJANGAN PROFESI GURU
             @if ($sekolah === null) - REKAP SELURUH SEKOLAH @endif
         </div>
-        <div class="judul-2">TRIWULAN {{ $triwulan }} TAHUN ANGGARAN {{ $tahun }}</div>
+        <div class="judul-2">LAMPIRAN 2A TRIWULAN {{ $triwulan }} TAHUN ANGGARAN {{ $tahun }}</div>
         <div class="judul-3">KOMISARIAT/KECAMATAN CIBADAK</div>
 
         <table class="data">
@@ -141,7 +141,7 @@
             LAMPIRAN SURAT REKOMENDASI TENTANG USULAN PENERIMA TUNJANGAN PROFESI GURU
             @if ($sekolah === null) - REKAP SELURUH SEKOLAH @endif
         </div>
-        <div class="judul-2">TRIWULAN {{ $triwulan }} TAHUN ANGGARAN {{ $tahun }}</div>
+        <div class="judul-2">LAMPIRAN 2B TRIWULAN {{ $triwulan }} TAHUN ANGGARAN {{ $tahun }}</div>
         <div class="judul-3">KOMISARIAT/KECAMATAN CIBADAK</div>
 
         <table class="data">
@@ -222,9 +222,9 @@
     <div class="section">
         <div class="judul-1">DAFTAR PENYESUAIAN GAJI POKOK</div>
         @if ($sekolah === null)
-            <div class="judul-2">REKAP SELURUH SEKOLAH - TRIWULAN {{ $triwulan }} TAHUN {{ $tahun }}</div>
+            <div class="judul-2">LAMPIRAN 2C REKAP SELURUH SEKOLAH - TRIWULAN {{ $triwulan }} TAHUN {{ $tahun }}</div>
         @else
-            <div class="judul-2">KECAMATAN : {{ $baris2c->first()->kecamatan ?? '...................................' }}</div>
+            <div class="judul-2">LAMPIRAN 2C KECAMATAN : {{ $baris2c->first()->kecamatan ?? '...................................' }}</div>
         @endif
         <div class="judul-3">SUBRAYON : CIBADAK</div>
 
