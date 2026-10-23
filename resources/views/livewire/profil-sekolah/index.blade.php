@@ -446,6 +446,37 @@
 
                         <x-ringkasan-negeri-swasta :ringkasan="$ringkasanPtk" />
 
+                        {{-- BARU 2026-10-23 (permintaan user: "untuk menu
+                             data PTK juga munculkan di akun admin ops dan
+                             admin bosp untuk lengkap/tidak lengkap nya") -
+                             khusus Admin OPS/Admin BOSP (bukan Superadmin,
+                             yang sudah punya <x-ringkasan-negeri-swasta> di
+                             atas): daftar PTK sekolahnya sendiri yang masih
+                             ada field kosong, beserta field apa saja yang
+                             belum diisi - field & logikanya SAMA PERSIS
+                             dengan modal "Data PTK belum lengkap" milik
+                             Superadmin (lihat Index.php::namaSekolahSayaPtk/
+                             detailBelumLengkapPtkSayaSendiri), cuma langsung
+                             tampil di sini tanpa perlu klik (krn sekolahnya
+                             cuma 1, tidak perlu pilih nama sekolah). --}}
+                        @if (! $bolehKelolaDataPtkSemua && $detailBelumLengkapPtkSayaSendiri->isNotEmpty())
+                            <div class="mt-3 flex flex-wrap items-start gap-2 text-xs text-slate-500">
+                                <span class="mt-1">Data PTK belum lengkap isiannya:</span>
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach ($detailBelumLengkapPtkSayaSendiri as $baris)
+                                        <div class="rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1.5">
+                                            <p class="text-[11px] font-medium text-rose-700">{{ $baris->nama_ptk }}</p>
+                                            <div class="mt-1 flex flex-wrap gap-1">
+                                                @foreach ($baris->fieldBelumLengkap as $field)
+                                                    <span class="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-medium text-rose-700">{{ $field }}</span>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
                         <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div class="flex-1">
                                 {{ $daftarPtk->links() }}

@@ -1715,6 +1715,23 @@ class Index extends Component
             // Tab Data PTK
             'daftarPtk' => $daftarPtk,
             'ringkasanPtk' => $this->ringkasanPtk(),
+            // BARU 2026-10-23 (permintaan user: "untuk menu data PTK juga
+            // munculkan di akun admin ops dan admin bosp untuk lengkap/tidak
+            // lengkap nya") - ringkasanPtk() di atas TETAP null utk non-
+            // Superadmin (tidak diubah, krn isinya statistik LINTAS sekolah
+            // yang tidak relevan utk 1 sekolah), jadi dibuatkan key TERPISAH
+            // khusus Admin OPS/Admin BOSP: daftar PTK "belum lengkap" +
+            // rincian field kosongnya, di-scope ke sekolahnya SENDIRI saja,
+            // memakai method detailBelumLengkapPtk() yang SAMA PERSIS dgn
+            // yang dipakai modal Superadmin (sudah generik per nama sekolah,
+            // tidak perlu logika baru). null/collection kosong utk Superadmin
+            // (karena Superadmin sudah punya ringkasanPtk() di atas).
+            'namaSekolahSayaPtk' => $this->bolehKelolaDataPtkSemua()
+                ? null
+                : optional(ProfilSekolah::find($this->sekolahSayaId()))->nama_sekolah,
+            'detailBelumLengkapPtkSayaSendiri' => $this->bolehKelolaDataPtkSemua()
+                ? collect()
+                : $this->detailBelumLengkapPtk(optional(ProfilSekolah::find($this->sekolahSayaId()))->nama_sekolah ?? ''),
             // BARU 2026-10-20 (permintaan user poin 1) - detail PTK
             // belum lengkap untuk sekolah yang sedang dipilih (modal
             // "data-ptk-belum-lengkap-detail"), lihat
