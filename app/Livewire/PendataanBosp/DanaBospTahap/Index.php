@@ -90,6 +90,22 @@ class Index extends Component
      */
     public ?int $confirmingHapusSekolah = null;
 
+    /**
+     * BARU 2026-10-23 (permintaan user: "pada menu Dana BOSP Tahap 1 &
+     * 2-Penerimaan BOSP-Tarik Tunai BOSP munculkan data sekolah yang
+     * sudah lengkap inputannya dan yang belum lengkap inputannya dengan
+     * cara klik nama sekolah nya") - diisi lewat
+     * lihatDetailLengkapDanaBosp(), dipakai render()/blade (modal
+     * "dana-bosp-lengkap-detail"). $kelompokLengkapDanaBospDipilih
+     * menandai rincian field dari tab mana ('penerimaan'/'tarik_tunai')
+     * yang sedang ditampilkan - KEDUA tab dicek TERPISAH (field manual
+     * Tab 1 beda dari Tab 2), jadi 1 sekolah bisa "lengkap" di Tab 1
+     * tapi "belum lengkap" di Tab 2, atau sebaliknya.
+     */
+    public ?string $sekolahLengkapDanaBospDipilih = null;
+
+    public ?string $kelompokLengkapDanaBospDipilih = null;
+
     public function mount(): void
     {
         $this->tahun = now()->year;
@@ -103,6 +119,151 @@ class Index extends Component
     protected function bolehEdit(int $profilSekolahId): bool
     {
         return $this->bolehKelolaSemua() || auth()->user()->profil_sekolah_id === $profilSekolahId;
+    }
+
+    /**
+     * Label field manual Tab 1 "Penerimaan BOSP" (3 field, lihat
+     * DanaBospTahap::FIELD_MANUAL_TAB1) - dipakai utk rincian field yang
+     * belum diisi (badge klik nama sekolah, permintaan user 2026-10-23).
+     *
+     * @return array<string, string>
+     */
+    protected function labelFieldManualTab1(): array
+    {
+        return [
+            'saldo_bosp_tahun_sebelumnya' => 'Saldo BOSP Tahun Sebelumnya',
+            'jumlah_siswa' => 'Jumlah Siswa',
+            'jumlah_dana_bosp_per_tahun' => 'Jumlah Dana BOSP Per Tahun',
+        ];
+    }
+
+    /**
+     * Label field manual Tab 2 "Tarik Tunai BOSP" (13 field, lihat
+     * DanaBospTahap::FIELD_MANUAL_TAB2) - urutan HARUS sama dgn
+     * FIELD_MANUAL_TAB2 supaya rincian field belum lengkap tampil runut
+     * (Saldo BOSP TW 4 Tahun Sebelumnya, lalu TW 1-4: Tarik Tunai/Saldo
+     * Kas Bank/Saldo Kas Tunai).
+     *
+     * @return array<string, string>
+     */
+    protected function labelFieldManualTab2(): array
+    {
+        $label = DanaBospTahap::LABEL_TAB2_TUNGGAL;
+
+        foreach ([1, 2, 3, 4] as $tw) {
+            $label["tarik_tunai_tw{$tw}"] = "Tarik Tunai TW {$tw}";
+            $label["saldo_kas_bank_tw{$tw}"] = "Saldo Kas Bank TW {$tw}";
+            $label["saldo_kas_tunai_tw{$tw}"] = "Saldo Kas Tunai TW {$tw}";
+        }
+
+        return $label;
+    }
+
+    /**
+     * Ringkasan status "lengkap/belum lengkap" Dana BOSP Tahap per
+     * sekolah UNTUK TAHUN YANG SEDANG DIPILIH ($this->tahun) - dipakai
+     * utk badge nama sekolah yang bisa diklik (permintaan user
+     * 2026-10-23). "Lengkap" Tab 1 = SEMUA field FIELD_MANUAL_TAB1
+     * terisi; "Lengkap" Tab 2 = SEMUA field FIELD_MANUAL_TAB2 terisi -
+     * DICEK TERPISAH (field hasil rumus TIDAK ikut disyaratkan, krn
+     * otomatis dihitung sistem begitu field manualnya lengkap). Pola
+     * gating sama dgn ProfilSekolah\Index::ringkasanProfilLengkap()
+     * (Superadmin: SEMUA sekolah, Admin BOSP: HANYA sekolahnya sendiri).
+     *
+     * @return \Illuminate\Support\Collection<int, object{nama_sekolah: string, lengkapPenerimaan: bool, lengkapTarikTunai: bool}>
+     */
+    protected function ringkasanDanaBospLengkap(): \Illuminate\Support\Collection
+    {
+        $query = ProfilSekolah::with(['danaBospTahap' => function ($q) {
+            $q->where('tahun', $this->tahun);
+        }])->urutStandar();
+
+        if (! $this->bolehKelolaSemua()) {
+            $profilSekolahId = auth()->user()->profil_sekolah_id;
+
+            if (! $profilSekolahId) {
+                return collect();
+            }
+
+            $query->where('id', $profilSekolahId);
+        }
+
+        return $query->get()->map(function (ProfilSekolah $sekolah) {
+            $data = $sekolah->danaBospTahap->first();
+
+            $lengkapPenerimaan = true;
+            foreach (DanaBospTahap::FIELD_MANUAL_TAB1 as $field) {
+                $nilai = $data?->{$field};
+                if ($nilai === null || $nilai === '') {
+                    $lengkapPenerimaan = false;
+                    break;
+                }
+            }
+
+            $lengkapTarikTunai = true;
+            foreach (DanaBospTahap::FIELD_MANUAL_TAB2 as $field) {
+                $nilai = $data?->{$field};
+                if ($nilai === null || $nilai === '') {
+                    $lengkapTarikTunai = false;
+                    break;
+                }
+            }
+
+            return (object) [
+                'nama_sekolah' => $sekolah->nama_sekolah,
+                'lengkapPenerimaan' => $lengkapPenerimaan,
+                'lengkapTarikTunai' => $lengkapTarikTunai,
+            ];
+        });
+    }
+
+    /**
+     * Daftar nama field Dana BOSP Tahap yang BELUM diisi untuk 1
+     * sekolah, dari kelompok ('penerimaan'/'tarik_tunai') yang dipilih -
+     * dipakai utk isi modal detail yang dibuka lewat
+     * lihatDetailLengkapDanaBosp().
+     *
+     * @return array<int, string>
+     */
+    public function detailFieldBelumLengkapDanaBosp(string $namaSekolah, string $kelompok): array
+    {
+        $sekolah = ProfilSekolah::with(['danaBospTahap' => function ($q) {
+            $q->where('tahun', $this->tahun);
+        }])->where('nama_sekolah', $namaSekolah)->first();
+
+        if (! $sekolah) {
+            return [];
+        }
+
+        $data = $sekolah->danaBospTahap->first();
+
+        $daftarField = $kelompok === 'tarik_tunai' ? DanaBospTahap::FIELD_MANUAL_TAB2 : DanaBospTahap::FIELD_MANUAL_TAB1;
+        $label = $kelompok === 'tarik_tunai' ? $this->labelFieldManualTab2() : $this->labelFieldManualTab1();
+
+        $fieldBelumLengkap = [];
+
+        foreach ($daftarField as $field) {
+            $nilai = $data?->{$field};
+            if ($nilai === null || $nilai === '') {
+                $fieldBelumLengkap[] = $label[$field] ?? $field;
+            }
+        }
+
+        return $fieldBelumLengkap;
+    }
+
+    public function lihatDetailLengkapDanaBosp(string $namaSekolah, string $kelompok): void
+    {
+        $this->sekolahLengkapDanaBospDipilih = $namaSekolah;
+        $this->kelompokLengkapDanaBospDipilih = $kelompok;
+        $this->dispatch('open-modal', 'dana-bosp-lengkap-detail');
+    }
+
+    public function tutupDetailLengkapDanaBosp(): void
+    {
+        $this->sekolahLengkapDanaBospDipilih = null;
+        $this->kelompokLengkapDanaBospDipilih = null;
+        $this->dispatch('close-modal', 'dana-bosp-lengkap-detail');
     }
 
     public function pindahTab(string $tab): void
@@ -381,6 +542,15 @@ class Index extends Component
 
         return view('livewire.pendataan-bosp.dana-bosp-tahap.index', [
             'daftarSekolah' => $daftarSekolah,
+            // BARU 2026-10-23 (permintaan user) - ringkasan & rincian
+            // "lengkap/belum lengkap" Dana BOSP Tahap, lihat
+            // ringkasanDanaBospLengkap()/lihatDetailLengkapDanaBosp() di atas.
+            'ringkasanDanaBospLengkap' => $this->ringkasanDanaBospLengkap(),
+            'sekolahLengkapDanaBospDipilih' => $this->sekolahLengkapDanaBospDipilih,
+            'kelompokLengkapDanaBospDipilih' => $this->kelompokLengkapDanaBospDipilih,
+            'detailFieldBelumLengkapDanaBosp' => $this->sekolahLengkapDanaBospDipilih
+                ? $this->detailFieldBelumLengkapDanaBosp($this->sekolahLengkapDanaBospDipilih, $this->kelompokLengkapDanaBospDipilih)
+                : [],
             'tahunOptions' => array_reverse($tahunOptions),
             'bolehKelolaSemua' => $this->bolehKelolaSemua(),
             'totalTab1' => $totalTab1,

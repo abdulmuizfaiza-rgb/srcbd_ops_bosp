@@ -316,9 +316,75 @@
                         @endif
                     @endif
                 @endif
+
+                {{-- BARU 2026-10-23 (permintaan user: "pada menu Dana BOSP
+                     Tahap 1 & 2-Penerimaan BOSP-Tarik Tunai BOSP munculkan
+                     data sekolah yang sudah lengkap inputannya dan yang
+                     belum lengkap inputannya dengan cara klik nama sekolah
+                     nya") - badge nama sekolah (hijau = lengkap, merah =
+                     belum lengkap) UNTUK TAB YANG SEDANG AKTIF, krn Tab 1
+                     & Tab 2 dicek field manual yang berbeda (lihat
+                     Index.php::ringkasanDanaBospLengkap()). Superadmin
+                     lihat SEMUA sekolah, Admin BOSP lihat 1 badge
+                     sekolahnya sendiri. Klik nama sekolah membuka modal
+                     "dana-bosp-lengkap-detail" berisi field yang belum
+                     diisi pada tab itu. --}}
+                @if ($tabAktif === 'penerimaan')
+                    @if ($ringkasanDanaBospLengkap->isNotEmpty())
+                        <div class="mt-3 flex flex-wrap items-start gap-2 text-xs text-slate-500">
+                            <span class="mt-1">Status Penerimaan BOSP {{ $tahun }} (klik nama sekolah untuk rincian):</span>
+                            <div class="flex flex-wrap gap-2">
+                                @foreach ($ringkasanDanaBospLengkap as $baris)
+                                    <button type="button" wire:click="lihatDetailLengkapDanaBosp('{{ $baris->nama_sekolah }}', 'penerimaan')" class="inline-flex items-center rounded-full px-2.5 py-1 font-medium transition @if ($baris->lengkapPenerimaan) bg-emerald-100 text-emerald-700 hover:bg-emerald-200 @else bg-rose-100 text-rose-700 hover:bg-rose-200 @endif">{{ $baris->nama_sekolah }}</button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                @else
+                    @if ($ringkasanDanaBospLengkap->isNotEmpty())
+                        <div class="mt-3 flex flex-wrap items-start gap-2 text-xs text-slate-500">
+                            <span class="mt-1">Status Tarik Tunai BOSP {{ $tahun }} (klik nama sekolah untuk rincian):</span>
+                            <div class="flex flex-wrap gap-2">
+                                @foreach ($ringkasanDanaBospLengkap as $baris)
+                                    <button type="button" wire:click="lihatDetailLengkapDanaBosp('{{ $baris->nama_sekolah }}', 'tarik_tunai')" class="inline-flex items-center rounded-full px-2.5 py-1 font-medium transition @if ($baris->lengkapTarikTunai) bg-emerald-100 text-emerald-700 hover:bg-emerald-200 @else bg-rose-100 text-rose-700 hover:bg-rose-200 @endif">{{ $baris->nama_sekolah }}</button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                @endif
             </div>
         </div>
     </div>
+
+    {{--
+        Detail "Dana BOSP Tahap belum lengkap" per sekolah (BARU
+        2026-10-23, permintaan user) - dibuka lewat badge nama sekolah
+        di atas, diisi lewat Index::detailFieldBelumLengkapDanaBosp().
+    --}}
+    <x-modal name="dana-bosp-lengkap-detail" :show="$sekolahLengkapDanaBospDipilih !== null" maxWidth="lg">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900">
+                Status {{ $kelompokLengkapDanaBospDipilih === 'tarik_tunai' ? 'Tarik Tunai BOSP' : 'Penerimaan BOSP' }} {{ $tahun }} - {{ $sekolahLengkapDanaBospDipilih }}
+            </h2>
+            <p class="mt-1 text-xs text-slate-500">Daftar field yang belum diisi pada sekolah ini.</p>
+
+            <div class="mt-4">
+                @if (count($detailFieldBelumLengkapDanaBosp) > 0)
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach ($detailFieldBelumLengkapDanaBosp as $field)
+                            <span class="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700">{{ $field }}</span>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="py-6 text-center text-sm text-emerald-600">Semua field sudah lengkap.</p>
+                @endif
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <x-secondary-button wire:click="tutupDetailLengkapDanaBosp" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Tutup</x-secondary-button>
+            </div>
+        </div>
+    </x-modal>
 
     {{-- Modal Konfirmasi Hapus (seluruh baris Dana BOSP Tahap 1 sekolah, tahun aktif) --}}
     <x-modal name="dana-bosp-tahap-hapus" :show="$confirmingHapusSekolah !== null" maxWidth="md">
