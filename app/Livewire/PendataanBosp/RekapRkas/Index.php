@@ -74,6 +74,8 @@ class Index extends Component
 
     public ?int $editingId = null;
 
+    public ?string $sekolahLengkapRekapRkasDipilih = null;
+
     /**
      * Data untuk input LANGSUNG di tiap kotak/kolom tabel (di luar form
      * modal "Isi/Edit" yang sudah ada) - array 2 dimensi [sekolahId][field]
@@ -423,6 +425,155 @@ class Index extends Component
             && $danaBospTahap->jumlah_dana_bosp_per_tahun !== null;
     }
 
+    /**
+     * Label Indonesia utk 15 field MANUAL Rekap RKAS (permintaan user
+     * 2026-10-23: "munculkan data sekolah yang sudah lengkap inputannya
+     * dan yang belum lengkap inputannya dengan cara klik nama sekolah
+     * nya"). Field manual = 3 field per kategori Belanja (Sebelum,
+     * Realisasi Tahap 1, Perubahan Tahap 2) x 5 kategori (lihat
+     * RekapRkas::KATEGORI) = 15 field - TIDAK termasuk Jml Sesudah &
+     * Selisih tiap kategori (field hasil rumus, lihat
+     * RekapRkas::KATEGORI_RUMUS yang sudah mencakup SEMUA 5 kategori)
+     * maupun baris JUMLAH (jumlah_sebelum/sesudah/selisih, juga hasil
+     * rumus/sum) maupun anggaran_bosp (sejak 2026-09-23 otomatis dari
+     * Dana BOSP Tahap, bukan input manual lagi). Daftar field manual ini
+     * BUKAN ditebak - diturunkan langsung dari konstanta yang sudah ada
+     * (RekapRkas::KATEGORI_RUMUS mencakup semua 5 kategori, artinya 3
+     * field non-rumus yang tersisa per kategori itulah yang manual).
+     *
+     * @return array<string, string>
+     */
+    protected function labelFieldManualRekapRkas(): array
+    {
+        $label = [];
+
+        foreach (RekapRkas::KATEGORI as $key => $info) {
+            $label[$key.'_sebelum'] = $info['label'].' - Sebelum';
+            $label[$key.'_realisasi_tahap1'] = $info['label'].' - Realisasi Tahap 1';
+            $label[$key.'_perubahan_tahap2'] = $info['label'].' - Perubahan Tahap 2';
+        }
+
+        return $label;
+    }
+
+    /**
+     * Ringkasan lengkap/belum lengkap Rekap RKAS PER SEKOLAH, utk TAHUN
+     * yang sedang dipilih di dropdown Tahun ($this->tahun) - sesuai pola
+     * yang sama dgn Profil Sekolah/Identitas OPS/Identitas Admin BOSP/
+     * Dana BOSP Tahap: Superadmin lihat SEMUA sekolah, Admin BOSP lihat
+     * HANYA sekolahnya sendiri (1 baris).
+     *
+     * Sekolah yang Rekap RKAS-nya masih TERKUNCI (Dana BOSP Tahap -
+     * Penerimaan BOSP belum diisi, lihat danaBospTahapTerisiDari())
+     * otomatis dianggap "belum lengkap" - konsisten dgn tampilan
+     * terkunci di index.blade.php (baris sekolah itu memang belum bisa
+     * diisi sama sekali selama masih terkunci).
+     *
+     * @return \Illuminate\Support\Collection<int, object{nama_sekolah: string, lengkap: bool, terkunci: bool}>
+     */
+    protected function ringkasanRekapRkasLengkap(): \Illuminate\Support\Collection
+    {
+        $query = ProfilSekolah::with([
+            'rekapRkas' => function ($q) {
+                $q->where('tahun', $this->tahun);
+            },
+            'danaBospTahap' => function ($q) {
+                $q->where('tahun', $this->tahun);
+            },
+        ]);
+
+        if (! $this->bolehKelolaSemua()) {
+            $profilSekolahId = auth()->user()->profil_sekolah_id;
+            if (! $profilSekolahId) {
+                return collect();
+            }
+            $query->where('id', $profilSekolahId);
+        }
+
+        $labelFieldManual = $this->labelFieldManualRekapRkas();
+
+        return $query->urutStandar()->get()->map(function (ProfilSekolah $sekolah) use ($labelFieldManual) {
+            $terkunci = ! $this->danaBospTahapTerisiDari($sekolah->danaBospTahap->first());
+            $rekap = $sekolah->rekapRkas->first();
+
+            $lengkap = false;
+            if (! $terkunci && $rekap !== null) {
+                $lengkap = true;
+                foreach (array_keys($labelFieldManual) as $field) {
+                    $nilai = $rekap->{$field};
+                    if ($nilai === null || $nilai === '') {
+                        $lengkap = false;
+                        break;
+                    }
+                }
+            }
+
+            return (object) [
+                'nama_sekolah' => $sekolah->nama_sekolah,
+                'lengkap' => $lengkap,
+                'terkunci' => $terkunci,
+            ];
+        });
+    }
+
+    /**
+     * Rincian Rekap RKAS yang belum lengkap utk 1 sekolah (dicari dari
+     * nama), utk tahun yang sedang dipilih. Kalau masih terkunci (Dana
+     * BOSP Tahap - Penerimaan BOSP belum diisi), tampilkan 1 pesan
+     * terkunci saja (bukan daftar 15 field) - lebih jelas & konsisten dgn
+     * alasan sebenarnya kenapa belum bisa diisi.
+     *
+     * @return array<int, string>
+     */
+    public function detailFieldBelumLengkapRekapRkas(string $namaSekolah): array
+    {
+        $query = ProfilSekolah::with([
+            'rekapRkas' => function ($q) {
+                $q->where('tahun', $this->tahun);
+            },
+            'danaBospTahap' => function ($q) {
+                $q->where('tahun', $this->tahun);
+            },
+        ])->where('nama_sekolah', $namaSekolah);
+
+        if (! $this->bolehKelolaSemua()) {
+            $query->where('id', auth()->user()->profil_sekolah_id);
+        }
+
+        $sekolah = $query->first();
+        if (! $sekolah) {
+            return [];
+        }
+
+        if (! $this->danaBospTahapTerisiDari($sekolah->danaBospTahap->first())) {
+            return ['Dana BOSP Tahap 1 & 2 - Penerimaan BOSP tahun '.$this->tahun.' belum diisi, sehingga Rekap RKAS masih terkunci.'];
+        }
+
+        $rekap = $sekolah->rekapRkas->first();
+        $belumLengkap = [];
+
+        foreach ($this->labelFieldManualRekapRkas() as $field => $label) {
+            $nilai = $rekap?->{$field};
+            if ($nilai === null || $nilai === '') {
+                $belumLengkap[] = $label;
+            }
+        }
+
+        return $belumLengkap;
+    }
+
+    public function lihatDetailLengkapRekapRkas(string $namaSekolah): void
+    {
+        $this->sekolahLengkapRekapRkasDipilih = $namaSekolah;
+        $this->dispatch('open-modal', 'rekap-rkas-lengkap-detail');
+    }
+
+    public function tutupDetailLengkapRekapRkas(): void
+    {
+        $this->sekolahLengkapRekapRkasDipilih = null;
+        $this->dispatch('close-modal', 'rekap-rkas-lengkap-detail');
+    }
+
     public function isi(int $profilSekolahId): void
     {
         abort_unless($this->bolehEdit($profilSekolahId), 403);
@@ -730,6 +881,11 @@ class Index extends Component
             'tahunOptions' => array_reverse($tahunOptions),
             'bolehKelolaSemua' => $this->bolehKelolaSemua(),
             'totalBaris' => $totalBaris,
+            'ringkasanRekapRkasLengkap' => $this->ringkasanRekapRkasLengkap(),
+            'sekolahLengkapRekapRkasDipilih' => $this->sekolahLengkapRekapRkasDipilih,
+            'detailFieldBelumLengkapRekapRkas' => $this->sekolahLengkapRekapRkasDipilih !== null
+                ? $this->detailFieldBelumLengkapRekapRkas($this->sekolahLengkapRekapRkasDipilih)
+                : [],
         ]);
     }
 }

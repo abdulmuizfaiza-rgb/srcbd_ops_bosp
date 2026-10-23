@@ -208,9 +208,52 @@
                         </tbody>
                     </table>
                 </div>
+
+                {{-- Badge lengkap/belum lengkap Rekap RKAS per sekolah (permintaan user
+                     2026-10-23, Menu 5/5): klik nama sekolah -> rincian field manual yang
+                     belum diisi utk tahun yang sedang dipilih. Superadmin lihat SEMUA
+                     sekolah, Admin BOSP lihat 1 badge (sekolahnya sendiri). --}}
+                @if ($ringkasanRekapRkasLengkap->isNotEmpty())
+                    <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                        <span class="text-slate-500">Status Rekap RKAS {{ $tahun }}:</span>
+                        @foreach ($ringkasanRekapRkasLengkap as $baris)
+                            <button
+                                type="button"
+                                wire:click="lihatDetailLengkapRekapRkas('{{ $baris->nama_sekolah }}')"
+                                class="inline-flex items-center rounded-full px-2.5 py-1 font-medium {{ $baris->lengkap ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700' }}"
+                            >
+                                {{ $baris->nama_sekolah }}
+                            </button>
+                        @endforeach
+                    </div>
+                @endif
             </div>
         </div>
     </div>
+
+    {{-- Modal Rincian Lengkap/Belum Lengkap Rekap RKAS --}}
+    <x-modal name="rekap-rkas-lengkap-detail" :show="$sekolahLengkapRekapRkasDipilih !== null">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900 mb-1">Rincian Rekap RKAS {{ $tahun }}</h2>
+            <p class="text-sm text-slate-500 mb-4">{{ $sekolahLengkapRekapRkasDipilih }}</p>
+
+            @if (count($detailFieldBelumLengkapRekapRkas) > 0)
+                <div class="flex flex-wrap gap-2">
+                    @foreach ($detailFieldBelumLengkapRekapRkas as $field)
+                        <span class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 text-xs font-medium text-rose-700">{{ $field }}</span>
+                    @endforeach
+                </div>
+            @else
+                <p class="text-sm text-emerald-700">Semua field sudah lengkap.</p>
+            @endif
+
+            <div class="mt-6 flex justify-end">
+                <button type="button" wire:click="tutupDetailLengkapRekapRkas" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 text-sm">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </x-modal>
 
     {{-- Modal Form Rekap RKAS Awal-Perubahan --}}
     <x-modal name="rekap-rkas-form" :show="$showForm" maxWidth="4xl">
