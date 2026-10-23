@@ -100,6 +100,16 @@ class Index extends Component
 
     public string $filterKecamatan = '';
 
+    /**
+     * BARU 2026-10-23 (permintaan user: "pada menu Data Sekolah-profil
+     * sekolah munculkan data sekolah yang sudah lengkap dan belum
+     * lengkap beserta rinciannya dengan cara klik nama sekolahnya") -
+     * diisi nama sekolah yang dipilih lewat lihatDetailLengkapProfil(),
+     * dipakai render()/blade (modal "profil-sekolah-lengkap-detail").
+     * null berarti modal tertutup.
+     */
+    public ?string $sekolahLengkapProfilDipilih = null;
+
     // Field data induk (hanya diisi/diubah oleh Superadmin)
     public string $npsn = '';
 
@@ -238,6 +248,73 @@ class Index extends Component
     protected function bolehEdit(ProfilSekolah $sekolah): bool
     {
         return $this->bolehKelolaSemua() || auth()->user()->profil_sekolah_id === $sekolah->id;
+    }
+
+    /**
+     * Ringkasan status "lengkap/belum lengkap" (App\Models\ProfilSekolah::isLengkap())
+     * untuk SEMUA sekolah (bukan terfilter - pola sama dgn ringkasanPtk()/
+     * daftarBelumLengkapPtk() di bawah, supaya tetap jadi alat pantau
+     * menyeluruh walau tabel sedang difilter/dicari), dipakai untuk
+     * badge nama sekolah yang bisa diklik (permintaan user 2026-10-23).
+     * HANYA ditampilkan untuk Superadmin (null kalau bukan, sama seperti
+     * gating ringkasanPtk()).
+     *
+     * @return ?\Illuminate\Support\Collection<int, object{nama_sekolah: string, lengkap: bool}>
+     */
+    protected function ringkasanProfilLengkap(): ?\Illuminate\Support\Collection
+    {
+        if (! $this->bolehKelolaSemua()) {
+            return null;
+        }
+
+        return ProfilSekolah::query()
+            ->urutStandar()
+            ->get()
+            ->map(fn (ProfilSekolah $sekolah) => (object) [
+                'nama_sekolah' => $sekolah->nama_sekolah,
+                'lengkap' => $sekolah->isLengkap(),
+            ]);
+    }
+
+    /**
+     * Daftar nama field yang BELUM diisi untuk 1 sekolah tertentu
+     * (berdasarkan nama sekolah) - dipakai untuk isi modal detail yang
+     * dibuka lewat lihatDetailLengkapProfil(). Kosong (array kosong)
+     * kalau sekolahnya sudah lengkap semua atau tidak ditemukan.
+     *
+     * @return array<int, string>
+     */
+    public function detailFieldBelumLengkapProfil(string $namaSekolah): array
+    {
+        $sekolah = ProfilSekolah::where('nama_sekolah', $namaSekolah)->first();
+
+        if (! $sekolah) {
+            return [];
+        }
+
+        $labelField = ProfilSekolah::labelFieldWajibLengkap();
+        $fieldBelumLengkap = [];
+
+        foreach (ProfilSekolah::FIELD_WAJIB_LENGKAP as $field) {
+            $nilai = $sekolah->{$field};
+            if ($nilai === null || $nilai === '') {
+                $fieldBelumLengkap[] = $labelField[$field] ?? $field;
+            }
+        }
+
+        return $fieldBelumLengkap;
+    }
+
+    public function lihatDetailLengkapProfil(string $namaSekolah): void
+    {
+        $this->sekolahLengkapProfilDipilih = $namaSekolah;
+        $this->dispatch('open-modal', 'profil-sekolah-lengkap-detail');
+    }
+
+    public function tutupDetailLengkapProfil(): void
+    {
+        $this->sekolahLengkapProfilDipilih = null;
+        $this->dispatch('close-modal', 'profil-sekolah-lengkap-detail');
     }
 
     public function tambah(): void
@@ -1584,6 +1661,14 @@ class Index extends Component
 
         return view('livewire.profil-sekolah.index', [
             'daftarSekolah' => $daftarSekolah,
+            // BARU 2026-10-23 (permintaan user) - ringkasan & detail
+            // rincian "lengkap/belum lengkap" Profil Sekolah, lihat
+            // ringkasanProfilLengkap()/lihatDetailLengkapProfil() di atas.
+            'ringkasanProfilLengkap' => $this->ringkasanProfilLengkap(),
+            'sekolahLengkapProfilDipilih' => $this->sekolahLengkapProfilDipilih,
+            'detailFieldBelumLengkapProfil' => $this->sekolahLengkapProfilDipilih
+                ? $this->detailFieldBelumLengkapProfil($this->sekolahLengkapProfilDipilih)
+                : [],
             // 2026-10-18: ditambah query string "?v=..." (cache-buster) -
             // lihat docblock App\Http\Controllers\LogoSekolahFileController -
             // controller itu sengaja menyetel header Cache-Control

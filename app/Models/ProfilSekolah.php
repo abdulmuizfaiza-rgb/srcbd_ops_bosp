@@ -165,24 +165,64 @@ class ProfilSekolah extends Model
      * onboarding: Admin OPS/Admin BOSP wajib melengkapi ini dulu sebelum
      * bisa membuka menu lain.
      */
+    /**
+     * Daftar nama field yang wajib diisi supaya Profil Sekolah dianggap
+     * "lengkap" (dipakai isLengkap() di bawah) - DIEKSTRAK 2026-10-23
+     * dari isLengkap() (permintaan user: tampilkan rincian field yang
+     * belum lengkap per sekolah, klik nama sekolah di menu Data
+     * Sekolah-Profil Sekolah) supaya daftar field-nya bisa dipakai
+     * ulang untuk menyusun pesan rincian, sama seperti pola
+     * DataPtk::FIELD_BELUM_LENGKAP / labelFieldBelumLengkap(). TIDAK
+     * mengubah daftar field wajib yang sudah ada sebelumnya.
+     *
+     * @var array<int, string>
+     */
+    public const FIELD_WAJIB_LENGKAP = [
+        'nama_kepala_sekolah',
+        'nip_kepala_sekolah',
+        'no_whatsapp_kepala_sekolah',
+        'status_kepegawaian_kepsek',
+        'nama_pengawas',
+        'nip_pengawas',
+        'nama_kasie_kpml',
+        'nip_kasie_kpml',
+        'nama_bendahara',
+        'nip_bendahara',
+        'status_kepegawaian_bendahara',
+        'alamat_sekolah',
+    ];
+
+    /**
+     * Label tampilan (Indonesia) untuk setiap field pada
+     * FIELD_WAJIB_LENGKAP - dipakai App\Livewire\ProfilSekolah\Index
+     * untuk menyusun daftar rincian field yang belum diisi per sekolah
+     * (modal "profil-sekolah-belum-lengkap-detail"), pola sama persis
+     * dgn DataPtk::labelFieldBelumLengkap().
+     *
+     * @return array<string, string>
+     */
+    public static function labelFieldWajibLengkap(): array
+    {
+        return [
+            'nama_kepala_sekolah' => 'Nama Kepala Sekolah',
+            'nip_kepala_sekolah' => 'NIP Kepala Sekolah',
+            'no_whatsapp_kepala_sekolah' => 'No WhatsApp Kepala Sekolah',
+            'status_kepegawaian_kepsek' => 'Status Kepegawaian Kepala Sekolah',
+            'nama_pengawas' => 'Nama Pengawas',
+            'nip_pengawas' => 'NIP Pengawas',
+            'nama_kasie_kpml' => 'Nama Kasie KPML',
+            'nip_kasie_kpml' => 'NIP Kasie KPML',
+            'nama_bendahara' => 'Nama Bendahara',
+            'nip_bendahara' => 'NIP Bendahara',
+            'status_kepegawaian_bendahara' => 'Status Kepegawaian Bendahara',
+            'alamat_sekolah' => 'Alamat Sekolah',
+        ];
+    }
+
     public function isLengkap(): bool
     {
-        $wajibDiisi = [
-            $this->nama_kepala_sekolah,
-            $this->nip_kepala_sekolah,
-            $this->no_whatsapp_kepala_sekolah,
-            $this->status_kepegawaian_kepsek,
-            $this->nama_pengawas,
-            $this->nip_pengawas,
-            $this->nama_kasie_kpml,
-            $this->nip_kasie_kpml,
-            $this->nama_bendahara,
-            $this->nip_bendahara,
-            $this->status_kepegawaian_bendahara,
-            $this->alamat_sekolah,
-        ];
-
-        foreach ($wajibDiisi as $nilai) {
+        foreach (self::FIELD_WAJIB_LENGKAP as $field) {
+            $nilai = $this->{$field};
             if ($nilai === null || $nilai === '') {
                 return false;
             }

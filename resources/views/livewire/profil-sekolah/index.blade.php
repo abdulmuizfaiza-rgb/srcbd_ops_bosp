@@ -200,6 +200,29 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        {{-- BARU 2026-10-23 (permintaan user: "munculkan data
+                             sekolah yang sudah lengkap dan belum lengkap
+                             beserta rinciannya dengan cara klik nama
+                             sekolahnya") - badge nama SEMUA sekolah (hijau =
+                             lengkap, merah = belum lengkap), diurutkan sama
+                             seperti tabel. Klik nama sekolah membuka modal
+                             "profil-sekolah-lengkap-detail" berisi field yang
+                             belum diisi (App\Models\ProfilSekolah::isLengkap()/
+                             FIELD_WAJIB_LENGKAP) - lihat
+                             ringkasanProfilLengkap()/lihatDetailLengkapProfil()
+                             di Index.php. HANYA tampil untuk Superadmin (sama
+                             seperti ringkasan Data PTK di tab sebelah). --}}
+                        @if ($ringkasanProfilLengkap)
+                            <div class="mt-3 flex flex-wrap items-start gap-2 text-xs text-slate-500">
+                                <span class="mt-1">Status Profil Sekolah (klik nama sekolah untuk rincian):</span>
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach ($ringkasanProfilLengkap as $baris)
+                                        <button type="button" wire:click="lihatDetailLengkapProfil('{{ $baris->nama_sekolah }}')" class="inline-flex items-center rounded-full px-2.5 py-1 font-medium transition @if ($baris->lengkap) bg-emerald-100 text-emerald-700 hover:bg-emerald-200 @else bg-rose-100 text-rose-700 hover:bg-rose-200 @endif">{{ $baris->nama_sekolah }}</button>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 @else
                     {{-- ======================================================
@@ -1082,6 +1105,35 @@
 
             <div class="mt-6 flex justify-end">
                 <x-secondary-button wire:click="tutupDetailSekolahInputPtk" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Tutup</x-secondary-button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{--
+        Detail "Profil Sekolah belum lengkap" per sekolah (BARU
+        2026-10-23, permintaan user) - dibuka lewat badge nama sekolah
+        di atas tabel Profil Sekolah, diisi lewat
+        ProfilSekolah\Index::detailFieldBelumLengkapProfil().
+    --}}
+    <x-modal name="profil-sekolah-lengkap-detail" :show="$sekolahLengkapProfilDipilih !== null" maxWidth="lg">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900">Status Profil Sekolah - {{ $sekolahLengkapProfilDipilih }}</h2>
+            <p class="mt-1 text-xs text-slate-500">Daftar field yang belum diisi pada sekolah ini.</p>
+
+            <div class="mt-4">
+                @if (count($detailFieldBelumLengkapProfil) > 0)
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach ($detailFieldBelumLengkapProfil as $field)
+                            <span class="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700">{{ $field }}</span>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="py-6 text-center text-sm text-emerald-600">Semua field sudah lengkap.</p>
+                @endif
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <x-secondary-button wire:click="tutupDetailLengkapProfil" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Tutup</x-secondary-button>
             </div>
         </div>
     </x-modal>
