@@ -204,16 +204,19 @@
                         {{-- BARU 2026-10-23 (permintaan user: "munculkan data
                              sekolah yang sudah lengkap dan belum lengkap
                              beserta rinciannya dengan cara klik nama
-                             sekolahnya") - badge nama SEMUA sekolah (hijau =
-                             lengkap, merah = belum lengkap), diurutkan sama
-                             seperti tabel. Klik nama sekolah membuka modal
+                             sekolahnya"), DIPERLUAS 2026-10-23 lanjutan
+                             (permintaan user: "saya juga ingin dimunculkan
+                             juga pada akun admin ops dan admin bosp data
+                             yang sudah lengkap dan belum lengkapnya") - badge
+                             nama sekolah (hijau = lengkap, merah = belum
+                             lengkap): Superadmin lihat SEMUA sekolah, Admin
+                             OPS/Admin BOSP lihat 1 badge sekolahnya sendiri
+                             (lihat ringkasanProfilLengkap() di Index.php).
+                             Klik nama sekolah membuka modal
                              "profil-sekolah-lengkap-detail" berisi field yang
                              belum diisi (App\Models\ProfilSekolah::isLengkap()/
-                             FIELD_WAJIB_LENGKAP) - lihat
-                             ringkasanProfilLengkap()/lihatDetailLengkapProfil()
-                             di Index.php. HANYA tampil untuk Superadmin (sama
-                             seperti ringkasan Data PTK di tab sebelah). --}}
-                        @if ($ringkasanProfilLengkap)
+                             FIELD_WAJIB_LENGKAP). --}}
+                        @if ($ringkasanProfilLengkap->isNotEmpty())
                             <div class="mt-3 flex flex-wrap items-start gap-2 text-xs text-slate-500">
                                 <span class="mt-1">Status Profil Sekolah (klik nama sekolah untuk rincian):</span>
                                 <div class="flex flex-wrap gap-2">

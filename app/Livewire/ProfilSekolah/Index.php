@@ -252,24 +252,37 @@ class Index extends Component
 
     /**
      * Ringkasan status "lengkap/belum lengkap" (App\Models\ProfilSekolah::isLengkap())
-     * untuk SEMUA sekolah (bukan terfilter - pola sama dgn ringkasanPtk()/
-     * daftarBelumLengkapPtk() di bawah, supaya tetap jadi alat pantau
-     * menyeluruh walau tabel sedang difilter/dicari), dipakai untuk
-     * badge nama sekolah yang bisa diklik (permintaan user 2026-10-23).
-     * HANYA ditampilkan untuk Superadmin (null kalau bukan, sama seperti
-     * gating ringkasanPtk()).
+     * dipakai untuk badge nama sekolah yang bisa diklik (permintaan user
+     * 2026-10-23, DIPERLUAS 2026-10-23 lanjutan: "saya juga ingin
+     * dimunculkan juga pada akun admin ops dan admin bosp data yang
+     * sudah lengkap dan belum lengkapnya"):
+     * - Superadmin: SEMUA sekolah (bukan terfilter - pola sama dgn
+     *   ringkasanPtk()/daftarBelumLengkapPtk() di bawah).
+     * - Admin OPS/Admin BOSP: HANYA 1 baris, sekolahnya sendiri (beda
+     *   dgn ringkasanPtk() yang null total utk non-Superadmin - di sini
+     *   SENGAJA tetap ditampilkan 1 baris supaya admin bisa lihat status
+     *   lengkap/belum lengkap profil sekolahnya sendiri + klik utk
+     *   rincian, sesuai permintaan di atas).
+     * Collection kosong HANYA kalau akun tidak terhubung ke sekolah mana
+     * pun (profil_sekolah_id null - kasus langka).
      *
-     * @return ?\Illuminate\Support\Collection<int, object{nama_sekolah: string, lengkap: bool}>
+     * @return \Illuminate\Support\Collection<int, object{nama_sekolah: string, lengkap: bool}>
      */
-    protected function ringkasanProfilLengkap(): ?\Illuminate\Support\Collection
+    protected function ringkasanProfilLengkap(): \Illuminate\Support\Collection
     {
+        $query = ProfilSekolah::query()->urutStandar();
+
         if (! $this->bolehKelolaSemua()) {
-            return null;
+            $profilSekolahId = auth()->user()->profil_sekolah_id;
+
+            if (! $profilSekolahId) {
+                return collect();
+            }
+
+            $query->where('id', $profilSekolahId);
         }
 
-        return ProfilSekolah::query()
-            ->urutStandar()
-            ->get()
+        return $query->get()
             ->map(fn (ProfilSekolah $sekolah) => (object) [
                 'nama_sekolah' => $sekolah->nama_sekolah,
                 'lengkap' => $sekolah->isLengkap(),
