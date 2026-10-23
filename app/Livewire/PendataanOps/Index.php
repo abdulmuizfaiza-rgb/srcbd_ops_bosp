@@ -114,6 +114,15 @@ class Index extends Component
      */
     public ?int $confirmingHapusId = null;
 
+    /**
+     * BARU 2026-10-23 (permintaan user: "pada menu identitas OPS
+     * muncul kan identitas OPS yang sudah lengkap dan belum lengkap
+     * beserta rinciannnya dengan cara klik nama sekolah nya") - diisi
+     * nama sekolah yang dipilih lewat lihatDetailLengkapIdentitasOps(),
+     * dipakai render()/blade (modal "identitas-ops-lengkap-detail").
+     */
+    public ?string $sekolahLengkapIdentitasOpsDipilih = null;
+
     public function mount(): void
     {
         $user = auth()->user();
@@ -156,6 +165,106 @@ class Index extends Component
     protected function bolehEdit(int $profilSekolahId): bool
     {
         return $this->bolehKelolaSemua() || auth()->user()->profil_sekolah_id === $profilSekolahId;
+    }
+
+    /**
+     * Daftar field + label untuk menentukan "lengkap" Identitas OPS
+     * (permintaan user 2026-10-23, verbatim: "untuk identitas OPS
+     * dikatakan lengkap Apabila filed Nama OPS, Field Upload Photo,
+     * field Upload SK sudah tersimpan") - HANYA 3 field ini yang jadi
+     * syarat, field lain (NUPTK/NIP/JK/dll) TIDAK ikut disyaratkan.
+     *
+     * @return array<string, string>
+     */
+    public static function fieldWajibLengkapIdentitasOps(): array
+    {
+        return [
+            'nama' => 'Nama OPS',
+            'foto_ops' => 'Foto OPS (Upload)',
+            'sk_ops' => 'SK OPS (Upload)',
+        ];
+    }
+
+    /**
+     * Ringkasan status "lengkap/belum lengkap" Identitas OPS per
+     * sekolah, dipakai untuk badge nama sekolah yang bisa diklik
+     * (permintaan user 2026-10-23) - pola sama dgn
+     * ProfilSekolah\Index::ringkasanProfilLengkap() (Superadmin: SEMUA
+     * sekolah, Admin OPS: HANYA sekolahnya sendiri).
+     *
+     * @return \Illuminate\Support\Collection<int, object{nama_sekolah: string, lengkap: bool}>
+     */
+    protected function ringkasanIdentitasOpsLengkap(): \Illuminate\Support\Collection
+    {
+        $query = ProfilSekolah::with('identitasOps')->urutStandar();
+
+        if (! $this->bolehKelolaSemua()) {
+            $profilSekolahId = auth()->user()->profil_sekolah_id;
+
+            if (! $profilSekolahId) {
+                return collect();
+            }
+
+            $query->where('id', $profilSekolahId);
+        }
+
+        return $query->get()->map(function (ProfilSekolah $sekolah) {
+            $identitas = $sekolah->identitasOps;
+            $lengkap = true;
+
+            foreach (array_keys(self::fieldWajibLengkapIdentitasOps()) as $field) {
+                $nilai = $identitas?->{$field};
+                if ($nilai === null || $nilai === '') {
+                    $lengkap = false;
+                    break;
+                }
+            }
+
+            return (object) [
+                'nama_sekolah' => $sekolah->nama_sekolah,
+                'lengkap' => $lengkap,
+            ];
+        });
+    }
+
+    /**
+     * Daftar nama field Identitas OPS yang BELUM diisi untuk 1 sekolah
+     * (dari fieldWajibLengkapIdentitasOps() di atas) - dipakai utk isi
+     * modal detail yang dibuka lewat lihatDetailLengkapIdentitasOps().
+     *
+     * @return array<int, string>
+     */
+    public function detailFieldBelumLengkapIdentitasOps(string $namaSekolah): array
+    {
+        $sekolah = ProfilSekolah::with('identitasOps')->where('nama_sekolah', $namaSekolah)->first();
+
+        if (! $sekolah) {
+            return [];
+        }
+
+        $identitas = $sekolah->identitasOps;
+        $fieldBelumLengkap = [];
+
+        foreach (self::fieldWajibLengkapIdentitasOps() as $field => $label) {
+            $nilai = $identitas?->{$field};
+            if ($nilai === null || $nilai === '') {
+                $fieldBelumLengkap[] = $label;
+            }
+        }
+
+        return $fieldBelumLengkap;
+    }
+
+    public function lihatDetailLengkapIdentitasOps(string $namaSekolah): void
+    {
+        $this->sekolahLengkapIdentitasOpsDipilih = $namaSekolah;
+        $this->dispatch('open-modal', 'identitas-ops-lengkap-detail');
+    }
+
+    public function tutupDetailLengkapIdentitasOps(): void
+    {
+        $this->sekolahLengkapIdentitasOpsDipilih = null;
+        $this->dispatch('close-modal', 'identitas-ops-lengkap-detail');
     }
 
     /**
@@ -462,6 +571,15 @@ class Index extends Component
 
         return view('livewire.pendataan-ops.index', [
             'daftarSekolah' => $daftarSekolah,
+            // BARU 2026-10-23 (permintaan user) - ringkasan & rincian
+            // "lengkap/belum lengkap" Identitas OPS, lihat
+            // ringkasanIdentitasOpsLengkap()/lihatDetailLengkapIdentitasOps()
+            // di atas.
+            'ringkasanIdentitasOpsLengkap' => $this->ringkasanIdentitasOpsLengkap(),
+            'sekolahLengkapIdentitasOpsDipilih' => $this->sekolahLengkapIdentitasOpsDipilih,
+            'detailFieldBelumLengkapIdentitasOps' => $this->sekolahLengkapIdentitasOpsDipilih
+                ? $this->detailFieldBelumLengkapIdentitasOps($this->sekolahLengkapIdentitasOpsDipilih)
+                : [],
             'jkOptions' => PendataanOps::JK_OPTIONS,
             'statusKepegawaianOptions' => PendataanOps::STATUS_KEPEGAWAIAN_OPTIONS,
             'pendidikanOptions' => PendataanOps::PENDIDIKAN_OPTIONS,

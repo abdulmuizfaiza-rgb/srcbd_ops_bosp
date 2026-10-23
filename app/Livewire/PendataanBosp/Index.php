@@ -82,6 +82,14 @@ class Index extends Component
      */
     public ?int $confirmingHapusId = null;
 
+    /**
+     * BARU 2026-10-23 (permintaan user: "dan terapkan juga untuk menu
+     * Identitas Admin BOSP") - diisi nama sekolah yang dipilih lewat
+     * lihatDetailLengkapIdentitasBosp(), dipakai render()/blade (modal
+     * "identitas-bosp-lengkap-detail").
+     */
+    public ?string $sekolahLengkapIdentitasBospDipilih = null;
+
     public function mount(): void
     {
         $user = auth()->user();
@@ -124,6 +132,106 @@ class Index extends Component
     protected function bolehEdit(int $profilSekolahId): bool
     {
         return $this->bolehKelolaSemua() || auth()->user()->profil_sekolah_id === $profilSekolahId;
+    }
+
+    /**
+     * Daftar field + label untuk menentukan "lengkap" Identitas Admin
+     * BOSP (permintaan user 2026-10-23, verbatim: "untuk identitas
+     * admin bosp dikatakan lengkap apabila field Nama Admin BOSP,
+     * Tanggal Lahir sudah terisi lengkap") - HANYA 2 field ini yang
+     * jadi syarat, field lain TIDAK ikut disyaratkan.
+     *
+     * @return array<string, string>
+     */
+    public static function fieldWajibLengkapIdentitasBosp(): array
+    {
+        return [
+            'nama' => 'Nama Admin BOSP',
+            'tanggal_lahir' => 'Tanggal Lahir',
+        ];
+    }
+
+    /**
+     * Ringkasan status "lengkap/belum lengkap" Identitas Admin BOSP per
+     * sekolah, dipakai untuk badge nama sekolah yang bisa diklik
+     * (permintaan user 2026-10-23) - pola sama dgn
+     * PendataanOps\Index::ringkasanIdentitasOpsLengkap() (Superadmin:
+     * SEMUA sekolah, Admin BOSP: HANYA sekolahnya sendiri).
+     *
+     * @return \Illuminate\Support\Collection<int, object{nama_sekolah: string, lengkap: bool}>
+     */
+    protected function ringkasanIdentitasBospLengkap(): \Illuminate\Support\Collection
+    {
+        $query = ProfilSekolah::with('identitasBosp')->urutStandar();
+
+        if (! $this->bolehKelolaSemua()) {
+            $profilSekolahId = auth()->user()->profil_sekolah_id;
+
+            if (! $profilSekolahId) {
+                return collect();
+            }
+
+            $query->where('id', $profilSekolahId);
+        }
+
+        return $query->get()->map(function (ProfilSekolah $sekolah) {
+            $identitas = $sekolah->identitasBosp;
+            $lengkap = true;
+
+            foreach (array_keys(self::fieldWajibLengkapIdentitasBosp()) as $field) {
+                $nilai = $identitas?->{$field};
+                if ($nilai === null || $nilai === '') {
+                    $lengkap = false;
+                    break;
+                }
+            }
+
+            return (object) [
+                'nama_sekolah' => $sekolah->nama_sekolah,
+                'lengkap' => $lengkap,
+            ];
+        });
+    }
+
+    /**
+     * Daftar nama field Identitas Admin BOSP yang BELUM diisi untuk 1
+     * sekolah (dari fieldWajibLengkapIdentitasBosp() di atas) - dipakai
+     * utk isi modal detail yang dibuka lewat
+     * lihatDetailLengkapIdentitasBosp().
+     *
+     * @return array<int, string>
+     */
+    public function detailFieldBelumLengkapIdentitasBosp(string $namaSekolah): array
+    {
+        $sekolah = ProfilSekolah::with('identitasBosp')->where('nama_sekolah', $namaSekolah)->first();
+
+        if (! $sekolah) {
+            return [];
+        }
+
+        $identitas = $sekolah->identitasBosp;
+        $fieldBelumLengkap = [];
+
+        foreach (self::fieldWajibLengkapIdentitasBosp() as $field => $label) {
+            $nilai = $identitas?->{$field};
+            if ($nilai === null || $nilai === '') {
+                $fieldBelumLengkap[] = $label;
+            }
+        }
+
+        return $fieldBelumLengkap;
+    }
+
+    public function lihatDetailLengkapIdentitasBosp(string $namaSekolah): void
+    {
+        $this->sekolahLengkapIdentitasBospDipilih = $namaSekolah;
+        $this->dispatch('open-modal', 'identitas-bosp-lengkap-detail');
+    }
+
+    public function tutupDetailLengkapIdentitasBosp(): void
+    {
+        $this->sekolahLengkapIdentitasBospDipilih = null;
+        $this->dispatch('close-modal', 'identitas-bosp-lengkap-detail');
     }
 
     public function isi(int $profilSekolahId): void
@@ -283,6 +391,15 @@ class Index extends Component
 
         return view('livewire.pendataan-bosp.index', [
             'daftarSekolah' => $daftarSekolah,
+            // BARU 2026-10-23 (permintaan user) - ringkasan & rincian
+            // "lengkap/belum lengkap" Identitas Admin BOSP, lihat
+            // ringkasanIdentitasBospLengkap()/lihatDetailLengkapIdentitasBosp()
+            // di atas.
+            'ringkasanIdentitasBospLengkap' => $this->ringkasanIdentitasBospLengkap(),
+            'sekolahLengkapIdentitasBospDipilih' => $this->sekolahLengkapIdentitasBospDipilih,
+            'detailFieldBelumLengkapIdentitasBosp' => $this->sekolahLengkapIdentitasBospDipilih
+                ? $this->detailFieldBelumLengkapIdentitasBosp($this->sekolahLengkapIdentitasBospDipilih)
+                : [],
             'jkOptions' => PendataanBosp::JK_OPTIONS,
             'statusKepegawaianOptions' => PendataanBosp::STATUS_KEPEGAWAIAN_OPTIONS,
             'pendidikanOptions' => PendataanBosp::PENDIDIKAN_OPTIONS,
