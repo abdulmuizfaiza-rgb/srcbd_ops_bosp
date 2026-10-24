@@ -43,14 +43,46 @@ use RuntimeException;
  * _SECRET), TIDAK ikut ter-commit (.env sudah dikecualikan git sejak awal
  * proyek) maupun ikut ter-zip ke dalam backup.
  *
- * Scope yang dipakai: 'drive.file' (least-privilege, SAMA seperti desain
- * awal - aplikasi HANYA bisa mengakses file yang DIBUAT lewat aplikasi
- * ini sendiri, BUKAN seluruh isi Drive Superadmin) + 'userinfo.email'
+ * Scope yang dipakai: 'drive' PENUH (bukan 'drive.file') + 'userinfo.email'
  * (HANYA utk menampilkan "Terhubung sebagai ..." di UI).
+ *
+ * GANTI SCOPE (2026-10-24, ditemukan user: tombol "Buat Backup Sekarang"
+ * gagal dgn pesan Google "Request had insufficient authentication
+ * scopes" walau link folder tujuan sudah benar). Scope 'drive.file'
+ * SEBELUMNYA dipakai demi least-privilege, TAPI ternyata scope itu HANYA
+ * memberi akses ke file yang DIBUAT lewat aplikasi sendiri ATAU folder
+ * yang dipilih lewat jendela pilih-file Google Picker - BUKAN ke folder
+ * mana pun yang sudah ada sebelumnya di Drive Superadmin (dibuat lewat
+ * Drive langsung, lalu link-nya ditempel di menu ini). Karena desain
+ * fitur ini MEMANG mengizinkan menempel link folder Drive mana pun yang
+ * sudah ada ("folder boleh folder apa saja milik akun yang terhubung" -
+ * lihat index.blade.php), scope 'drive.file' tidak akan pernah cukup
+ * utk alur ini - dikonfirmasi user (AskUserQuestion) utk pindah ke scope
+ * 'drive' penuh (akses ke SELURUH Drive akun yang terhubung) alih-alih
+ * mengubah alur jadi aplikasi yang membuat folder sendiri.
+ *
+ * KONSEKUENSI scope 'drive' (Google mengklasifikasikannya "restricted",
+ * beda dgn 'drive.file' yang "non-sensitive"):
+ * - Saat Superadmin klik "Hubungkan Google Drive", Google akan
+ *   menampilkan peringatan "Aplikasi ini belum diverifikasi" (wajar utk
+ *   aplikasi internal yang belum diajukan verifikasi ke Google) - perlu
+ *   klik "Advanced/Lanjutan" lalu "Buka [nama aplikasi] (tidak aman)"
+ *   utk lanjut. Ini TIDAK berarti aplikasi tidak aman - cuma Google
+ *   belum meninjau aplikasi kecil/internal seperti ini.
+ * - WAJIB: status publikasi OAuth Consent Screen di Google Cloud Console
+ *   harus "In production" (BUKAN "Testing") - kalau masih "Testing",
+ *   refresh_token utk scope restricted seperti 'drive' akan EXPIRED
+ *   OTOMATIS setelah 7 hari oleh Google (bukan bug aplikasi ini), bikin
+ *   koneksi "Hubungkan Google Drive" tiba-tiba putus sendiri tiap
+ *   minggu. Lihat panduan update utk langkah ceknya.
+ * - Koneksi LAMA (refresh_token yang disimpan sebelum perubahan ini)
+ *   TIDAK otomatis mendapat scope baru - WAJIB "Putuskan Koneksi" lalu
+ *   "Hubungkan Google Drive" ulang setelah update ini di-deploy, supaya
+ *   refresh_token baru terbit dengan scope 'drive' yang benar.
  */
 class GoogleDriveService
 {
-    protected const SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
+    protected const SCOPE = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email';
 
     protected const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 
