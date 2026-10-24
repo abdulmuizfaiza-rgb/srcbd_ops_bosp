@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -202,3 +203,54 @@ Artisan::command('audit:bersihkan-data-uji-coba {--hapus-sungguhan : Benar-benar
 
     $this->info('Selesai. Data uji coba (user, sekolah, & data transaksi terkait) sudah dihapus.');
 })->purpose('Hapus data uji coba yang sudah dikonfirmasi user (email abdulmuizfaiza2@gmail.com + sekolah NPSN 12345678) - default PREVIEW, pakai --hapus-sungguhan utk eksekusi');
+
+/**
+ * Permintaan user 2026-10-24 (fitur Tahun Anggaran - rollover otomatis):
+ * Tahun Anggaran Aktif naik OTOMATIS begitu masuk tanggal 1 Januari
+ * pukul 00:00 WIB. Tahun sebelumnya otomatis "terkunci" lewat
+ * mekanisme yang SUDAH ADA sejak Fase 1 (lihat App\Models\
+ * PermintaanAksesTahun & EnsureTahunSesiDipilih) - begitu tahun_aktif
+ * berubah, Admin OPS/Admin BOSP yang session tahun-nya masih tahun
+ * lama otomatis tidak lagi punya akses ke tahun lama itu, KECUALI
+ * sudah mengajukan & disetujui Superadmin lewat menu Tahun Anggaran
+ * (permanen per akun+tahun, sama seperti alur manual yang sudah ada).
+ *
+ * DISENGAJA mengecek & menaikkan tahun_aktif ke TAHUN WIB SAAT INI
+ * (bukan cuma "+1") supaya IDEMPOTEN & BISA "MENYUSUL" (self-healing)
+ * - command ini aman dijalankan berkali-kali kapan pun, TIDAK AKAN
+ * PERNAH menaikkan tahun 2x untuk tahun yang sama (kalau tahun_aktif
+ * sudah >= tahun WIB saat ini, command tidak melakukan apa pun).
+ * Dijadwalkan jalan SETIAP HARI pukul 00:05 WIB (bukan cuma sekali
+ * setahun pas tengah malam 1 Januari) supaya kalau scheduler VPS
+ * sempat mati/terlewat tepat di momen itu (server mati, maintenance,
+ * dll), begitu scheduler jalan lagi di hari-hari berikutnya
+ * tahun_aktif akan otomatis "menyusul" sendiri tanpa perlu campur
+ * tangan Superadmin - 364 hari lainnya command ini hanya mengecek &
+ * tidak melakukan apa pun (no-op, aman & murah, tidak membebani server).
+ *
+ * PENTING: fitur ini HANYA berjalan kalau scheduler Laravel aktif di
+ * server (lihat panduan ONLINE terkait fitur ini - perlu 1x setup
+ * crontab VPS: `* * * * * php artisan schedule:run`). Jalankan manual
+ * kapan saja utk tes (aman, idempoten):
+ *   php artisan tahun-anggaran:naikkan-otomatis
+ */
+Artisan::command('tahun-anggaran:naikkan-otomatis', function () {
+    $setting = \App\Models\TahunAnggaranSetting::current();
+    $tahunWibSaatIni = now('Asia/Jakarta')->year;
+
+    if ($setting->tahun_aktif >= $tahunWibSaatIni) {
+        $this->comment("Tidak ada perubahan - Tahun Anggaran aktif sudah {$setting->tahun_aktif} (tahun WIB saat ini: {$tahunWibSaatIni}).");
+
+        return;
+    }
+
+    $tahunLama = $setting->tahun_aktif;
+    $setting->update(['tahun_aktif' => $tahunWibSaatIni]);
+
+    $this->info("Tahun Anggaran Aktif otomatis naik dari {$tahunLama} ke {$tahunWibSaatIni}.");
+    \Illuminate\Support\Facades\Log::info("Tahun Anggaran Aktif otomatis naik dari {$tahunLama} ke {$tahunWibSaatIni} (rollover otomatis, dipicu scheduler).");
+})->purpose('Naikkan Tahun Anggaran Aktif otomatis kalau sudah masuk tahun baru (WIB) - dijadwalkan harian, aman dijalankan berkali-kali (idempoten)');
+
+Schedule::command('tahun-anggaran:naikkan-otomatis')
+    ->dailyAt('00:05')
+    ->timezone('Asia/Jakarta');
