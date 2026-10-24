@@ -41,7 +41,16 @@ class ForcePasswordChange
                 // di sini juga, pengguna yang harus ganti password DAN
                 // belum aktivasi Authenticator akan terjebak redirect loop
                 // bolak-balik antara halaman ini dan halaman 2FA.
-                'authenticator.aktivasi', 'authenticator.verifikasi'
+                'authenticator.aktivasi', 'authenticator.verifikasi',
+                // Permintaan user 2026-10-24 (fitur Tahun Anggaran): alasan
+                // SAMA PERSIS seperti authenticator.aktivasi/verifikasi di
+                // atas - App\Http\Middleware\EnsureTahunSesiDipilih
+                // berjalan SEBELUM middleware ini (lihat bootstrap/app.php)
+                // dan sudah memutuskan pengguna harus berada di halaman
+                // pilih-tahun dulu. Tanpa pengecualian ini, pengguna yang
+                // harus ganti password DAN belum pilih tahun akan terjebak
+                // redirect loop bolak-balik antara 2 halaman itu.
+                'pilih-tahun'
             )
         ) {
             return redirect()->route('ganti-password-wajib');

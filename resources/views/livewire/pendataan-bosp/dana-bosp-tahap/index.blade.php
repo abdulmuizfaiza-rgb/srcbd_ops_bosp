@@ -23,11 +23,25 @@
 
                     <div class="flex flex-wrap items-center gap-2.5">
                         <label for="tahun" class="text-sm text-slate-600">Tahun</label>
-                        <select wire:model.live="tahun" id="tahun" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
-                            @foreach ($tahunOptions as $opsiTahun)
-                                <option value="{{ $opsiTahun }}">{{ $opsiTahun }}</option>
-                            @endforeach
-                        </select>
+                        {{--
+                            Permintaan user 2026-10-24 (fitur Tahun Anggaran):
+                            dropdown Tahun HANYA tampil untuk Superadmin
+                            ($bolehKelolaSemua) - Admin OPS/Admin BOSP dikunci
+                            total ke tahun sesi login mereka (session
+                            'tahun_sesi'), tidak ada cara ganti tahun di
+                            dalam menu ini lagi, sesuai jawaban user lewat
+                            AskUserQuestion: "Dihapus/dikunci total ke tahun
+                            sesi login".
+                        --}}
+                        @if ($bolehKelolaSemua)
+                            <select wire:model.live="tahun" id="tahun" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
+                                @foreach ($tahunOptions as $opsiTahun)
+                                    <option value="{{ $opsiTahun }}">{{ $opsiTahun }}</option>
+                                @endforeach
+                            </select>
+                        @else
+                            <span id="tahun" class="inline-flex items-center rounded-md bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700">{{ $tahun }}</span>
+                        @endif
 
                         <x-zoom-controls :zoom="$zoomPercent" />
                     </div>

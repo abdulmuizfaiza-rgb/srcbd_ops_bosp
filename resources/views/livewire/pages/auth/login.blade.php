@@ -73,6 +73,13 @@ new #[Layout('layouts.guest')] class extends Component
 
         Session::regenerate();
         session()->forget('google2fa_terverifikasi');
+        // Permintaan user 2026-10-24 (fitur Tahun Anggaran): dihapus juga
+        // di SETIAP titik ini (persis sama seperti baris di atas) supaya
+        // pilihan tahun SELALU ditanyakan ulang tiap ada login baru, bukan
+        // "nyangkut" dari sesi browser login sebelumnya - lihat
+        // App\Http\Middleware\EnsureTahunSesiDipilih & halaman baru
+        // resources/views/livewire/pages/auth/pilih-tahun.blade.php.
+        session()->forget('tahun_sesi');
 
         $this->redirectSetelahLoginKeAlur2fa(Auth::user());
     }
@@ -97,6 +104,13 @@ new #[Layout('layouts.guest')] class extends Component
         Session::flash('tampilkan_popup_timeline_login', true);
         Session::regenerate();
         session()->forget('google2fa_terverifikasi');
+        // Permintaan user 2026-10-24 (fitur Tahun Anggaran): dihapus juga
+        // di SETIAP titik ini (persis sama seperti baris di atas) supaya
+        // pilihan tahun SELALU ditanyakan ulang tiap ada login baru, bukan
+        // "nyangkut" dari sesi browser login sebelumnya - lihat
+        // App\Http\Middleware\EnsureTahunSesiDipilih & halaman baru
+        // resources/views/livewire/pages/auth/pilih-tahun.blade.php.
+        session()->forget('tahun_sesi');
 
         $this->redirectSetelahLoginKeAlur2fa(Auth::user());
     }
@@ -140,6 +154,13 @@ new #[Layout('layouts.guest')] class extends Component
 
         Session::regenerate();
         session()->forget('google2fa_terverifikasi');
+        // Permintaan user 2026-10-24 (fitur Tahun Anggaran): dihapus juga
+        // di SETIAP titik ini (persis sama seperti baris di atas) supaya
+        // pilihan tahun SELALU ditanyakan ulang tiap ada login baru, bukan
+        // "nyangkut" dari sesi browser login sebelumnya - lihat
+        // App\Http\Middleware\EnsureTahunSesiDipilih & halaman baru
+        // resources/views/livewire/pages/auth/pilih-tahun.blade.php.
+        session()->forget('tahun_sesi');
 
         $this->redirectSetelahLoginKeAlur2fa(Auth::user());
     }

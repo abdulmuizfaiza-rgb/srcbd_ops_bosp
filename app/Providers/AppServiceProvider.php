@@ -70,6 +70,14 @@ class AppServiceProvider extends ServiceProvider
         // dan Admin BOSP; hak edit/tambah/hapus per baris diatur di dalam komponennya sendiri.
         Gate::define('akses-profil-sekolah', fn (User $user) => true);
 
+        // Menu "Tahun Anggaran" (permintaan user 2026-10-24) - bisa dibuka
+        // SEMUA level (beda dari akses-pengguna/akses-tampilan yang
+        // Superadmin-only) karena Admin OPS/Admin BOSP juga perlu membuka
+        // menu ini untuk mengajukan permintaan akses tahun sebelumnya - lihat
+        // App\Livewire\TahunAnggaran\Index::bolehKelolaSemua() untuk
+        // pembedaan isi menu per level DI DALAM komponennya sendiri.
+        Gate::define('akses-tahun-anggaran', fn (User $user) => true);
+
         Gate::define('akses-pengguna', fn (User $user) => $user->isSuperadmin());
 
         Gate::define('akses-tampilan', fn (User $user) => $user->isSuperadmin());

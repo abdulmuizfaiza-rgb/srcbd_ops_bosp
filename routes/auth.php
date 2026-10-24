@@ -28,4 +28,12 @@ Route::middleware('auth')->group(function () {
 
     Volt::route('authenticator/verifikasi', 'pages.auth.authenticator-verifikasi')
         ->name('authenticator.verifikasi');
+
+    // Pemilihan Tahun Anggaran (permintaan user 2026-10-24) - KHUSUS
+    // Admin OPS/Admin BOSP, dipaksa muncul lewat
+    // App\Http\Middleware\EnsureTahunSesiDipilih (lihat bootstrap/app.php)
+    // tepat setelah 2FA selesai. Middleware 'auth' (bukan 'guest') dengan
+    // alasan yang SAMA seperti rute Authenticator di atas.
+    Volt::route('pilih-tahun', 'pages.auth.pilih-tahun')
+        ->name('pilih-tahun');
 });

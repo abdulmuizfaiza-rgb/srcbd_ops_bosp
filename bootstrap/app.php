@@ -32,6 +32,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             \App\Http\Middleware\EnsureGoogleAuthenticatorVerified::class,
+            // Pemilihan Tahun Anggaran (permintaan user 2026-10-24) -
+            // SENGAJA didaftarkan tepat SETELAH 2FA (lihat docblock
+            // App\Http\Middleware\EnsureTahunSesiDipilih) supaya langkah
+            // ini baru muncul SETELAH 2FA selesai.
+            \App\Http\Middleware\EnsureTahunSesiDipilih::class,
             \App\Http\Middleware\ForcePasswordChange::class,
             \App\Http\Middleware\EnsureOnboardingComplete::class,
             \App\Http\Middleware\CatatBukaHalamanData::class,

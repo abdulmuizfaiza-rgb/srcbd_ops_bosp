@@ -216,6 +216,13 @@ new class extends Component
                     </x-sidebar-link>
                 @endcan
 
+                {{-- Menu baru "Tahun Anggaran" (permintaan user 2026-10-24) - tampil utk SEMUA level, isinya beda per level di dalam komponennya sendiri. --}}
+                @can('akses-tahun-anggaran')
+                    <x-sidebar-link :href="route('tahun-anggaran.index')" :active="request()->routeIs('tahun-anggaran.*')" wire:navigate.hover>
+                        {{ __('Tahun Anggaran') }}
+                    </x-sidebar-link>
+                @endcan
+
                 @can('akses-pengguna')
                     <x-sidebar-link :href="route('pengguna.index')" :active="request()->routeIs('pengguna.*')" wire:navigate.hover>
                         {{ __('Pengguna') }}
@@ -395,6 +402,12 @@ new class extends Component
             @can('akses-timeline-pekerjaan')
                 <x-sidebar-link :href="route('timeline-pekerjaan.index')" :active="request()->routeIs('timeline-pekerjaan.*')" wire:navigate.hover>
                     {{ __('Timeline Pekerjaan') }}
+                </x-sidebar-link>
+            @endcan
+
+            @can('akses-tahun-anggaran')
+                <x-sidebar-link :href="route('tahun-anggaran.index')" :active="request()->routeIs('tahun-anggaran.*')" wire:navigate.hover>
+                    {{ __('Tahun Anggaran') }}
                 </x-sidebar-link>
             @endcan
 

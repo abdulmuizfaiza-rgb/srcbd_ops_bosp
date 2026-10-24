@@ -53,7 +53,11 @@ class EnsureOnboardingComplete
             // ForcePasswordChange (lihat komentar di sana): tanpa ini,
             // Admin OPS/BOSP yang onboarding-nya belum lengkap DAN belum
             // aktivasi Authenticator akan terjebak redirect loop.
-            'authenticator.aktivasi', 'authenticator.verifikasi'
+            'authenticator.aktivasi', 'authenticator.verifikasi',
+            // Permintaan user 2026-10-24 (fitur Tahun Anggaran): alasan
+            // SAMA PERSIS seperti authenticator.aktivasi/verifikasi di
+            // atas - lihat komentar yang sama di ForcePasswordChange.
+            'pilih-tahun'
         )) {
             return $next($request);
         }

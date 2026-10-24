@@ -39,6 +39,7 @@ use App\Livewire\PendataanOps\Lampiran2c\Index as Lampiran2cIndex;
 use App\Livewire\PendataanOps\SuratTpg\Index as SuratTpgIndex;
 use App\Livewire\PendataanOps\Unduhan\Index as UnduhanIndex;
 use App\Livewire\Pengguna\Index as PenggunaIndex;
+use App\Livewire\TahunAnggaran\Index as TahunAnggaranIndex;
 use App\Livewire\ProfilSekolah\Index as ProfilSekolahIndex;
 use App\Livewire\Tampilan\Index as TampilanIndex;
 use App\Livewire\TimelinePekerjaan\Index as TimelinePekerjaanIndex;
@@ -128,6 +129,13 @@ Route::middleware(['auth', 'can:akses-timeline-pekerjaan'])->group(function () {
 
 Route::middleware(['auth', 'can:akses-pengguna'])->group(function () {
     Route::get('pengguna', PenggunaIndex::class)->name('pengguna.index');
+});
+
+// Menu "Tahun Anggaran" (permintaan user 2026-10-24) - bisa dibuka SEMUA
+// level (lihat Gate 'akses-tahun-anggaran' di AppServiceProvider), isinya
+// berbeda per level DI DALAM App\Livewire\TahunAnggaran\Index sendiri.
+Route::middleware(['auth', 'can:akses-tahun-anggaran'])->group(function () {
+    Route::get('tahun-anggaran', TahunAnggaranIndex::class)->name('tahun-anggaran.index');
 });
 
 Route::middleware(['auth', 'can:akses-tampilan'])->group(function () {

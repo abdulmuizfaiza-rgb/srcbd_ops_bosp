@@ -108,7 +108,19 @@ class Index extends Component
 
     public function mount(): void
     {
-        $this->tahun = now()->year;
+        // Permintaan user 2026-10-24 (fitur Tahun Anggaran): Superadmin
+        // TETAP bebas (tahun berjalan seperti sebelumnya, dropdown Tahun
+        // di Blade tetap bisa diganti). Admin OPS/Admin BOSP TERKUNCI ke
+        // tahun yang dipilih saat login (session 'tahun_sesi', diisi di
+        // resources/views/livewire/pages/auth/pilih-tahun.blade.php) -
+        // dropdown Tahun disembunyikan total untuk mereka di Blade (lihat
+        // variabel $bolehKelolaSemua yang sudah dikirim ke view), sesuai
+        // jawaban user lewat AskUserQuestion: "Dihapus/dikunci total ke
+        // tahun sesi login". Fallback ke TahunAnggaranSetting jaga-jaga
+        // kalau 'tahun_sesi' entah bagaimana belum terisi.
+        $this->tahun = $this->bolehKelolaSemua()
+            ? now()->year
+            : (int) session('tahun_sesi', \App\Models\TahunAnggaranSetting::current()->tahun_aktif);
     }
 
     protected function bolehKelolaSemua(): bool
