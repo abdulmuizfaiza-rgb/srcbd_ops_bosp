@@ -76,6 +76,8 @@ class Index extends Component
     #[Url(as: 'triwulan')]
     public int $triwulan = 1;
 
+    public int $tahun;
+
     public string $search = '';
 
     public ?int $filterSekolahId = null;
@@ -151,6 +153,29 @@ class Index extends Component
      */
     public ?string $statusInputDipilih = null;
 
+    public function mount(): void
+    {
+        // Permintaan user 2026-10-24 (fitur Tahun Anggaran, perluasan ke
+        // Lampiran 2a/2b/2c - sebelumnya menu ini tidak punya dropdown
+        // Tahun sama sekali, selalu now()->year): Superadmin TETAP bebas
+        // (tahun berjalan seperti sebelumnya, dropdown Tahun di Blade
+        // tetap bisa diganti). Admin OPS/Admin BOSP TERKUNCI ke tahun
+        // yang dipilih saat login (session 'tahun_sesi', diisi di
+        // resources/views/livewire/pages/auth/pilih-tahun.blade.php) -
+        // dropdown Tahun disembunyikan total untuk mereka di Blade,
+        // pola SAMA PERSIS dengan Dana BOSP Tahap/Rekap RKAS/menu BOSP
+        // lain. Fallback ke TahunAnggaranSetting jaga-jaga kalau
+        // 'tahun_sesi' entah bagaimana belum terisi.
+        $this->tahun = $this->bolehKelolaSemua()
+            ? now()->year
+            : (int) session('tahun_sesi', \App\Models\TahunAnggaranSetting::current()->tahun_aktif);
+    }
+
+    public function updatedTahun(): void
+    {
+        $this->resetPage();
+    }
+
     protected function bolehKelolaSemua(): bool
     {
         return auth()->user()->isSuperadmin();
@@ -222,7 +247,7 @@ class Index extends Component
         // devtools) ada di simpan().
         $sudahAda = Lampiran2c::where('profil_sekolah_id', $ptk->profil_sekolah_id)
             ->where('triwulan', $this->triwulan)
-            ->where('tahun', now()->year)
+            ->where('tahun', $this->tahun)
             ->where('nuptk', $ptk->nuptk)
             ->when($this->editingId, fn ($q) => $q->where('id', '!=', $this->editingId))
             ->exists();
@@ -377,7 +402,7 @@ class Index extends Component
         // mengetik manual (tanpa pilih dari dropdown Data PTK).
         $sudahAda = Lampiran2c::where('profil_sekolah_id', $validated['profil_sekolah_id'])
             ->where('triwulan', $this->triwulan)
-            ->where('tahun', now()->year)
+            ->where('tahun', $this->tahun)
             ->where('nuptk', $validated['nuptk'])
             ->when($this->editingId, fn ($q) => $q->where('id', '!=', $this->editingId))
             ->exists();
@@ -399,7 +424,7 @@ class Index extends Component
             unset($validated['created_by']);
             $baris->update($validated);
         } else {
-            $validated['tahun'] = now()->year;
+            $validated['tahun'] = $this->tahun;
             Lampiran2c::create($validated);
         }
 
@@ -487,7 +512,7 @@ class Index extends Component
 
     protected function queryDasar()
     {
-        $query = Lampiran2c::query()->with('profilSekolah')->where('triwulan', $this->triwulan);
+        $query = Lampiran2c::query()->with('profilSekolah')->where('triwulan', $this->triwulan)->where('tahun', $this->tahun);
 
         if (! $this->bolehKelolaSemua()) {
             $query->where('profil_sekolah_id', $this->sekolahSayaId());
@@ -579,7 +604,7 @@ class Index extends Component
         // filter pencarian yang sedang aktif - dikonfirmasi lewat
         // AskUserQuestion, pola sama dgn "Data belum lengkap" pada Data
         // PTK supaya jadi alat pantau menyeluruh).
-        $jumlahSekolahSudahInput = Lampiran2c::where('triwulan', $this->triwulan)->distinct()->count('profil_sekolah_id');
+        $jumlahSekolahSudahInput = Lampiran2c::where('triwulan', $this->triwulan)->where('tahun', $this->tahun)->distinct()->count('profil_sekolah_id');
 
         return [
             'negeri' => $jumlahNegeri,
@@ -608,7 +633,7 @@ class Index extends Component
      */
     protected function daftarSekolahInput(string $status): \Illuminate\Support\Collection
     {
-        $idSudahInput = Lampiran2c::where('triwulan', $this->triwulan)->distinct()->pluck('profil_sekolah_id');
+        $idSudahInput = Lampiran2c::where('triwulan', $this->triwulan)->where('tahun', $this->tahun)->distinct()->pluck('profil_sekolah_id');
 
         $query = ProfilSekolah::query()->urutStandar();
 
@@ -640,6 +665,8 @@ class Index extends Component
 
     public function render()
     {
+        $tahunOptions = range(now()->year - 2, now()->year + 1);
+
         $daftar = $this->daftarTerurut();
 
         $idHalamanIni = $daftar->pluck('id')->all();
@@ -663,6 +690,7 @@ class Index extends Component
             'golonganOptions' => Lampiran2c::GOLONGAN_OPTIONS,
             'pangkatBerkalaOptions' => Lampiran2c::PANGKAT_BERKALA_OPTIONS,
             'bolehKelolaSemua' => $this->bolehKelolaSemua(),
+            'tahunOptions' => array_reverse($tahunOptions),
             'semuaTerpilih' => $semuaTerpilih,
             'daftarPtkOptions' => $this->daftarPtkUntukPilihan(),
         ]);
