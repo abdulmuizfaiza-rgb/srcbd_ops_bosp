@@ -30,6 +30,9 @@
                         <button wire:click="pindahTab('kecocokan')" class="pb-3 text-sm font-medium border-b-2 transition @if ($tab === 'kecocokan') border-blue-600 text-blue-600 @else border-transparent text-slate-500 hover:text-slate-700 @endif">
                             Cek Kecocokan Data
                         </button>
+                        <button wire:click="pindahTab('storage')" class="pb-3 text-sm font-medium border-b-2 transition @if ($tab === 'storage') border-blue-600 text-blue-600 @else border-transparent text-slate-500 hover:text-slate-700 @endif">
+                            Storage & Langganan VPS
+                        </button>
                     </nav>
                 </div>
 
@@ -458,6 +461,114 @@
                                     <p class="text-xs text-slate-400">Belum pernah diperiksa - klik "Cek Ulang" di atas.</p>
                                 @endif
                             @endif
+                        </div>
+                    @elseif ($tab === 'storage')
+                        {{--
+                            Tab BARU "Storage & Langganan VPS" (permintaan
+                            user 2026-10-24) - 3 bagian: (1) kapasitas disk
+                            VPS keseluruhan, (2) ukuran database & folder
+                            aplikasi, (3) tanggal jatuh tempo langganan VPS
+                            idcloudhost (diisi MANUAL oleh Superadmin, lihat
+                            App\Livewire\CekDatabaseAplikasi\Index::simpanLangganan()).
+                        --}}
+                        <div class="space-y-8">
+                            {{-- Bagian 1: Kapasitas Disk VPS Keseluruhan --}}
+                            <div>
+                                <h3 class="text-sm font-semibold text-slate-700 mb-3">Kapasitas Disk VPS Keseluruhan</h3>
+
+                                @if ($infoStorageVps['adalahWindows'])
+                                    <div class="p-3 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-xs mb-3">
+                                        Anda sedang membuka aplikasi ini di LOKAL (komputer Windows) - angka di bawah ini menunjukkan kapasitas drive komputer Anda sendiri, <strong>BUKAN kapasitas VPS</strong>. Buka halaman ini di <strong>srcibadak.my.id</strong> (ONLINE) untuk melihat kapasitas VPS yang sebenarnya.
+                                    </div>
+                                @endif
+
+                                @if ($infoStorageVps['tersedia'])
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                                        <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                                            <p class="text-xs text-slate-500 mb-1">Total Kapasitas</p>
+                                            <p class="text-lg font-semibold text-slate-800">{{ $this->formatBytes($infoStorageVps['totalBytes']) }}</p>
+                                        </div>
+                                        <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                            <p class="text-xs text-blue-600 mb-1">Terpakai</p>
+                                            <p class="text-lg font-semibold text-blue-700">{{ $this->formatBytes($infoStorageVps['terpakaiBytes']) }} <span class="text-sm font-normal">({{ $infoStorageVps['persenTerpakai'] }}%)</span></p>
+                                        </div>
+                                        <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+                                            <p class="text-xs text-green-600 mb-1">Tersisa</p>
+                                            <p class="text-lg font-semibold text-green-700">{{ $this->formatBytes($infoStorageVps['bebasBytes']) }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                                        <div class="h-2.5 rounded-full @if ($infoStorageVps['persenTerpakai'] >= 90) bg-red-500 @elseif ($infoStorageVps['persenTerpakai'] >= 75) bg-amber-500 @else bg-blue-500 @endif" style="width: {{ min($infoStorageVps['persenTerpakai'], 100) }}%"></div>
+                                    </div>
+                                @else
+                                    <p class="text-sm text-slate-400">Tidak dapat mengambil info kapasitas disk dari server ini.</p>
+                                @endif
+                            </div>
+
+                            {{-- Bagian 2: Ukuran Database & Folder Aplikasi --}}
+                            <div>
+                                <h3 class="text-sm font-semibold text-slate-700 mb-3">Ukuran Database &amp; Folder Aplikasi</h3>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                                        <p class="text-xs text-slate-500 mb-1">Ukuran Database</p>
+                                        <p class="text-lg font-semibold text-slate-800">{{ $this->formatBytes($ukuranDatabaseBytes) }}</p>
+                                    </div>
+                                    <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <p class="text-xs text-slate-500">Ukuran Folder Aplikasi</p>
+                                            <x-secondary-button type="button" wire:click="hitungUkuranAplikasi" wire:loading.attr="disabled" wire:target="hitungUkuranAplikasi" class="whitespace-nowrap !px-2 !py-1 !text-[10px]">
+                                                <span wire:loading.remove wire:target="hitungUkuranAplikasi">Hitung Ukuran Aplikasi</span>
+                                                <span wire:loading wire:target="hitungUkuranAplikasi">Menghitung...</span>
+                                            </x-secondary-button>
+                                        </div>
+                                        <p class="text-lg font-semibold text-slate-800">{{ $this->formatBytes($ukuranFolderAplikasiBytes) }}</p>
+                                        @if ($ukuranAplikasiDihitungPada)
+                                            <p class="text-xs text-slate-400 mt-1">Dihitung pada: {{ $ukuranAplikasiDihitungPada }}</p>
+                                        @else
+                                            <p class="text-xs text-slate-400 mt-1">Klik tombol di atas untuk menghitung (bisa makan waktu beberapa detik).</p>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Bagian 3: Langganan VPS (idcloudhost) - diisi manual Superadmin --}}
+                            <div>
+                                <h3 class="text-sm font-semibold text-slate-700 mb-3">Jatuh Tempo Langganan VPS (idcloudhost)</h3>
+                                <p class="text-xs text-slate-500 mb-3">Tanggal ini diisi manual - aplikasi TIDAK mengambil data tagihan otomatis dari idcloudhost. Perbarui tanggalnya setiap kali Anda top up/perpanjang langganan.</p>
+
+                                @if ($statusJatuhTempo)
+                                    <div class="p-3 rounded-lg text-sm mb-4 border
+                                        @if ($statusJatuhTempo['level'] === 'lewat') bg-red-50 border-red-200 text-red-700
+                                        @elseif ($statusJatuhTempo['level'] === 'mendesak') bg-red-50 border-red-200 text-red-700
+                                        @elseif ($statusJatuhTempo['level'] === 'perhatian') bg-amber-50 border-amber-200 text-amber-700
+                                        @else bg-green-50 border-green-200 text-green-700
+                                        @endif">
+                                        @if ($statusJatuhTempo['level'] === 'lewat')
+                                            <strong>Sudah lewat {{ abs($statusJatuhTempo['sisaHari']) }} hari!</strong> Segera top up langganan VPS supaya aplikasi tidak berhenti berjalan.
+                                        @elseif ($statusJatuhTempo['sisaHari'] === 0)
+                                            <strong>Jatuh tempo HARI INI.</strong> Segera top up langganan VPS.
+                                        @else
+                                            Sisa <strong>{{ $statusJatuhTempo['sisaHari'] }} hari</strong> lagi sebelum jatuh tempo.
+                                        @endif
+                                    </div>
+                                @endif
+
+                                <form wire:submit="simpanLangganan" class="space-y-3 max-w-md">
+                                    <div>
+                                        <x-input-label for="tanggalJatuhTempo" value="Tanggal Jatuh Tempo" />
+                                        <input wire:model.live="tanggalJatuhTempo" id="tanggalJatuhTempo" type="date" class="mt-1 block w-full border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
+                                        <x-input-error :messages="$errors->get('tanggalJatuhTempo')" class="mt-1" />
+                                    </div>
+                                    <div>
+                                        <x-input-label for="catatanLangganan" value="Catatan (opsional)" />
+                                        <textarea wire:model="catatanLangganan" id="catatanLangganan" rows="2" placeholder="Misal: paket VPS 2 vCPU/4GB, bayar tiap bulan" class="mt-1 block w-full border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm"></textarea>
+                                        <x-input-error :messages="$errors->get('catatanLangganan')" class="mt-1" />
+                                    </div>
+                                    <x-primary-button type="submit" wire:loading.attr="disabled" wire:target="simpanLangganan">
+                                        Simpan
+                                    </x-primary-button>
+                                </form>
+                            </div>
                         </div>
                     @endif
                 </div>

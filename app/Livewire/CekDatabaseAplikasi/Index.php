@@ -14,6 +14,7 @@ use App\Models\Lampiran2a;
 use App\Models\Lampiran2b;
 use App\Models\Lampiran2c;
 use App\Models\LanggananDayaJasa;
+use App\Models\LanggananVpsSetting;
 use App\Models\LaporanRealisasiBosp;
 use App\Models\PajakBospReguler;
 use App\Models\PendataanBosp;
@@ -42,7 +43,7 @@ use Livewire\WithPagination;
 /**
  * Menu "Cek Database dan Aplikasi" - BARU, permintaan user 2026-09-27.
  *
- * 3 tab:
+ * 5 tab:
  * 1. Integritas Data: cocokkan data yang tampil di aplikasi dengan yang
  *    tersimpan di database - cari (a) data yatim (induk sekolah sudah
  *    dihapus), (b) data "terkunci" di layar tapi masih tersimpan di
@@ -54,6 +55,19 @@ use Livewire\WithPagination;
  *    App\Models\FailedLoginAttempt, dicatat dari LoginForm).
  * 3. Log Akses Data: daftar setiap kali akun membuka halaman data atau
  *    mengunduh data (lihat App\Models\AksesDataLog).
+ * 4. Cek Kecocokan Data: lihat cekKecocokanData() & cekUlangSuperadmin().
+ * 5. Storage & Langganan VPS (BARU, permintaan user 2026-10-24): (a)
+ *    kapasitas disk VPS keseluruhan terpakai/tersisa (lihat
+ *    infoStorageVps() - HANYA akurat saat aplikasi berjalan ONLINE di
+ *    VPS Linux, di LOKAL/Windows akan menunjukkan drive komputer Lokal
+ *    sendiri, bukan VPS), (b) ukuran database PostgreSQL aplikasi ini
+ *    (lihat ukuranDatabaseBytes(), cepat, dihitung otomatis), (c) ukuran
+ *    total folder aplikasi (lihat hitungUkuranAplikasi(), BISA LAMBAT,
+ *    SENGAJA hanya dihitung lewat tombol manual, bukan otomatis), dan
+ *    (d) tanggal jatuh tempo langganan VPS idcloudhost - DIISI MANUAL
+ *    oleh Superadmin (dikonfirmasi lewat AskUserQuestion, BUKAN ditarik
+ *    otomatis lewat API idcloudhost - tidak ada kredensial yang
+ *    disimpan di aplikasi ini).
  *
  * SEMUA pengecekan integritas di sini bersifat BACA DULU baru HAPUS -
  * tombol "Bersihkan Otomatis" selalu meminta konfirmasi dulu (pola sama
@@ -70,6 +84,19 @@ class Index extends Component
 
     #[Url(as: 'tab')]
     public string $tab = 'integritas';
+
+    public function mount(): void
+    {
+        // Permintaan user 2026-10-24 (tab baru "Storage & Langganan VPS")
+        // - muat tanggal jatuh tempo & catatan yang SUDAH tersimpan
+        // (kalau ada) ke properti form, supaya form langsung terisi
+        // begitu Superadmin membuka halaman ini (tidak perlu pindah tab
+        // dulu - field ini ringan, 1 baris singleton, aman dimuat di
+        // mount()).
+        $langganan = LanggananVpsSetting::current();
+        $this->tanggalJatuhTempo = $langganan->tanggal_jatuh_tempo?->format('Y-m-d');
+        $this->catatanLangganan = $langganan->catatan ?? '';
+    }
 
     // --- State tab Integritas Data ---
     public ?string $confirmingBersihkan = null;
@@ -144,6 +171,24 @@ class Index extends Component
     public ?string $kecocokanSuperadminError = null;
 
     public ?string $kecocokanSuperadminDiperiksaPada = null;
+
+    // --- State tab Storage & Langganan VPS (permintaan user 2026-10-24) ---
+
+    public ?string $tanggalJatuhTempo = null;
+
+    public string $catatanLangganan = '';
+
+    /**
+     * Ukuran total folder aplikasi (base_path(), termasuk vendor/,
+     * storage/, .git/ kalau ada) - null berarti BELUM PERNAH dihitung
+     * sejak halaman ini dibuka. SENGAJA TIDAK dihitung otomatis (lihat
+     * hitungUkuranAplikasi()), hanya lewat tombol manual "Hitung Ukuran
+     * Aplikasi" karena menelusuri seluruh folder bisa lambat (ribuan
+     * file di vendor/).
+     */
+    public ?int $ukuranFolderAplikasiBytes = null;
+
+    public ?string $ukuranAplikasiDihitungPada = null;
 
     /**
      * Daftar modul yang datanya terikat ke satu sekolah (profil_sekolah_id)
@@ -473,6 +518,183 @@ class Index extends Component
         }
     }
 
+    /**
+     * Simpan tanggal jatuh tempo + catatan langganan VPS (tab "Storage &
+     * Langganan VPS", permintaan user 2026-10-24). Diisi MANUAL oleh
+     * Superadmin - tidak ada pengambilan data otomatis dari idcloudhost.
+     */
+    public function simpanLangganan(): void
+    {
+        $validated = $this->validate([
+            'tanggalJatuhTempo' => ['nullable', 'date'],
+            'catatanLangganan' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        LanggananVpsSetting::current()->update([
+            'tanggal_jatuh_tempo' => $validated['tanggalJatuhTempo'],
+            'catatan' => $validated['catatanLangganan'],
+        ]);
+
+        session()->flash('status', 'Tanggal jatuh tempo langganan VPS berhasil disimpan.');
+    }
+
+    /**
+     * Kapasitas disk VPS keseluruhan (terpakai/tersisa) - dibaca
+     * langsung dari OS tempat aplikasi ini berjalan lewat fungsi native
+     * PHP disk_total_space()/disk_free_space() (CEPAT, aman dihitung
+     * otomatis setiap tab "storage" dibuka, lihat render()).
+     *
+     * PENTING: HANYA akurat sebagai "kapasitas VPS" saat aplikasi
+     * berjalan ONLINE di server Linux. Saat dijalankan LOKAL di
+     * komputer Windows, fungsi ini akan membaca kapasitas drive
+     * komputer Lokal itu sendiri (BUKAN VPS) - ditandai lewat
+     * 'adalahWindows' supaya blade bisa menampilkan peringatan yang
+     * jujur, bukan angka yang menyesatkan.
+     *
+     * @return array{tersedia: bool, adalahWindows: bool, totalBytes?: int, terpakaiBytes?: int, bebasBytes?: int, persenTerpakai?: float}
+     */
+    public function infoStorageVps(): array
+    {
+        $path = base_path();
+        $total = @disk_total_space($path);
+        $bebas = @disk_free_space($path);
+
+        if ($total === false || $bebas === false) {
+            return [
+                'tersedia' => false,
+                'adalahWindows' => PHP_OS_FAMILY === 'Windows',
+            ];
+        }
+
+        $terpakai = $total - $bebas;
+
+        return [
+            'tersedia' => true,
+            'adalahWindows' => PHP_OS_FAMILY === 'Windows',
+            'totalBytes' => (int) $total,
+            'terpakaiBytes' => (int) $terpakai,
+            'bebasBytes' => (int) $bebas,
+            'persenTerpakai' => $total > 0 ? round(($terpakai / $total) * 100, 1) : 0.0,
+        ];
+    }
+
+    /**
+     * Ukuran database PostgreSQL yang dipakai aplikasi ini - 1 query
+     * bawaan PostgreSQL (pg_database_size), CEPAT, aman dihitung
+     * otomatis setiap tab "storage" dibuka (lihat render()), TIDAK
+     * seperti ukuran folder aplikasi di bawah yang harus tombol manual.
+     */
+    public function ukuranDatabaseBytes(): ?int
+    {
+        try {
+            $baris = DB::selectOne('select pg_database_size(current_database()) as ukuran');
+
+            return $baris ? (int) $baris->ukuran : null;
+        } catch (\Throwable $e) {
+            report($e);
+
+            return null;
+        }
+    }
+
+    /**
+     * Ukuran total folder aplikasi (base_path(), termasuk vendor/,
+     * storage/, .git/ kalau ada) - menelusuri SELURUH file lewat PHP
+     * (RecursiveDirectoryIterator), BISA LAMBAT kalau folder besar
+     * (ribuan file di vendor/). SENGAJA TIDAK dihitung otomatis setiap
+     * tab dibuka/render() - hanya dipanggil lewat tombol manual "Hitung
+     * Ukuran Aplikasi" di blade, pola sama seperti tombol "Cek Ulang"
+     * manual lain di halaman ini (mis. cekUlangKecocokanData()).
+     */
+    public function hitungUkuranAplikasi(): void
+    {
+        $total = 0;
+
+        try {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator(base_path(), \FilesystemIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::LEAVES_ONLY
+            );
+
+            foreach ($iterator as $file) {
+                if ($file->isFile()) {
+                    $total += $file->getSize();
+                }
+            }
+
+            $this->ukuranFolderAplikasiBytes = $total;
+        } catch (\Throwable $e) {
+            report($e);
+            $this->ukuranFolderAplikasiBytes = null;
+        }
+
+        $this->ukuranAplikasiDihitungPada = now()->keWaktuLokal()->translatedFormat('d M Y H:i');
+    }
+
+    /**
+     * Status visual (sisa hari + tingkat kedesakan) tanggal jatuh tempo
+     * langganan VPS - dihitung dari properti form $tanggalJatuhTempo yang
+     * SEDANG ditampilkan (bukan query ulang ke database), supaya kalau
+     * Superadmin mengetik tanggal baru di form, pratinjau status ikut
+     * berubah SEBELUM tombol "Simpan" ditekan.
+     *
+     * @return array{sisaHari: int, level: string}|null null kalau tanggal belum diisi/tidak valid
+     */
+    public function statusJatuhTempo(): ?array
+    {
+        if (! $this->tanggalJatuhTempo) {
+            return null;
+        }
+
+        try {
+            $tanggal = \Carbon\Carbon::parse($this->tanggalJatuhTempo, 'Asia/Jakarta')->startOfDay();
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        // Dihitung manual (selisih absolut + tanda eksplisit lewat
+        // perbandingan), BUKAN memakai diffInDays($tanggal, false) secara
+        // langsung - konvensi tanda hasil "signed" Carbon untuk diffInDays
+        // pernah berubah antar versi & gampang salah arah (lewat tempo
+        // malah ditampilkan sebagai "akan datang" atau sebaliknya), jadi
+        // sengaja dihitung eksplisit supaya pasti benar.
+        $hariIni = now('Asia/Jakarta')->startOfDay();
+        $sisaHari = (int) $hariIni->diffInDays($tanggal, true);
+        if ($tanggal->lessThan($hariIni)) {
+            $sisaHari = -$sisaHari;
+        }
+
+        $level = match (true) {
+            $sisaHari < 0 => 'lewat',
+            $sisaHari <= 3 => 'mendesak',
+            $sisaHari <= 7 => 'perhatian',
+            default => 'aman',
+        };
+
+        return [
+            'sisaHari' => $sisaHari,
+            'level' => $level,
+        ];
+    }
+
+    /**
+     * Format jumlah byte jadi satuan yang mudah dibaca (KB/MB/GB/TB) -
+     * dipakai bareng oleh tampilan kapasitas VPS, ukuran database, &
+     * ukuran folder aplikasi di blade (tab "Storage & Langganan VPS").
+     */
+    public function formatBytes(?int $bytes): string
+    {
+        if ($bytes === null) {
+            return '-';
+        }
+
+        $unit = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $i = $bytes > 0 ? (int) floor(log($bytes, 1024)) : 0;
+        $i = min($i, count($unit) - 1);
+
+        return number_format($bytes / (1024 ** $i), 2).' '.$unit[$i];
+    }
+
     public function pindahTab(string $tab): void
     {
         $this->tab = $tab;
@@ -773,6 +995,9 @@ class Index extends Component
             'semuaTerpilihLoginGagal' => $semuaTerpilihLoginGagal,
             'semuaTerpilihAksesData' => $semuaTerpilihAksesData,
             'kecocokanData' => $this->tab === 'kecocokan' ? $this->cekKecocokanData() : [],
+            'infoStorageVps' => $this->tab === 'storage' ? $this->infoStorageVps() : null,
+            'ukuranDatabaseBytes' => $this->tab === 'storage' ? $this->ukuranDatabaseBytes() : null,
+            'statusJatuhTempo' => $this->tab === 'storage' ? $this->statusJatuhTempo() : null,
         ]);
     }
 }
