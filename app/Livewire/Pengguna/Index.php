@@ -109,6 +109,19 @@ class Index extends Component
      */
     public array $terpilihUntukApprove = [];
 
+    /**
+     * State modal "Rincian Registrasi per Sekolah" (permintaan user
+     * 2026-10-24: "tambahkan jumlah admin ops dan admin bosp yang sudah
+     * registrasi, registrasi belum disetujui dan registrasi yang sudah
+     * disetujui ... berdasarkan nama sekolah kemudian nama sekolah
+     * tersebut diklik dan muncul rinciannya") - HANYA relevan di tab
+     * Admin OPS/Admin BOSP (TIDAK di tab Superadmin, krn akun Superadmin
+     * tidak terikat ke 1 sekolah). Pola SAMA dgn modal rincian
+     * lengkap/belum lengkap di menu-menu lain (Profil Sekolah, Identitas
+     * OPS/BOSP, dst) - 1 nama sekolah dipilih, modal muncul.
+     */
+    public ?string $sekolahRingkasanRegistrasiDipilih = null;
+
     public bool $showModalSamakanMassal = false;
 
     /** @var array<int, string> */
@@ -154,6 +167,7 @@ class Index extends Component
     {
         $this->tab = $tab;
         $this->filterSekolahId = null;
+        $this->sekolahRingkasanRegistrasiDipilih = null;
         $this->resetPage();
     }
 
@@ -384,6 +398,54 @@ class Index extends Component
         session()->flash('status', $jumlah > 0
             ? $jumlah.' akun berhasil disetujui dan sekarang bisa digunakan untuk login.'
             : 'Tidak ada akun yang disetujui (mungkin sudah disetujui sebelumnya).');
+    }
+
+    /**
+     * Ringkasan registrasi PER SEKOLAH utk 1 level akses (Admin OPS ATAU
+     * Admin BOSP) - permintaan user 2026-10-24. Setiap sekolah HANYA bisa
+     * punya maksimal 1 akun per level (ditegakkan di form registrasi,
+     * lihat Livewire\Pages\Auth\Register::register() - pesan error
+     * "Sekolah ini sudah memiliki akun ... baik yang aktif maupun yang
+     * masih menunggu persetujuan"), jadi status per sekolah SELALU salah
+     * satu dari 3 kemungkinan (bukan jumlah/angka):
+     * - 'belum'     = belum ada yang mendaftar sama sekali.
+     * - 'menunggu'  = sudah mendaftar, is_approved masih false.
+     * - 'disetujui' = sudah mendaftar DAN is_approved true.
+     *
+     * Dipakai bareng utk badge ringkasan maupun detail (field $user pada
+     * tiap baris SUDAH berisi data lengkap, jadi modal rincian tidak
+     * perlu query ulang - lihat render()).
+     *
+     * @return \Illuminate\Support\Collection<int, object{nama_sekolah: string, status: string, user: ?User}>
+     */
+    protected function ringkasanRegistrasiPerSekolah(string $levelAkses): \Illuminate\Support\Collection
+    {
+        return ProfilSekolah::with(['users' => function ($q) use ($levelAkses) {
+            $q->where('level_akses', $levelAkses);
+        }])
+            ->urutStandar()
+            ->get()
+            ->map(function (ProfilSekolah $sekolah) {
+                $user = $sekolah->users->first();
+
+                return (object) [
+                    'nama_sekolah' => $sekolah->nama_sekolah,
+                    'status' => $user === null ? 'belum' : ($user->is_approved ? 'disetujui' : 'menunggu'),
+                    'user' => $user,
+                ];
+            });
+    }
+
+    public function lihatRincianRegistrasi(string $namaSekolah): void
+    {
+        $this->sekolahRingkasanRegistrasiDipilih = $namaSekolah;
+        $this->dispatch('open-modal', 'pengguna-ringkasan-registrasi-detail');
+    }
+
+    public function tutupRincianRegistrasi(): void
+    {
+        $this->sekolahRingkasanRegistrasiDipilih = null;
+        $this->dispatch('close-modal', 'pengguna-ringkasan-registrasi-detail');
     }
 
     /**
@@ -894,10 +956,22 @@ class Index extends Component
                 ->paginate($this->perPage);
         }
 
+        // Ringkasan registrasi per sekolah (permintaan user 2026-10-24) -
+        // HANYA dihitung di tab Admin OPS/Admin BOSP (tidak relevan di tab
+        // Superadmin/Riwayat Login/Authenticator, hemat 1 query ekstra yang
+        // tidak akan dipakai).
+        $ringkasanRegistrasiPerSekolah = in_array($this->tab, [User::LEVEL_ADMIN_OPS, User::LEVEL_ADMIN_BOSP], true)
+            ? $this->ringkasanRegistrasiPerSekolah($this->tab)
+            : collect();
+
         return view('livewire.pengguna.index', [
             'pengguna' => $pengguna,
             'riwayatLogin' => $riwayatLogin,
             'penggunaAuthenticator' => $penggunaAuthenticator,
+            'ringkasanRegistrasiPerSekolah' => $ringkasanRegistrasiPerSekolah,
+            'ringkasanRegistrasiDipilih' => $this->sekolahRingkasanRegistrasiDipilih !== null
+                ? $ringkasanRegistrasiPerSekolah->firstWhere('nama_sekolah', $this->sekolahRingkasanRegistrasiDipilih)
+                : null,
             'levelOptions' => User::levelAksesOptions(),
             'sekolahOptions' => ProfilSekolah::urutStandar()->get(),
             'jumlahMenunggu' => [

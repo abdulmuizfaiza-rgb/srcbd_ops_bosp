@@ -239,6 +239,41 @@
                         <x-primary-button wire:click="tambah">+ Tambah {{ $levelOptions[$tab] }}</x-primary-button>
                     </div>
 
+                    {{-- Ringkasan registrasi per sekolah (permintaan user 2026-10-24):
+                         jumlah yang sudah registrasi/menunggu/disetujui, lalu klik nama
+                         sekolah untuk rincian. HANYA tampil di tab Admin OPS/Admin BOSP -
+                         setiap sekolah maksimal 1 akun per level (ditegakkan di form
+                         registrasi), jadi status per sekolah selalu salah satu dari 3
+                         kemungkinan, bukan daftar angka. --}}
+                    @if ($tab !== 'superadmin' && $ringkasanRegistrasiPerSekolah->isNotEmpty())
+                        @php
+                            $jmlDisetujui = $ringkasanRegistrasiPerSekolah->where('status', 'disetujui')->count();
+                            $jmlMenunggu = $ringkasanRegistrasiPerSekolah->where('status', 'menunggu')->count();
+                            $jmlSudahRegistrasi = $jmlDisetujui + $jmlMenunggu;
+                        @endphp
+                        <div class="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                            <div class="flex flex-wrap gap-4 text-sm mb-3">
+                                <div><span class="font-semibold text-slate-800">{{ $jmlSudahRegistrasi }}</span> <span class="text-slate-500">sudah registrasi</span></div>
+                                <div><span class="font-semibold text-amber-700">{{ $jmlMenunggu }}</span> <span class="text-slate-500">menunggu persetujuan</span></div>
+                                <div><span class="font-semibold text-emerald-700">{{ $jmlDisetujui }}</span> <span class="text-slate-500">sudah disetujui</span></div>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                @foreach ($ringkasanRegistrasiPerSekolah as $baris)
+                                    <button
+                                        type="button"
+                                        wire:click="lihatRincianRegistrasi('{{ $baris->nama_sekolah }}')"
+                                        class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium
+                                            @if ($baris->status === 'disetujui') bg-emerald-100 text-emerald-700
+                                            @elseif ($baris->status === 'menunggu') bg-amber-100 text-amber-700
+                                            @else bg-slate-200 text-slate-600 @endif"
+                                    >
+                                        {{ $baris->nama_sekolah }}
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
                     @if (count($terpilihUntukSamakan))
                         <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
                             <p class="text-sm text-blue-800">{{ count($terpilihUntukSamakan) }} akun dipilih untuk disamakan kuncinya (boleh lintas tab).</p>
@@ -371,6 +406,39 @@
     </div>
 
     {{-- Modal Form Tambah/Edit --}}
+    {{-- Modal Rincian Registrasi per Sekolah --}}
+    <x-modal name="pengguna-ringkasan-registrasi-detail" :show="$sekolahRingkasanRegistrasiDipilih !== null" maxWidth="md">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900 mb-1">Rincian Registrasi {{ $levelOptions[$tab] ?? '' }}</h2>
+            <p class="text-sm text-slate-500 mb-4">{{ $sekolahRingkasanRegistrasiDipilih }}</p>
+
+            @if ($ringkasanRegistrasiDipilih && $ringkasanRegistrasiDipilih->user)
+                @php($u = $ringkasanRegistrasiDipilih->user)
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between gap-3"><span class="text-slate-500">Status</span>
+                        @if ($u->is_approved)
+                            <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700">Sudah Disetujui</span>
+                        @else
+                            <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700">Menunggu Persetujuan</span>
+                        @endif
+                    </div>
+                    <div class="flex justify-between gap-3"><span class="text-slate-500">Username</span><span class="font-medium text-slate-800">{{ $u->username }}</span></div>
+                    <div class="flex justify-between gap-3"><span class="text-slate-500">Email</span><span class="font-medium text-slate-800">{{ $u->email }}</span></div>
+                    <div class="flex justify-between gap-3"><span class="text-slate-500">Jabatan</span><span class="font-medium text-slate-800">{{ $u->jabatan ?: '-' }}</span></div>
+                    <div class="flex justify-between gap-3"><span class="text-slate-500">Tanggal Daftar</span><span class="font-medium text-slate-800">{{ $u->created_at?->translatedFormat('d F Y, H:i') }}</span></div>
+                </div>
+            @else
+                <p class="text-sm text-slate-500">Belum ada yang mendaftar sebagai {{ $levelOptions[$tab] ?? '' }} untuk sekolah ini.</p>
+            @endif
+
+            <div class="mt-6 flex justify-end">
+                <button type="button" wire:click="tutupRincianRegistrasi" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 text-sm">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </x-modal>
+
     <x-modal name="pengguna-form" :show="$showForm" maxWidth="lg">
         <form wire:submit="simpan" class="p-6">
             <h2 class="text-lg font-medium text-slate-900 mb-4">
