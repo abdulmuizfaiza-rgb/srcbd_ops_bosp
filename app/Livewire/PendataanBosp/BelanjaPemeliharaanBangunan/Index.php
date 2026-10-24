@@ -134,7 +134,15 @@ class Index extends Component
 
     public function mount(): void
     {
-        $this->tahun = now()->year;
+        // Permintaan user 2026-10-24 (fitur Tahun Anggaran, Fase 2):
+        // Superadmin TETAP bebas (tahun berjalan seperti sebelumnya).
+        // Admin OPS/Admin BOSP TERKUNCI ke tahun yang dipilih saat login
+        // (session 'tahun_sesi') - dropdown Tahun disembunyikan total
+        // untuk mereka di Blade, sama seperti pola yang sudah diterapkan
+        // di Dana BOSP Tahap & Rekap RKAS (Fase 1).
+        $this->tahun = $this->bolehKelolaSemua()
+            ? now()->year
+            : (int) session('tahun_sesi', \App\Models\TahunAnggaranSetting::current()->tahun_aktif);
     }
 
     protected function bolehKelolaSemua(): bool

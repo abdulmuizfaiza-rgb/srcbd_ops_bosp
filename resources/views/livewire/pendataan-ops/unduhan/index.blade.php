@@ -27,11 +27,16 @@
                     <div class="flex flex-col sm:flex-row sm:items-end gap-4">
                         <div>
                             <x-input-label for="tahun" value="Tahun" />
-                            <select wire:model.live="tahun" id="tahun" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm block mt-1 w-full sm:w-40">
-                                @foreach ($tahunOptions as $th)
-                                    <option value="{{ $th }}">{{ $th }}</option>
-                                @endforeach
-                            </select>
+                            {{-- Permintaan user 2026-10-24 (fitur Tahun Anggaran, Fase 2): dropdown HANYA tampil utk Superadmin - Admin OPS/Admin BOSP dikunci total ke tahun sesi login mereka. --}}
+                            @if ($bolehKelolaSemua)
+                                <select wire:model.live="tahun" id="tahun" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm block mt-1 w-full sm:w-40">
+                                    @foreach ($tahunOptions as $th)
+                                        <option value="{{ $th }}">{{ $th }}</option>
+                                    @endforeach
+                                </select>
+                            @else
+                                <span id="tahun" class="mt-1 inline-flex items-center rounded-md bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700">{{ $tahun }}</span>
+                            @endif
                         </div>
 
                         @if ($bolehKelolaSemua)

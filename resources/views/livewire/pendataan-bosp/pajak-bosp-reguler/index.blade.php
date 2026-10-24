@@ -68,11 +68,16 @@
                     <div class="flex flex-col xl:flex-row xl:flex-wrap xl:items-start xl:justify-between gap-3 mb-6">
                         <div class="flex flex-wrap sm:flex-row sm:items-center gap-2.5">
                             <label for="tahun" class="text-sm text-slate-600">Tahun</label>
+                            {{-- Permintaan user 2026-10-24 (fitur Tahun Anggaran, Fase 2): dropdown HANYA tampil utk Superadmin - Admin OPS/Admin BOSP dikunci total ke tahun sesi login mereka. --}}
+                            @if ($bolehKelolaSemua)
                             <select wire:model.live="tahun" id="tahun" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-xs">
                                 @foreach ($tahunOptions as $opsiTahun)
                                     <option value="{{ $opsiTahun }}">{{ $opsiTahun }}</option>
                                 @endforeach
                             </select>
+                            @else
+                                <span id="tahun" class="inline-flex items-center rounded-md bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700">{{ $tahun }}</span>
+                            @endif
 
                             @if ($tab === 'per_sekolah' && $bolehKelolaSemua)
                                 <select wire:model.live="profil_sekolah_id" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-xs">
