@@ -1,4 +1,4 @@
-@props(['sekolahId', 'field', 'value' => null, 'revisi' => 0])
+@props(['sekolahId', 'field', 'value' => null, 'revisi' => 0, 'tahun' => null])
 
 {{--
     Kotak input LANGSUNG di tabel Rekap RKAS Awal-Perubahan (di luar form
@@ -22,6 +22,25 @@
     sebenarnya - perilaku "kembali ke nilai semula kalau input tidak
     valid" dari round sebelumnya tetap berjalan walau sekarang wire:ignore.
 
+    PERBAIKAN BUG (2026-10-24, ditemukan user: pindah Tahun ke 2027 lalu
+    kembali ke 2026 membuat SELURUH isi tabel hilang, cuma header yang
+    tersisa) - wire:key di atas SEBELUMNYA tidak menyertakan $tahun, jadi
+    wire:ignore membuat Livewire mengira kotak ini "elemen yang sama"
+    walau tahun aktif sudah berganti, lalu MELEWATI (skip) update
+    konten/value-nya. Ini sendiri "cuma" bikin nilai kotak jadi basi
+    (tetap menampilkan nilai tahun sebelumnya), TAPI dikombinasikan dgn
+    wire:key baris <tr> yang IDENTIK antara kondisi terkunci & tidak
+    terkunci (lihat index.blade.php) utk sekolah yang status
+    terkunci/tidaknya BEDA antar tahun, Livewire mencoba morph 2 struktur
+    HTML <tr> yang SANGAT berbeda (1 <td colspan="29"> vs ~29 <td>
+    terpisah) di bawah key yang sama - ini yang memicu browser "membuang"
+    sebagian elemen keluar dari <table> (parsing HTML tabel yang tidak
+    valid), membuat SELURUH baris tabel tampak hilang. Fix: $tahun
+    ditambahkan ke wire:key di sini DAN ke wire:key baris <tr> (lihat
+    index.blade.php) supaya Livewire selalu membuat ulang elemen dari nol
+    begitu tahun (atau status terkunci) berubah, bukan mencoba
+    morph/patch struktur yang tidak kompatibel.
+
     Warna latar & tebal huruf kolom (kalau ada) dikirim lewat atribut
     class dari pemanggil (resources/views/livewire/pendataan-bosp/
     rekap-rkas/index.blade.php) - class bg-* WAJIB dipasang di sini
@@ -35,7 +54,7 @@
     $nilaiAwal = $value !== null && $value !== '' ? number_format((int) $value, 0, ',', '.') : '';
 @endphp
 
-<div wire:ignore wire:key="rekap-rkas-cell-{{ $sekolahId }}-{{ $field }}-{{ $revisi }}">
+<div wire:ignore wire:key="rekap-rkas-cell-{{ $sekolahId }}-{{ $field }}-{{ $tahun }}-{{ $revisi }}">
     <input
         type="text"
         inputmode="numeric"

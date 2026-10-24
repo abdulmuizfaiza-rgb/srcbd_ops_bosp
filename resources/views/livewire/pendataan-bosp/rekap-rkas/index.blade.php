@@ -86,6 +86,21 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-blue-100">
+                            {{--
+                                PERBAIKAN BUG (2026-10-24, ditemukan user: pindah Tahun ke 2027
+                                lalu kembali ke 2026 membuat seluruh isi tabel hilang, cuma
+                                header yang tersisa). wire:key baris <tr> di bawah SEKARANG
+                                menyertakan $tahun & status terkunci/tidak ("kunci"/"buka") -
+                                SEBELUMNYA wire:key-nya cuma "rekap-rkas-baris-{id}" (sama utk
+                                kedua varian <tr>, terkunci maupun tidak), jadi kalau status
+                                terkunci 1 sekolah BEDA antar tahun, Livewire mengira itu
+                                "elemen yang sama" lalu mencoba morph 2 struktur <tr> yang SANGAT
+                                berbeda (1 <td colspan="29"> vs ~29 <td> terpisah) - browser
+                                "membuang" sebagian elemen keluar dari <table> krn parsing HTML
+                                tabel yang tidak valid, bikin baris lain ikut hilang juga. Lihat
+                                juga docblock rekap-rkas-cell.blade.php (wire:ignore di kotak
+                                input juga ditambah $tahun ke wire:key-nya, alasan sama).
+                            --}}
                             @forelse ($daftarSekolah as $sekolah)
                                 @php $rekap = $sekolah->rekapRkasTahunIni; @endphp
                                 @if (! $sekolah->danaBospTahapTerisi)
@@ -98,7 +113,7 @@
                                         di bawah dikurangi No & Nama Sekolah & Aksi) digabung jadi 1
                                         pesan terkunci, bukan kotak input.
                                     --}}
-                                    <tr wire:key="rekap-rkas-baris-{{ $sekolah->id }}" class="bg-amber-50/60">
+                                    <tr wire:key="rekap-rkas-baris-{{ $sekolah->id }}-{{ $tahun }}-kunci" class="bg-amber-50/60">
                                         <td class="px-2 py-2 whitespace-nowrap text-center text-slate-500 border border-blue-100">{{ $loop->iteration }}</td>
                                         <td class="px-2 py-2 whitespace-nowrap font-medium text-slate-800 border border-blue-100">{{ $sekolah->nama_sekolah }}</td>
                                         <td colspan="29" class="px-3 py-2 text-center text-amber-700 border border-blue-100 text-xs">
@@ -114,7 +129,7 @@
                                     </tr>
                                     @continue
                                 @endif
-                                <tr wire:key="rekap-rkas-baris-{{ $sekolah->id }}">
+                                <tr wire:key="rekap-rkas-baris-{{ $sekolah->id }}-{{ $tahun }}-buka">
                                     <td class="px-2 py-2 whitespace-nowrap text-center text-slate-500 border border-blue-100">{{ $loop->iteration }}</td>
                                     <td class="px-2 py-2 whitespace-nowrap font-medium text-slate-800 border border-blue-100">{{ $sekolah->nama_sekolah }}</td>
                                     @php $revisi = $revisiBaris[$sekolah->id] ?? 0; @endphp
@@ -130,13 +145,13 @@
 
                                     @foreach ($kategori as $key => $info)
                                         <td class="px-1 py-1.5 whitespace-nowrap border border-blue-100 {{ $info['warna'] }}">
-                                            <x-rekap-rkas-cell :sekolah-id="$sekolah->id" :field="$key.'_sebelum'" :value="$baris[$sekolah->id][$key.'_sebelum'] ?? ''" :revisi="$revisi" class="{{ $info['warna'] }} font-bold" />
+                                            <x-rekap-rkas-cell :sekolah-id="$sekolah->id" :field="$key.'_sebelum'" :value="$baris[$sekolah->id][$key.'_sebelum'] ?? ''" :revisi="$revisi" :tahun="$tahun" class="{{ $info['warna'] }} font-bold" />
                                         </td>
                                         <td class="px-1 py-1.5 whitespace-nowrap border border-blue-100 {{ $info['warna'] }}">
-                                            <x-rekap-rkas-cell :sekolah-id="$sekolah->id" :field="$key.'_realisasi_tahap1'" :value="$baris[$sekolah->id][$key.'_realisasi_tahap1'] ?? ''" :revisi="$revisi" class="{{ $info['warna'] }} font-bold" />
+                                            <x-rekap-rkas-cell :sekolah-id="$sekolah->id" :field="$key.'_realisasi_tahap1'" :value="$baris[$sekolah->id][$key.'_realisasi_tahap1'] ?? ''" :revisi="$revisi" :tahun="$tahun" class="{{ $info['warna'] }} font-bold" />
                                         </td>
                                         <td class="px-1 py-1.5 whitespace-nowrap border border-blue-100 {{ $info['warna'] }}">
-                                            <x-rekap-rkas-cell :sekolah-id="$sekolah->id" :field="$key.'_perubahan_tahap2'" :value="$baris[$sekolah->id][$key.'_perubahan_tahap2'] ?? ''" :revisi="$revisi" class="{{ $info['warna'] }} font-bold" />
+                                            <x-rekap-rkas-cell :sekolah-id="$sekolah->id" :field="$key.'_perubahan_tahap2'" :value="$baris[$sekolah->id][$key.'_perubahan_tahap2'] ?? ''" :revisi="$revisi" :tahun="$tahun" class="{{ $info['warna'] }} font-bold" />
                                         </td>
                                         @if (in_array($key, \App\Models\RekapRkas::KATEGORI_RUMUS, true))
                                             {{-- Rumus sudah ditentukan (2026-09-09 lanjutan ke-4) - kolom ini
@@ -146,10 +161,10 @@
                                             <td class="px-1 py-1.5 whitespace-nowrap text-right border border-blue-100 {{ $info['warna'] }} font-bold">Rp {{ number_format((int) ($baris[$sekolah->id][$key.'_selisih'] ?? 0), 0, ',', '.') }}</td>
                                         @else
                                             <td class="px-1 py-1.5 whitespace-nowrap border border-blue-100 {{ $info['warna'] }}">
-                                                <x-rekap-rkas-cell :sekolah-id="$sekolah->id" :field="$key.'_jml_sesudah'" :value="$baris[$sekolah->id][$key.'_jml_sesudah'] ?? ''" :revisi="$revisi" class="{{ $info['warna'] }} font-bold" />
+                                                <x-rekap-rkas-cell :sekolah-id="$sekolah->id" :field="$key.'_jml_sesudah'" :value="$baris[$sekolah->id][$key.'_jml_sesudah'] ?? ''" :revisi="$revisi" :tahun="$tahun" class="{{ $info['warna'] }} font-bold" />
                                             </td>
                                             <td class="px-1 py-1.5 whitespace-nowrap border border-blue-100 {{ $info['warna'] }}">
-                                                <x-rekap-rkas-cell :sekolah-id="$sekolah->id" :field="$key.'_selisih'" :value="$baris[$sekolah->id][$key.'_selisih'] ?? ''" :revisi="$revisi" class="{{ $info['warna'] }} font-bold" />
+                                                <x-rekap-rkas-cell :sekolah-id="$sekolah->id" :field="$key.'_selisih'" :value="$baris[$sekolah->id][$key.'_selisih'] ?? ''" :revisi="$revisi" :tahun="$tahun" class="{{ $info['warna'] }} font-bold" />
                                             </td>
                                         @endif
                                     @endforeach
