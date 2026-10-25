@@ -1651,6 +1651,18 @@ class Index extends Component
             fn (ProfilSekolah $sekolah) => $sekolah->rincianBelanjaModal->sum('total_harga')
         );
 
+        // Rincian Negeri/Swasta (permintaan user 2026-10-25) - lihat
+        // komentar lengkap di PenerimaanHonorPtk\Index::render(). Otomatis
+        // ikut tab utama ($tabUtama) yang aktif sama seperti di atas. Hanya
+        // data utama (KIB B/KIB E) - BUKAN tab BMD (lihat renderBmd()/
+        // renderRekapBmd() di bawah, yang sengaja TIDAK dihitung di sini).
+        $totalHargaNegeri = $daftarSekolah
+            ->where('status', ProfilSekolah::STATUS_NEGERI)
+            ->sum(fn (ProfilSekolah $sekolah) => $sekolah->rincianBelanjaModal->sum('total_harga'));
+        $totalHargaSwasta = $daftarSekolah
+            ->where('status', ProfilSekolah::STATUS_SWASTA)
+            ->sum(fn (ProfilSekolah $sekolah) => $sekolah->rincianBelanjaModal->sum('total_harga'));
+
         return view('livewire.pendataan-bosp.rincian-belanja-modal.index', [
             'daftarSekolah' => $daftarSekolah,
             'jenisOptions' => RincianBelanjaModal::JENIS_OPTIONS,
@@ -1672,6 +1684,8 @@ class Index extends Component
             'terkunciTriwulanIni' => $this->terkunciVervalUntukTampilan($this->triwulan),
             'tahunOptions' => array_reverse($tahunOptions),
             'totalHargaKeseluruhan' => $totalHargaKeseluruhan,
+            'totalHargaNegeri' => $totalHargaNegeri,
+            'totalHargaSwasta' => $totalHargaSwasta,
             'semuaTerpilih' => $semuaTerpilih,
             // Variabel di bawah ini KHUSUS dipakai oleh modal BMD
             // (resources/views/.../_form-bmd.blade.php, di-@include SELALU
@@ -1820,6 +1834,8 @@ class Index extends Component
             'terkunciTriwulanIni' => $this->terkunciVervalUntukTampilan($this->triwulan),
             'tahunOptions' => array_reverse($tahunOptions),
             'totalHargaKeseluruhan' => 0,
+            'totalHargaNegeri' => 0,
+            'totalHargaSwasta' => 0,
             'bentukKontrakOptions' => RincianBelanjaModalBmd::BENTUK_KONTRAK_OPTIONS,
             'rekeningBelanjaOptions' => RincianBelanjaModalBmd::REKENING_BELANJA_OPTIONS,
             'totalBmdKeseluruhan' => $totalBmdKeseluruhan,
@@ -1918,6 +1934,8 @@ class Index extends Component
             'terkunciTriwulanIni' => $this->terkunciVervalUntukTampilan($this->triwulan),
             'tahunOptions' => array_reverse($tahunOptions),
             'totalHargaKeseluruhan' => 0,
+            'totalHargaNegeri' => 0,
+            'totalHargaSwasta' => 0,
             'bentukKontrakOptions' => RincianBelanjaModalBmd::BENTUK_KONTRAK_OPTIONS,
             'rekeningBelanjaOptions' => RincianBelanjaModalBmd::REKENING_BELANJA_OPTIONS,
             'totalBmdKeseluruhan' => 0,

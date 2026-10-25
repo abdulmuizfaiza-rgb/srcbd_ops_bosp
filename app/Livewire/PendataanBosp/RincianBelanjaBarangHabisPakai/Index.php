@@ -1260,6 +1260,17 @@ class Index extends Component
             fn (ProfilSekolah $sekolah) => $sekolah->rincianBelanjaBarangHabisPakai->sum('total_harga')
         );
 
+        // Rincian Negeri/Swasta (permintaan user 2026-10-25) - lihat
+        // komentar lengkap di PenerimaanHonorPtk\Index::render(). Hanya
+        // data utama (bukan Stock Opname), konsisten dengan keputusan
+        // fitur ringkasan Sudah/Belum Input sebelumnya.
+        $totalHargaNegeri = $daftarSekolah
+            ->where('status', ProfilSekolah::STATUS_NEGERI)
+            ->sum(fn (ProfilSekolah $sekolah) => $sekolah->rincianBelanjaBarangHabisPakai->sum('total_harga'));
+        $totalHargaSwasta = $daftarSekolah
+            ->where('status', ProfilSekolah::STATUS_SWASTA)
+            ->sum(fn (ProfilSekolah $sekolah) => $sekolah->rincianBelanjaBarangHabisPakai->sum('total_harga'));
+
         // Baris "JUMLAH STOCK OPNAME" (permintaan user 2026-09-19 poin 1:
         // "setelah baris terakhir tambahkan baris Jumlah Stock opname
         // dengan kolom 1 sampai kolom 7 di merge cell") - SATU baris
@@ -1296,6 +1307,8 @@ class Index extends Component
             'terkunciTriwulanIni' => $this->terkunciVervalUntukTampilan($this->triwulan),
             'tahunOptions' => array_reverse($tahunOptions),
             'totalHargaKeseluruhan' => $totalHargaKeseluruhan,
+            'totalHargaNegeri' => $totalHargaNegeri,
+            'totalHargaSwasta' => $totalHargaSwasta,
             'totalOpname' => $totalOpname,
             'semuaTerpilih' => $semuaTerpilih,
         ]);

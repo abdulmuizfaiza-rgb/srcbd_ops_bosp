@@ -762,6 +762,15 @@ class Index extends Component
             fn (ProfilSekolah $sekolah) => $sekolah->biayaPendaftaranLomba->sum('jumlah')
         );
 
+        // Rincian Negeri/Swasta (permintaan user 2026-10-25) - lihat
+        // komentar lengkap di PenerimaanHonorPtk\Index::render().
+        $totalBiayaNegeri = $daftarSekolah
+            ->where('status', ProfilSekolah::STATUS_NEGERI)
+            ->sum(fn (ProfilSekolah $sekolah) => $sekolah->biayaPendaftaranLomba->sum('jumlah'));
+        $totalBiayaSwasta = $daftarSekolah
+            ->where('status', ProfilSekolah::STATUS_SWASTA)
+            ->sum(fn (ProfilSekolah $sekolah) => $sekolah->biayaPendaftaranLomba->sum('jumlah'));
+
         return view('livewire.pendataan-bosp.biaya-pendaftaran-lomba.index', [
             'daftarSekolah' => $daftarSekolah,
             'triwulanOptions' => BiayaPendaftaranLomba::TRIWULAN_OPTIONS,
@@ -778,6 +787,8 @@ class Index extends Component
             'terkunciTriwulanIni' => $this->terkunciVervalUntukTampilan($this->triwulan),
             'tahunOptions' => array_reverse($tahunOptions),
             'totalBiayaKeseluruhan' => $totalBiayaKeseluruhan,
+            'totalBiayaNegeri' => $totalBiayaNegeri,
+            'totalBiayaSwasta' => $totalBiayaSwasta,
             'semuaTerpilih' => $semuaTerpilih,
         ]);
     }

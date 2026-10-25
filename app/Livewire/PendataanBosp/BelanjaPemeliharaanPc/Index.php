@@ -912,6 +912,16 @@ class Index extends Component
             fn (ProfilSekolah $sekolah) => $sekolah->rincianPemeliharaanPc->sum('total_harga')
         );
 
+        // Rincian Negeri/Swasta (permintaan user 2026-10-25) - lihat
+        // komentar lengkap di PenerimaanHonorPtk\Index::render(). Otomatis
+        // ikut tab utama ($tabUtama) yang aktif sama seperti di atas.
+        $totalHargaNegeri = $daftarSekolah
+            ->where('status', ProfilSekolah::STATUS_NEGERI)
+            ->sum(fn (ProfilSekolah $sekolah) => $sekolah->rincianPemeliharaanPc->sum('total_harga'));
+        $totalHargaSwasta = $daftarSekolah
+            ->where('status', ProfilSekolah::STATUS_SWASTA)
+            ->sum(fn (ProfilSekolah $sekolah) => $sekolah->rincianPemeliharaanPc->sum('total_harga'));
+
         return view('livewire.pendataan-bosp.belanja-pemeliharaan-pc.index', [
             'daftarSekolah' => $daftarSekolah,
             'jenisOptions' => RincianPemeliharaanPc::JENIS_OPTIONS,
@@ -929,6 +939,8 @@ class Index extends Component
             'terkunciTriwulanIni' => $this->terkunciVervalUntukTampilan($this->triwulan),
             'tahunOptions' => array_reverse($tahunOptions),
             'totalHargaKeseluruhan' => $totalHargaKeseluruhan,
+            'totalHargaNegeri' => $totalHargaNegeri,
+            'totalHargaSwasta' => $totalHargaSwasta,
             'semuaTerpilih' => $semuaTerpilih,
         ]);
     }

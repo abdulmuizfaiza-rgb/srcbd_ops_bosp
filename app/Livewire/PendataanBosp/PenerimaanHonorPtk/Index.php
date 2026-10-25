@@ -1004,6 +1004,18 @@ class Index extends Component
             fn (ProfilSekolah $sekolah) => $sekolah->penerimaanHonorPtk->sum('jumlah_honor')
         );
 
+        // Rincian Negeri/Swasta (permintaan user 2026-10-25: "baris Total
+        // ... dirinci menjadi Total ... Sekolah Negeri, Total ... Sekolah
+        // Swasta dan Total ... Seluruh") - dihitung dari $daftarSekolah yang
+        // SAMA (sudah ikut scope peran & filter aktif), difilter status
+        // sekolah dulu sebelum dijumlahkan.
+        $totalHonorNegeri = $daftarSekolah
+            ->where('status', ProfilSekolah::STATUS_NEGERI)
+            ->sum(fn (ProfilSekolah $sekolah) => $sekolah->penerimaanHonorPtk->sum('jumlah_honor'));
+        $totalHonorSwasta = $daftarSekolah
+            ->where('status', ProfilSekolah::STATUS_SWASTA)
+            ->sum(fn (ProfilSekolah $sekolah) => $sekolah->penerimaanHonorPtk->sum('jumlah_honor'));
+
         return view('livewire.pendataan-bosp.penerimaan-honor-ptk.index', [
             'daftarSekolah' => $daftarSekolah,
             'triwulanOptions' => PenerimaanHonorPtk::TRIWULAN_OPTIONS,
@@ -1016,6 +1028,8 @@ class Index extends Component
                 : collect(),
             'tahunOptions' => array_reverse($tahunOptions),
             'totalHonorKeseluruhan' => $totalHonorKeseluruhan,
+            'totalHonorNegeri' => $totalHonorNegeri,
+            'totalHonorSwasta' => $totalHonorSwasta,
             // Kuncian UI - permintaan user 2026-09-23 (round kesepuluh,
             // poin 1) - lihat docblock lengkap App\Livewire\Concerns\
             // MenolakEditJikaTerkunciVerval::terkunciVervalUntukTampilan().

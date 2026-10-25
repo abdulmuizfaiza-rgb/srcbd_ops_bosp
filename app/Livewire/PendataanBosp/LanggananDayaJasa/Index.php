@@ -848,6 +848,15 @@ class Index extends Component
             fn (ProfilSekolah $sekolah) => $sekolah->langgananDayaJasa->sum('jumlah')
         );
 
+        // Rincian Negeri/Swasta (permintaan user 2026-10-25) - lihat
+        // komentar lengkap di PenerimaanHonorPtk\Index::render().
+        $totalDayaJasaNegeri = $daftarSekolah
+            ->where('status', ProfilSekolah::STATUS_NEGERI)
+            ->sum(fn (ProfilSekolah $sekolah) => $sekolah->langgananDayaJasa->sum('jumlah'));
+        $totalDayaJasaSwasta = $daftarSekolah
+            ->where('status', ProfilSekolah::STATUS_SWASTA)
+            ->sum(fn (ProfilSekolah $sekolah) => $sekolah->langgananDayaJasa->sum('jumlah'));
+
         return view('livewire.pendataan-bosp.langganan-daya-jasa.index', [
             'daftarSekolah' => $daftarSekolah,
             'triwulanOptions' => LanggananDayaJasa::TRIWULAN_OPTIONS,
@@ -864,6 +873,8 @@ class Index extends Component
             'terkunciTriwulanIni' => $this->terkunciVervalUntukTampilan($this->triwulan),
             'tahunOptions' => array_reverse($tahunOptions),
             'totalDayaJasaKeseluruhan' => $totalDayaJasaKeseluruhan,
+            'totalDayaJasaNegeri' => $totalDayaJasaNegeri,
+            'totalDayaJasaSwasta' => $totalDayaJasaSwasta,
             'semuaTerpilih' => $semuaTerpilih,
         ]);
     }

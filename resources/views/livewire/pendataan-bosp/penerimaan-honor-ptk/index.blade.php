@@ -352,10 +352,25 @@
                                  dijumlahkan dari $daftarSekolah yang sama dengan yang
                                  dirender di atas. Kolom 1-8 digabung (colspan="8") sebagai
                                  label, nilai di kolom ke-9 (Jumlah Honor Yang Diterima). --}}
+                            {{-- Dirinci jadi 3 baris Negeri/Swasta/Seluruh (permintaan
+                                 user 2026-10-25) - sebelumnya cuma 1 baris "Seluruh
+                                 Sekolah". Masing-masing nilai dihitung di render() dari
+                                 $daftarSekolah yang sama (sudah ikut scope peran & filter
+                                 aktif), difilter status sekolah. --}}
                             @if ($daftarSekolah->isNotEmpty())
                                 <tbody>
-                                    <tr class="bg-slate-200 font-bold text-slate-800 border-t-2 border-slate-400">
-                                        <td colspan="9" class="px-2 py-2.5 text-right">Total Jumlah Honor Yang Diterima Seluruh Sekolah</td>
+                                    <tr class="bg-slate-100 font-semibold text-slate-700 border-t-2 border-slate-400">
+                                        <td colspan="9" class="px-2 py-2 text-right">Total Jumlah Honor Yang Diterima Sekolah Negeri</td>
+                                        <td class="px-2 py-2 whitespace-nowrap text-right">Rp {{ number_format((int) $totalHonorNegeri, 0, ',', '.') }}</td>
+                                        <td colspan="2"></td>
+                                    </tr>
+                                    <tr class="bg-slate-100 font-semibold text-slate-700">
+                                        <td colspan="9" class="px-2 py-2 text-right">Total Jumlah Honor Yang Diterima Sekolah Swasta</td>
+                                        <td class="px-2 py-2 whitespace-nowrap text-right">Rp {{ number_format((int) $totalHonorSwasta, 0, ',', '.') }}</td>
+                                        <td colspan="2"></td>
+                                    </tr>
+                                    <tr class="bg-slate-200 font-bold text-slate-800 border-t border-slate-300">
+                                        <td colspan="9" class="px-2 py-2.5 text-right">Total Jumlah Honor Yang Diterima Seluruh</td>
                                         <td class="px-2 py-2.5 whitespace-nowrap text-right">Rp {{ number_format((int) $totalHonorKeseluruhan, 0, ',', '.') }}</td>
                                         <td colspan="2"></td>
                                     </tr>

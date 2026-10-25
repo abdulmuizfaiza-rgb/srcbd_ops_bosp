@@ -825,6 +825,16 @@ class Index extends Component
             fn (ProfilSekolah $sekolah) => $sekolah->belanjaHonorKegiatan->sum('jumlah')
         );
 
+        // Rincian Negeri/Swasta (permintaan user 2026-10-25) - lihat
+        // komentar lengkap di PenerimaanHonorPtk\Index::render(). Otomatis
+        // ikut tab utama ($tabUtama) yang aktif sama seperti di atas.
+        $totalJumlahNegeri = $daftarSekolah
+            ->where('status', ProfilSekolah::STATUS_NEGERI)
+            ->sum(fn (ProfilSekolah $sekolah) => $sekolah->belanjaHonorKegiatan->sum('jumlah'));
+        $totalJumlahSwasta = $daftarSekolah
+            ->where('status', ProfilSekolah::STATUS_SWASTA)
+            ->sum(fn (ProfilSekolah $sekolah) => $sekolah->belanjaHonorKegiatan->sum('jumlah'));
+
         return view('livewire.pendataan-bosp.belanja-honor-kegiatan.index', [
             'daftarSekolah' => $daftarSekolah,
             'jenisOptions' => BelanjaHonorKegiatan::JENIS_OPTIONS,
@@ -842,6 +852,8 @@ class Index extends Component
             'terkunciTriwulanIni' => $this->terkunciVervalUntukTampilan($this->triwulan),
             'tahunOptions' => array_reverse($tahunOptions),
             'totalJumlahKeseluruhan' => $totalJumlahKeseluruhan,
+            'totalJumlahNegeri' => $totalJumlahNegeri,
+            'totalJumlahSwasta' => $totalJumlahSwasta,
             'semuaTerpilih' => $semuaTerpilih,
         ]);
     }

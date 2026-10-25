@@ -319,14 +319,39 @@
                             @endforelse
                             {{-- Baris Jumlah SELURUH SEKOLAH - SELALU tampil (tidak ikut
                                  x-show sekolah manapun), label mengikuti tab utama aktif. --}}
+                            {{-- Dirinci jadi 3 baris Negeri/Swasta/Seluruh (permintaan
+                                 user 2026-10-25) - total mengikuti tab utama aktif, lihat
+                                 komentar lengkap di penerimaan-honor-ptk/index.blade.php. --}}
                             @if ($daftarSekolah->isNotEmpty())
                                 <tbody>
-                                    <tr class="bg-slate-200 font-bold text-slate-800 border-t-2 border-slate-400">
+                                    <tr class="bg-slate-100 font-semibold text-slate-700 border-t-2 border-slate-400">
+                                        <td colspan="8" class="px-2 py-2 text-right">
+                                            {{ match ($tabUtama) {
+                                                \App\Models\BelanjaHonorKegiatan::JENIS_MAKAN_MINUM => 'Jumlah Belanja Makan & Minum Sekolah Negeri',
+                                                \App\Models\BelanjaHonorKegiatan::JENIS_PERJALANAN_DINAS => 'Jumlah Belanja Perjalanan Dinas Sekolah Negeri',
+                                                default => 'Jumlah Honor Kegiatan Sekolah Negeri',
+                                            } }}
+                                        </td>
+                                        <td class="px-2 py-2 whitespace-nowrap text-right">Rp {{ number_format((int) $totalJumlahNegeri, 0, ',', '.') }}</td>
+                                        <td colspan="2"></td>
+                                    </tr>
+                                    <tr class="bg-slate-100 font-semibold text-slate-700">
+                                        <td colspan="8" class="px-2 py-2 text-right">
+                                            {{ match ($tabUtama) {
+                                                \App\Models\BelanjaHonorKegiatan::JENIS_MAKAN_MINUM => 'Jumlah Belanja Makan & Minum Sekolah Swasta',
+                                                \App\Models\BelanjaHonorKegiatan::JENIS_PERJALANAN_DINAS => 'Jumlah Belanja Perjalanan Dinas Sekolah Swasta',
+                                                default => 'Jumlah Honor Kegiatan Sekolah Swasta',
+                                            } }}
+                                        </td>
+                                        <td class="px-2 py-2 whitespace-nowrap text-right">Rp {{ number_format((int) $totalJumlahSwasta, 0, ',', '.') }}</td>
+                                        <td colspan="2"></td>
+                                    </tr>
+                                    <tr class="bg-slate-200 font-bold text-slate-800 border-t border-slate-300">
                                         <td colspan="8" class="px-2 py-2.5 text-right">
                                             {{ match ($tabUtama) {
-                                                \App\Models\BelanjaHonorKegiatan::JENIS_MAKAN_MINUM => 'Jumlah Belanja Makan & Minum Seluruh Sekolah',
-                                                \App\Models\BelanjaHonorKegiatan::JENIS_PERJALANAN_DINAS => 'Jumlah Belanja Perjalanan Dinas Seluruh Sekolah',
-                                                default => 'Jumlah Honor Kegiatan Seluruh Sekolah',
+                                                \App\Models\BelanjaHonorKegiatan::JENIS_MAKAN_MINUM => 'Jumlah Belanja Makan & Minum Seluruh',
+                                                \App\Models\BelanjaHonorKegiatan::JENIS_PERJALANAN_DINAS => 'Jumlah Belanja Perjalanan Dinas Seluruh',
+                                                default => 'Jumlah Honor Kegiatan Seluruh',
                                             } }}
                                         </td>
                                         <td class="px-2 py-2.5 whitespace-nowrap text-right">Rp {{ number_format((int) $totalJumlahKeseluruhan, 0, ',', '.') }}</td>

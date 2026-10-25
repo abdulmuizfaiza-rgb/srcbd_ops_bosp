@@ -396,10 +396,23 @@
                                  Nilainya ($totalHargaKeseluruhan, dihitung di render()) otomatis ikut
                                  scope peran, filter, & tab utama yang sedang aktif karena dijumlahkan
                                  dari $daftarSekolah yang sama dengan yang dirender di atas. --}}
+                            {{-- Dirinci jadi 3 baris Negeri/Swasta/Seluruh (permintaan
+                                 user 2026-10-25) - total mengikuti tab utama aktif, lihat
+                                 komentar lengkap di penerimaan-honor-ptk/index.blade.php. --}}
                             @if ($daftarSekolah->isNotEmpty())
                                 <tbody>
-                                    <tr class="bg-slate-200 font-bold text-slate-800 border-t-2 border-slate-400">
-                                        <td colspan="10" class="px-2 py-2.5 text-right">{{ $tabUtama === \App\Models\RincianPemeliharaan::JENIS_JASA ? 'Jumlah Jasa Pemeliharaan Bangunan Seluruh Sekolah' : 'Jumlah Belanja Pemeliharaan Bangunan Seluruh Sekolah' }}</td>
+                                    <tr class="bg-slate-100 font-semibold text-slate-700 border-t-2 border-slate-400">
+                                        <td colspan="10" class="px-2 py-2 text-right">{{ $tabUtama === \App\Models\RincianPemeliharaan::JENIS_JASA ? 'Jumlah Jasa Pemeliharaan Bangunan Sekolah Negeri' : 'Jumlah Belanja Pemeliharaan Bangunan Sekolah Negeri' }}</td>
+                                        <td class="px-2 py-2 whitespace-nowrap text-right">Rp {{ number_format((int) $totalHargaNegeri, 0, ',', '.') }}</td>
+                                        <td colspan="4"></td>
+                                    </tr>
+                                    <tr class="bg-slate-100 font-semibold text-slate-700">
+                                        <td colspan="10" class="px-2 py-2 text-right">{{ $tabUtama === \App\Models\RincianPemeliharaan::JENIS_JASA ? 'Jumlah Jasa Pemeliharaan Bangunan Sekolah Swasta' : 'Jumlah Belanja Pemeliharaan Bangunan Sekolah Swasta' }}</td>
+                                        <td class="px-2 py-2 whitespace-nowrap text-right">Rp {{ number_format((int) $totalHargaSwasta, 0, ',', '.') }}</td>
+                                        <td colspan="4"></td>
+                                    </tr>
+                                    <tr class="bg-slate-200 font-bold text-slate-800 border-t border-slate-300">
+                                        <td colspan="10" class="px-2 py-2.5 text-right">{{ $tabUtama === \App\Models\RincianPemeliharaan::JENIS_JASA ? 'Jumlah Jasa Pemeliharaan Bangunan Seluruh' : 'Jumlah Belanja Pemeliharaan Bangunan Seluruh' }}</td>
                                         <td class="px-2 py-2.5 whitespace-nowrap text-right">Rp {{ number_format((int) $totalHargaKeseluruhan, 0, ',', '.') }}</td>
                                         <td colspan="4"></td>
                                     </tr>

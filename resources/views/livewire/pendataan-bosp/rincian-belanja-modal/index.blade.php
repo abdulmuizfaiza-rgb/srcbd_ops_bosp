@@ -410,13 +410,29 @@
                                     </tr>
                                 </tbody>
                             @endforelse
-                            {{-- Baris Jumlah SELURUH SEKOLAH - SELALU tampil (tidak ikut
-                                 x-show sekolah manapun), label mengikuti tab utama aktif. --}}
+                            {{-- Dirinci jadi 3 baris Negeri/Swasta/Seluruh (permintaan
+                                 user 2026-10-25) - total mengikuti tab utama aktif (KIB B/KIB
+                                 E, bukan BMD), lihat komentar lengkap di
+                                 penerimaan-honor-ptk/index.blade.php. --}}
                             @if ($daftarSekolah->isNotEmpty())
                                 <tbody>
-                                    <tr class="bg-slate-200 font-bold text-slate-800 border-t-2 border-slate-400">
+                                    <tr class="bg-slate-100 font-semibold text-slate-700 border-t-2 border-slate-400">
+                                        <td colspan="10" class="px-2 py-2 text-right">
+                                            {{ $tabUtama === \App\Models\RincianBelanjaModal::JENIS_ASET_TETAP_LAINNYA ? 'Jumlah Rincian Belanja Modal Aset Tetap Lainnya (KIB E) Sekolah Negeri' : 'Jumlah Belanja Modal Peralatan & Mesin (KIB B) Sekolah Negeri' }}
+                                        </td>
+                                        <td class="px-2 py-2 whitespace-nowrap text-right">Rp {{ number_format((int) $totalHargaNegeri, 0, ',', '.') }}</td>
+                                        <td colspan="4"></td>
+                                    </tr>
+                                    <tr class="bg-slate-100 font-semibold text-slate-700">
+                                        <td colspan="10" class="px-2 py-2 text-right">
+                                            {{ $tabUtama === \App\Models\RincianBelanjaModal::JENIS_ASET_TETAP_LAINNYA ? 'Jumlah Rincian Belanja Modal Aset Tetap Lainnya (KIB E) Sekolah Swasta' : 'Jumlah Belanja Modal Peralatan & Mesin (KIB B) Sekolah Swasta' }}
+                                        </td>
+                                        <td class="px-2 py-2 whitespace-nowrap text-right">Rp {{ number_format((int) $totalHargaSwasta, 0, ',', '.') }}</td>
+                                        <td colspan="4"></td>
+                                    </tr>
+                                    <tr class="bg-slate-200 font-bold text-slate-800 border-t border-slate-300">
                                         <td colspan="10" class="px-2 py-2.5 text-right">
-                                            {{ $tabUtama === \App\Models\RincianBelanjaModal::JENIS_ASET_TETAP_LAINNYA ? 'Jumlah Rincian Belanja Modal Aset Tetap Lainnya (KIB E) Seluruh Sekolah' : 'Jumlah Belanja Modal Peralatan & Mesin (KIB B) Seluruh Sekolah' }}
+                                            {{ $tabUtama === \App\Models\RincianBelanjaModal::JENIS_ASET_TETAP_LAINNYA ? 'Jumlah Rincian Belanja Modal Aset Tetap Lainnya (KIB E) Seluruh' : 'Jumlah Belanja Modal Peralatan & Mesin (KIB B) Seluruh' }}
                                         </td>
                                         <td class="px-2 py-2.5 whitespace-nowrap text-right">Rp {{ number_format((int) $totalHargaKeseluruhan, 0, ',', '.') }}</td>
                                         <td colspan="4"></td>
