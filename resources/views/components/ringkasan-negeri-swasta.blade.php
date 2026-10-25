@@ -12,10 +12,22 @@
 --}}
 @if ($ringkasan)
     <div class="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+        {{-- Perbaikan 2026-10-25: dibungkus isset() - key 'negeri'/
+             'swasta'/'total' TIDAK ADA pada $ringkasan 11 menu Pendataan
+             BOSP (key itu berarti JUMLAH BARIS data per status sekolah,
+             beda makna dari 'sekolahSudahInput'/'sekolahBelumInput' di
+             bawah yang berarti JUMLAH SEKOLAH - 11 menu itu HANYA mengisi
+             key sekolahSudahInput/sekolahBelumInput, bukan negeri/swasta/
+             total). Sebelum diperbaiki, bagian ini SELALU dirender tanpa
+             pengecekan begitu $ringkasan truthy, menyebabkan error
+             "Undefined array key" di 11 menu tsb - ditemukan dari
+             storage/logs/laravel.log setelah deploy. --}}
+        @if (isset($ringkasan['negeri']))
         <span>Jumlah data tersimpan:</span>
         <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">Sekolah Negeri: {{ $ringkasan['negeri'] }}</span>
         <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">Sekolah Swasta: {{ $ringkasan['swasta'] }}</span>
         <span class="inline-flex items-center rounded-full bg-slate-200 px-2.5 py-1 font-semibold text-slate-800">Total: {{ $ringkasan['total'] }}</span>
+        @endif
 
         {{-- Rincian Status Sertifikasi (permintaan user 2026-10-18) - khusus
              Data PTK, key ini TIDAK ADA pada ringkasan() Lampiran 2a/2b/2c
