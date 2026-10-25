@@ -76,6 +76,19 @@ class Index extends Component
 
     public ?int $filterSekolahId = null;
 
+    /**
+     * Status modal detail "Sekolah Sudah/Belum Input" (ringkasan jumlah
+     * sekolah yang sudah mengisi menu ini untuk tahun aktif) - permintaan
+     * user 2026-10-25. Pola SAMA seperti $statusInputDipilih pada
+     * App\Livewire\PendataanOps\Lampiran2a\Index, TAPI di sini TIDAK
+     * dibatasi Superadmin - Admin BOSP ikut melihat ringkasan SELURUH
+     * sekolah (jawaban AskUserQuestion 2026-10-25 "Sama persis seperti
+     * Superadmin"). HANYA dihitung dari data UTAMA (tab Peralatan&Mesin/
+     * Aset Tetap Lainnya) - tab BMD TIDAK ikut dihitung (jawaban
+     * AskUserQuestion 2026-10-25 "Hanya data utama").
+     */
+    public ?string $statusInputDipilih = null;
+
     public ?int $editingId = null;
 
     /**
@@ -242,6 +255,77 @@ class Index extends Component
     protected function bolehKelolaSemua(): bool
     {
         return auth()->user()->isSuperadmin();
+    }
+
+    /**
+     * Ringkasan jumlah SEKOLAH yang sudah/belum punya data pada menu
+     * ini untuk tahun aktif (permintaan user 2026-10-25: "tambahkan
+     * jumlah total dari setiap menu dari semua sekolah yang sudah
+     * input data ... dan munculkan juga di akun admin bosp nya") -
+     * dihitung per TAHUN (bukan triwulan/jenis tertentu - jawaban
+     * AskUserQuestion 2026-10-25 "Semua 12 bulan ... tahun yang sedang
+     * aktif") & SELALU tampil utk Superadmin MAUPUN Admin BOSP (parity
+     * penuh, bukan Superadmin-only). Disembunyikan HANYA saat Superadmin
+     * sedang memfilter tabel ke 1 sekolah tertentu ($filterSekolahId).
+     * HANYA dihitung dari TABEL UTAMA rincian_belanja_modal (tab
+     * Peralatan&Mesin/Aset Tetap Lainnya) - TIDAK termasuk tab BMD yang
+     * memakai tabel terpisah RincianBelanjaModalBmd (jawaban
+     * AskUserQuestion 2026-10-25 "Hanya data utama" - tab BMD dianggap
+     * data tambahan, bukan data inti menu ini).
+     */
+    protected function ringkasan(): ?array
+    {
+        if ($this->filterSekolahId) {
+            return null;
+        }
+
+        $idSudahInput = RincianBelanjaModal::where('tahun', $this->tahun)->distinct()->pluck('profil_sekolah_id');
+
+        return [
+            'sekolahSudahInput' => $idSudahInput->count(),
+            'sekolahBelumInput' => ProfilSekolah::count() - $idSudahInput->count(),
+        ];
+    }
+
+    /**
+     * Daftar NAMA SEKOLAH (+ status Negeri/Swasta) yang "sudah"/"belum"
+     * punya data UTAMA (bukan BMD) pada menu ini untuk tahun aktif -
+     * sumber data SAMA dengan ringkasan() di atas, dipakai mengisi modal
+     * detail yang dibuka lewat lihatDetailSekolahInput(). Dikelompokkan
+     * Negeri/Swasta langsung di Blade lewat
+     * <x-daftar-sekolah-input-negeri-swasta>.
+     *
+     * @param  'sudah'|'belum'  $status
+     * @return \Illuminate\Support\Collection<int, \App\Models\ProfilSekolah>
+     */
+    protected function daftarSekolahInput(string $status): \Illuminate\Support\Collection
+    {
+        $idSudahInput = RincianBelanjaModal::where('tahun', $this->tahun)->distinct()->pluck('profil_sekolah_id');
+
+        $query = ProfilSekolah::query()->urutStandar();
+
+        return $status === 'sudah'
+            ? $query->whereIn('id', $idSudahInput)->get(['id', 'nama_sekolah', 'status'])
+            : $query->whereNotIn('id', $idSudahInput)->get(['id', 'nama_sekolah', 'status']);
+    }
+
+    /**
+     * Buka modal detail daftar sekolah "sudah input"/"belum input"
+     * (permintaan user 2026-10-25) - dipanggil dari badge pada
+     * komponen <x-ringkasan-negeri-swasta>.
+     *
+     * @param  'sudah'|'belum'  $status
+     */
+    public function lihatDetailSekolahInput(string $status): void
+    {
+        $this->statusInputDipilih = $status;
+        $this->dispatch('open-modal', 'rincian-belanja-modal-sekolah-input-detail');
+    }
+
+    public function tutupDetailSekolahInput(): void
+    {
+        $this->statusInputDipilih = null;
+        $this->dispatch('close-modal', 'rincian-belanja-modal-sekolah-input-detail');
     }
 
     protected function sekolahSayaId(): ?int
@@ -1574,6 +1658,11 @@ class Index extends Component
             'triwulanOptions' => RincianBelanjaModal::TRIWULAN_OPTIONS,
             'sekolahOptions' => ProfilSekolah::urutStandar()->get(['id', 'nama_sekolah']),
             'bolehKelolaSemua' => $this->bolehKelolaSemua(),
+            'ringkasan' => $this->ringkasan(),
+            'statusInputDipilih' => $this->statusInputDipilih,
+            'daftarSekolahInput' => $this->statusInputDipilih
+                ? $this->daftarSekolahInput($this->statusInputDipilih)
+                : collect(),
             // Kuncian UI - permintaan user 2026-09-23 (round kesepuluh,
             // poin 1) - lihat docblock lengkap App\Livewire\Concerns\
             // MenolakEditJikaTerkunciVerval::terkunciVervalUntukTampilan().

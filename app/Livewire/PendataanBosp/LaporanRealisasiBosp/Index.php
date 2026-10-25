@@ -174,6 +174,19 @@ class Index extends Component
     public string $tabAktif = 'tw1';
 
     /**
+     * Status modal detail "Sekolah Sudah/Belum Input" (ringkasan jumlah
+     * sekolah yang sudah mengisi menu ini untuk tahun aktif) - permintaan
+     * user 2026-10-25. Pola SAMA seperti $statusInputDipilih pada
+     * App\Livewire\PendataanOps\Lampiran2a\Index, TAPI di sini TIDAK
+     * dibatasi Superadmin - Admin BOSP ikut melihat ringkasan SELURUH
+     * sekolah (jawaban AskUserQuestion 2026-10-25 "Sama persis seperti
+     * Superadmin"). TIDAK ditampilkan pada gerbang Verval (view
+     * "validasi") krn halaman itu tidak punya tabel SELURUH sekolah -
+     * lihat render().
+     */
+    public ?string $statusInputDipilih = null;
+
+    /**
      * Pemetaan tab TW -> nomor triwulan yang difilter pada tab itu.
      */
     public const TAB_TRIWULAN = [
@@ -269,6 +282,69 @@ class Index extends Component
     protected function bolehKelolaSemua(): bool
     {
         return auth()->user()->isSuperadmin();
+    }
+
+    /**
+     * Ringkasan jumlah SEKOLAH yang sudah/belum punya data pada menu
+     * ini untuk tahun aktif (permintaan user 2026-10-25: "tambahkan
+     * jumlah total dari setiap menu dari semua sekolah yang sudah
+     * input data ... dan munculkan juga di akun admin bosp nya") -
+     * dihitung per TAHUN (bukan triwulan tertentu - jawaban
+     * AskUserQuestion 2026-10-25 "Semua 12 bulan ... tahun yang sedang
+     * aktif") & SELALU tampil utk Superadmin MAUPUN Admin BOSP (parity
+     * penuh, bukan Superadmin-only). TIDAK ADA kuncian filter "1
+     * sekolah" pada menu ini (beda dari 8 menu BOSP lain) - tabel pada
+     * menu ini SELALU menampilkan seluruh sekolah.
+     */
+    protected function ringkasan(): ?array
+    {
+        $idSudahInput = LaporanRealisasiBosp::where('tahun', $this->tahun)->distinct()->pluck('profil_sekolah_id');
+
+        return [
+            'sekolahSudahInput' => $idSudahInput->count(),
+            'sekolahBelumInput' => ProfilSekolah::count() - $idSudahInput->count(),
+        ];
+    }
+
+    /**
+     * Daftar NAMA SEKOLAH (+ status Negeri/Swasta) yang "sudah"/"belum"
+     * punya data pada menu ini untuk tahun aktif - sumber data SAMA
+     * dengan ringkasan() di atas, dipakai mengisi modal detail yang
+     * dibuka lewat lihatDetailSekolahInput(). Dikelompokkan Negeri/
+     * Swasta langsung di Blade lewat
+     * <x-daftar-sekolah-input-negeri-swasta>.
+     *
+     * @param  'sudah'|'belum'  $status
+     * @return \Illuminate\Support\Collection<int, \App\Models\ProfilSekolah>
+     */
+    protected function daftarSekolahInput(string $status): \Illuminate\Support\Collection
+    {
+        $idSudahInput = LaporanRealisasiBosp::where('tahun', $this->tahun)->distinct()->pluck('profil_sekolah_id');
+
+        $query = ProfilSekolah::query()->urutStandar();
+
+        return $status === 'sudah'
+            ? $query->whereIn('id', $idSudahInput)->get(['id', 'nama_sekolah', 'status'])
+            : $query->whereNotIn('id', $idSudahInput)->get(['id', 'nama_sekolah', 'status']);
+    }
+
+    /**
+     * Buka modal detail daftar sekolah "sudah input"/"belum input"
+     * (permintaan user 2026-10-25) - dipanggil dari badge pada
+     * komponen <x-ringkasan-negeri-swasta>.
+     *
+     * @param  'sudah'|'belum'  $status
+     */
+    public function lihatDetailSekolahInput(string $status): void
+    {
+        $this->statusInputDipilih = $status;
+        $this->dispatch('open-modal', 'laporan-realisasi-bosp-sekolah-input-detail');
+    }
+
+    public function tutupDetailSekolahInput(): void
+    {
+        $this->statusInputDipilih = null;
+        $this->dispatch('close-modal', 'laporan-realisasi-bosp-sekolah-input-detail');
     }
 
     protected function bolehEdit(int $profilSekolahId): bool
@@ -994,6 +1070,11 @@ class Index extends Component
                 'totalTahunAnggaran' => $totalTahunAnggaran,
                 'statusVervalSuperadmin' => $statusVervalSuperadmin,
                 'panelValidasiSendiri' => $panelValidasiSendiri,
+            'ringkasan' => $this->ringkasan(),
+            'statusInputDipilih' => $this->statusInputDipilih,
+            'daftarSekolahInput' => $this->statusInputDipilih
+                ? $this->daftarSekolahInput($this->statusInputDipilih)
+                : collect(),
             ]);
         }
 
@@ -1007,6 +1088,11 @@ class Index extends Component
             'totalBaris' => $totalBaris,
             'statusVervalSuperadmin' => $statusVervalSuperadmin,
             'panelValidasiSendiri' => $panelValidasiSendiri,
+            'ringkasan' => $this->ringkasan(),
+            'statusInputDipilih' => $this->statusInputDipilih,
+            'daftarSekolahInput' => $this->statusInputDipilih
+                ? $this->daftarSekolahInput($this->statusInputDipilih)
+                : collect(),
         ]);
     }
 }

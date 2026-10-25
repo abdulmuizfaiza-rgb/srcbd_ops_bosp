@@ -426,6 +426,8 @@
                         </table>
                     </div>
                     @endif
+
+                    <x-ringkasan-negeri-swasta :ringkasan="$ringkasan" />
                 </div>
             </div>
         </div>
@@ -562,4 +564,15 @@
 
     {{-- Modal Tambah/Edit/Hapus tab "BMD" (permintaan user 2026-09-22) --}}
     @include('livewire.pendataan-bosp.rincian-belanja-modal._form-bmd')
+
+    {{-- Modal detail "Sekolah Sudah/Belum Input" (permintaan user
+         2026-10-25) - lihat Index::ringkasan()/daftarSekolahInput(). --}}
+    <x-modal name="rincian-belanja-modal-sekolah-input-detail" :show="$statusInputDipilih !== null" maxWidth="lg">
+        <div class="p-6">
+            <x-daftar-sekolah-input-negeri-swasta :daftar="$daftarSekolahInput" :status="$statusInputDipilih" />
+            <div class="mt-6 flex justify-end">
+                <x-secondary-button wire:click="tutupDetailSekolahInput" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Tutup</x-secondary-button>
+            </div>
+        </div>
+    </x-modal>
 </div>

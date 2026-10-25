@@ -125,10 +125,24 @@
                                 @endif
                             </div>
                         @else
-                            <div class="text-center mb-4">
-                                <h3 class="font-bold text-slate-800 text-sm tracking-wide">REKAPITULASI PAJAK REGULER DAN PAJAK DAERAH</h3>
-                                <p class="font-semibold text-slate-700 text-xs">DANA BANTUAN OPERASIONAL SEKOLAH (BOS)</p>
-                                <p class="text-slate-500 text-xs">{{ $sekolah->nama_sekolah }} - PERIODE JANUARI-DESEMBER TAHUN ANGGARAN {{ $tahun }}</p>
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                                <div class="text-center sm:text-left sm:flex-1">
+                                    <h3 class="font-bold text-slate-800 text-sm tracking-wide">REKAPITULASI PAJAK REGULER DAN PAJAK DAERAH</h3>
+                                    <p class="font-semibold text-slate-700 text-xs">DANA BANTUAN OPERASIONAL SEKOLAH (BOS)</p>
+                                    <p class="text-slate-500 text-xs">{{ $sekolah->nama_sekolah }} - PERIODE JANUARI-DESEMBER TAHUN ANGGARAN {{ $tahun }}</p>
+                                </div>
+                                {{-- Tombol "Hapus Semua" (12 bulan sekaligus) - permintaan
+                                     user 2026-10-25. Disembunyikan kalau tidak ada 1pun data
+                                     terisi tahun ini (tidak ada yang bisa dihapus), & dimatikan
+                                     kalau ADA SATU SAJA bulan yang sudah di-Verval "Sesuai"
+                                     (Superadmin dikecualikan, sama seperti tombol Hapus per
+                                     bulan - lihat $terkunciPerBulan/abortJikaTerkunciVerval()). --}}
+                                @if (collect($jumlahPerBulan)->contains(fn ($j) => $j['debit'] > 0 || $j['kredit'] > 0) || collect($baris)->flatten()->contains(fn ($v) => $v !== ''))
+                                    <x-danger-button wire:click="konfirmasiHapusSemua" @disabled(! $bolehKelolaSemua && in_array(true, $terkunciPerBulan, true)) class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px] self-center sm:self-auto">
+                                        <x-icon name="trash" class="w-3.5 h-3.5 mr-1" />
+                                        Hapus Semua
+                                    </x-danger-button>
+                                @endif
                             </div>
 
                             {{-- Tabel 1: 12 baris TETAP (1 baris = 1 bulan), input
@@ -345,6 +359,8 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        <x-ringkasan-negeri-swasta :ringkasan="$ringkasan" />
                     @endif
                 </div>
             </div>
@@ -362,6 +378,33 @@
             <div class="mt-6 flex justify-end gap-3">
                 <x-secondary-button wire:click="batalHapusBulan" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
                 <x-danger-button wire:click="hapusBulan" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Hapus</x-danger-button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- Modal Konfirmasi Hapus Semua (12 bulan sekaligus) - permintaan
+         user 2026-10-25, pola SAMA seperti modal Hapus per bulan di atas. --}}
+    <x-modal name="pajak-bosp-reguler-hapus-semua" :show="$confirmingHapusSemua" maxWidth="md">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-slate-900">
+                Hapus SELURUH data Pajak BOSP Reguler tahun {{ $tahun }} untuk sekolah ini?
+            </h2>
+            <p class="mt-1 text-sm text-slate-600">Tindakan ini tidak dapat dibatalkan - seluruh 12 bulan (Januari-Desember) akan dikosongkan kembali sekaligus.</p>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-secondary-button wire:click="batalHapusSemua" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
+                <x-danger-button wire:click="hapusSemua" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Ya, Hapus Semua</x-danger-button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- Modal detail "Sekolah Sudah/Belum Input" (permintaan user
+         2026-10-25) - lihat Index::ringkasan()/daftarSekolahInput(). --}}
+    <x-modal name="pajak-bosp-reguler-sekolah-input-detail" :show="$statusInputDipilih !== null" maxWidth="lg">
+        <div class="p-6">
+            <x-daftar-sekolah-input-negeri-swasta :daftar="$daftarSekolahInput" :status="$statusInputDipilih" />
+            <div class="mt-6 flex justify-end">
+                <x-secondary-button wire:click="tutupDetailSekolahInput" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Tutup</x-secondary-button>
             </div>
         </div>
     </x-modal>
