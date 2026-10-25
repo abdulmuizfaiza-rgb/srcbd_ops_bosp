@@ -1836,6 +1836,18 @@ class Index extends Component
             'totalHargaKeseluruhan' => 0,
             'totalHargaNegeri' => 0,
             'totalHargaSwasta' => 0,
+            // Bug lama (sebelum 2026-10-25) - 3 key ini tidak pernah diisi
+            // di sini padahal <x-ringkasan-negeri-swasta> & modal detailnya
+            // di blade dirender TANPA pengecekan tab, jadi SELALU butuh
+            // ketiga variabel ini apa pun tab yang aktif. Dihitung dari
+            // data utama (KIB B/KIB E, BUKAN BMD) - sama seperti render()
+            // di atas, supaya badge "Sudah/Belum Input" tetap konsisten
+            // walau user sedang membuka tab BMD.
+            'ringkasan' => $this->ringkasan(),
+            'statusInputDipilih' => $this->statusInputDipilih,
+            'daftarSekolahInput' => $this->statusInputDipilih
+                ? $this->daftarSekolahInput($this->statusInputDipilih)
+                : collect(),
             'bentukKontrakOptions' => RincianBelanjaModalBmd::BENTUK_KONTRAK_OPTIONS,
             'rekeningBelanjaOptions' => RincianBelanjaModalBmd::REKENING_BELANJA_OPTIONS,
             'totalBmdKeseluruhan' => $totalBmdKeseluruhan,
@@ -1936,6 +1948,18 @@ class Index extends Component
             'totalHargaKeseluruhan' => 0,
             'totalHargaNegeri' => 0,
             'totalHargaSwasta' => 0,
+            // Bug lama (sebelum 2026-10-25) - 3 key ini tidak pernah diisi
+            // di sini padahal <x-ringkasan-negeri-swasta> & modal detailnya
+            // di blade dirender TANPA pengecekan tab, jadi SELALU butuh
+            // ketiga variabel ini apa pun tab yang aktif. Dihitung dari
+            // data utama (KIB B/KIB E, BUKAN BMD) - sama seperti render()
+            // di atas, supaya badge "Sudah/Belum Input" tetap konsisten
+            // walau user sedang membuka tab BMD.
+            'ringkasan' => $this->ringkasan(),
+            'statusInputDipilih' => $this->statusInputDipilih,
+            'daftarSekolahInput' => $this->statusInputDipilih
+                ? $this->daftarSekolahInput($this->statusInputDipilih)
+                : collect(),
             'bentukKontrakOptions' => RincianBelanjaModalBmd::BENTUK_KONTRAK_OPTIONS,
             'rekeningBelanjaOptions' => RincianBelanjaModalBmd::REKENING_BELANJA_OPTIONS,
             'totalBmdKeseluruhan' => 0,

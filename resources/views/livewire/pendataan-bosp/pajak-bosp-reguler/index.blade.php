@@ -136,9 +136,16 @@
                                      terisi tahun ini (tidak ada yang bisa dihapus), & dimatikan
                                      kalau ADA SATU SAJA bulan yang sudah di-Verval "Sesuai"
                                      (Superadmin dikecualikan, sama seperti tombol Hapus per
-                                     bulan - lihat $terkunciPerBulan/abortJikaTerkunciVerval()). --}}
+                                     bulan - lihat $terkunciPerBulan/abortJikaTerkunciVerval()).
+                                     PERBAIKAN 2026-10-25: pakai binding :disabled="..." (BUKAN
+                                     directive @disabled(...) langsung di tag komponen
+                                     x-danger-button) - pola bug yang SAMA PERSIS sudah pernah
+                                     ditemukan & didokumentasikan di profil-sekolah/index.blade.php
+                                     (2026-10-15): @disabled() langsung di tag x-... merusak hasil
+                                     kompilasi Blade (menyebabkan error 500 "syntax error,
+                                     unexpected token 'else'" di seluruh halaman). --}}
                                 @if (collect($jumlahPerBulan)->contains(fn ($j) => $j['debit'] > 0 || $j['kredit'] > 0) || collect($baris)->flatten()->contains(fn ($v) => $v !== ''))
-                                    <x-danger-button wire:click="konfirmasiHapusSemua" @disabled(! $bolehKelolaSemua && in_array(true, $terkunciPerBulan, true)) class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px] self-center sm:self-auto">
+                                    <x-danger-button wire:click="konfirmasiHapusSemua" :disabled="! $bolehKelolaSemua && in_array(true, $terkunciPerBulan, true)" class="whitespace-nowrap !px-2.5 !py-1.5 !text-[10px] self-center sm:self-auto">
                                         <x-icon name="trash" class="w-3.5 h-3.5 mr-1" />
                                         Hapus Semua
                                     </x-danger-button>
