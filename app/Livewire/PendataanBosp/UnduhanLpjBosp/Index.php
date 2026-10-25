@@ -2,8 +2,6 @@
 
 namespace App\Livewire\PendataanBosp\UnduhanLpjBosp;
 
-use App\Exports\LpjBospExport;
-use App\Models\AksesDataLog;
 use App\Models\LaporanRealisasiBosp;
 use App\Models\ProfilSekolah;
 use App\Models\TahunAnggaranSetting;
@@ -11,7 +9,6 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
-use Maatwebsite\Excel\Facades\Excel;
 
 /**
  * Menu baru "Unduhan LPJ BOSP" (grup Pendataan BOSP, permintaan user
@@ -86,31 +83,6 @@ class Index extends Component
         $id = $this->sekolahIdUntukUnduhan();
 
         return $id ? ProfilSekolah::find($id) : null;
-    }
-
-    /**
-     * Nama file SESUAI PERMINTAAN USER PERSIS: "File LPJ BOSP Triwulan
-     * [otomatis] Tahun [otomatis]_SMP [otomatis]" - dibersihkan dari
-     * karakter yang tidak valid untuk nama file Windows (pola sama
-     * seperti App\Livewire\PendataanOps\Unduhan\Index::namaUntukFile()).
-     */
-    protected function namaUntukFile(): string
-    {
-        $sekolah = $this->sekolahUntukExport();
-        $namaSekolah = $sekolah ? $sekolah->nama_sekolah : 'Semua Sekolah';
-        $nama = 'File LPJ BOSP Triwulan '.$this->triwulan.' Tahun '.$this->tahun.'_'.$namaSekolah;
-
-        return trim(preg_replace('/[\\\\\/:*?"<>|]/', '-', $nama));
-    }
-
-    public function unduhExcel()
-    {
-        AksesDataLog::catat(AksesDataLog::JENIS_UNDUH, 'LPJ BOSP (Unduhan Gabungan)', 'Excel');
-
-        return Excel::download(
-            new LpjBospExport($this->triwulan, $this->tahun, $this->sekolahUntukExport()),
-            $this->namaUntukFile().'.xlsx'
-        );
     }
 
     protected function tahunOptions(): array

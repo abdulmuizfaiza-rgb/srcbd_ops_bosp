@@ -69,10 +69,14 @@
                     @endif
 
                     <div class="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100">
-                        <x-primary-button wire:click="unduhExcel" wire:loading.attr="disabled" wire:target="unduhExcel" class="whitespace-nowrap">
+                        {{-- Link unduhan BIASA (route GET), BUKAN wire:click - lihat
+                             docblock App\Http\Controllers\UnduhanLpjBospController
+                             (perbaikan bug 419 "Page Expired" 2026-10-25). --}}
+                        <a href="{{ route('pendataan-bosp.unduhan-lpj-bosp.unduh', ['triwulan' => $triwulan, 'tahun' => $tahun, 'sekolah_id' => $filterSekolahLpj]) }}"
+                           class="inline-flex items-center px-4 py-2 bg-slate-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-slate-700 focus:bg-slate-700 active:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150 whitespace-nowrap">
                             <x-icon name="download" class="w-4 h-4 mr-1.5" />
                             Unduh Excel LPJ BOSP
-                        </x-primary-button>
+                        </a>
                     </div>
                 </div>
             </div>

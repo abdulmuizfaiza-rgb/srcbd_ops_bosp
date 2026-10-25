@@ -33,6 +33,7 @@ use App\Livewire\PendataanBosp\RekapRkas\Index as RekapRkasIndex;
 use App\Livewire\PendataanBosp\RincianBelanjaBarangHabisPakai\Index as RincianBelanjaBarangHabisPakaiIndex;
 use App\Livewire\PendataanBosp\RincianBelanjaModal\Index as RincianBelanjaModalIndex;
 use App\Livewire\PendataanBosp\UnduhanLpjBosp\Index as UnduhanLpjBospIndex;
+use App\Http\Controllers\UnduhanLpjBospController;
 use App\Livewire\PendataanOps\Index as PendataanOpsIndex;
 use App\Livewire\PendataanOps\Lampiran2a\Index as Lampiran2aIndex;
 use App\Livewire\PendataanOps\Lampiran2b\Index as Lampiran2bIndex;
@@ -123,6 +124,7 @@ Route::middleware(['auth', 'can:akses-pendataan-bosp'])->group(function () {
     Route::get('pendataan-bosp/formulir-bos-k7', FormulirBosK7Index::class)->name('pendataan-bosp.formulir-bos-k7');
     Route::get('pendataan-bosp/formulir-bos-k7/cetak', FormulirBosK7CetakController::class)->name('pendataan-bosp.formulir-bos-k7.cetak');
     Route::get('pendataan-bosp/unduhan-lpj-bosp', UnduhanLpjBospIndex::class)->name('pendataan-bosp.unduhan-lpj-bosp');
+    Route::get('pendataan-bosp/unduhan-lpj-bosp/unduh', UnduhanLpjBospController::class)->name('pendataan-bosp.unduhan-lpj-bosp.unduh');
 });
 
 Route::middleware(['auth', 'can:akses-timeline-pekerjaan'])->group(function () {
