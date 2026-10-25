@@ -23,6 +23,7 @@ use App\Models\RincianBelanjaModal;
 use App\Models\RincianPemeliharaan;
 use App\Models\RincianPemeliharaanPc;
 use App\Support\LpjBospData;
+use Maatwebsite\Excel\Concerns\Export;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
 /**
@@ -71,7 +72,7 @@ use Maatwebsite\Excel\Concerns\WithMultipleSheets;
  * gabungan seluruh sekolah (konvensi `?ProfilSekolah $sekolah = null`
  * yang sudah dipakai di semua Export class terkait).
  */
-class LpjBospExport implements WithMultipleSheets
+class LpjBospExport implements Export, WithMultipleSheets
 {
     public function __construct(
         protected int $triwulan,
