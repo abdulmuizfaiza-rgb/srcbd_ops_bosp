@@ -96,6 +96,7 @@ class FormulirBosK7bLpjSheet implements FromArray, ShouldAutoSize, WithEvents, W
             $this->tahunLpj,
             $this->sekolahLpj,
             $this->kolomTerakhirLpj,
+            aturPageSetup: false,
         );
     }
 }

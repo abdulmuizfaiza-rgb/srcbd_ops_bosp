@@ -52,6 +52,17 @@ trait TerapkanJudulLpj
         int $tahun,
         ?ProfilSekolah $sekolah,
         string $kolomTerakhir,
+        /**
+         * BARU (perbaikan tata letak Formulir BOS K7b/K7c, permintaan
+         * user 2026-10-25): default true = perilaku SAMA PERSIS seperti
+         * sebelumnya (Legal/Landscape, dipakai 17 sheet tabel lebar).
+         * false = LEWATI pengaturan halaman di sini, dipakai KHUSUS oleh
+         * FormulirBosK7bLpjSheet/FormulirBosK7cLpjSheet karena formulir
+         * itu SUDAH diatur Portrait + kertas & margin sesuai menu
+         * aslinya sendiri (lihat FormulirBosK7bSheetExport::
+         * pengaturanHalaman()) - jangan ditimpa jadi Landscape/Legal.
+         */
+        bool $aturPageSetup = true,
     ): void {
         $jumlahBarisJudul = 5;
         $sheet->insertNewRowBefore(1, $jumlahBarisJudul);
@@ -83,7 +94,9 @@ trait TerapkanJudulLpj
             ]);
         }
 
-        $this->terapkanPageSetupLpj($sheet);
+        if ($aturPageSetup) {
+            $this->terapkanPageSetupLpj($sheet);
+        }
     }
 
     protected function terapkanPageSetupLpj(Worksheet $sheet): void
