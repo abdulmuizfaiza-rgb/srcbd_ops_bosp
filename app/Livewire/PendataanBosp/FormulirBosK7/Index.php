@@ -339,7 +339,7 @@ class Index extends Component
     /**
      * @return array{kertas: string, margin: array{kiri: float, kanan: float, atas: float, bawah: float}}
      */
-    protected function pengaturanCetak(): array
+    public function pengaturanCetak(): array
     {
         return [
             'kertas' => $this->jenisKertas,
@@ -521,7 +521,7 @@ class Index extends Component
      * Menyusun seluruh data tampilan (Tab K7b & K7c sekaligus, karena
      * keduanya membaca baris yang sama) untuk sekolah+tahun+bulan aktif.
      */
-    protected function dataFormulir(): array
+    public function dataFormulir(): array
     {
         $sekolahId = $this->sekolahAktifId();
         $sekolah = $sekolahId ? ProfilSekolah::find($sekolahId) : null;

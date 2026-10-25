@@ -40,6 +40,16 @@ class FormulirBosK7bSheetExport implements FromArray, ShouldAutoSize, WithEvents
         protected int $bulan,
         protected array $data,
         protected array $pengaturanCetak = [],
+        /**
+         * BARU (Task LPJ BOSP, 2026-10-25): baris awal tempat formulir ini
+         * mulai ditulis (default 1 = sama seperti perilaku sebelumnya,
+         * TIDAK ADA perubahan untuk unduhan 1 bulan yang sudah ada).
+         * Dipakai App\Exports\Lpj\FormulirBosK7bLpjSheet untuk menumpuk
+         * 3 bulan (1 triwulan) pada SATU sheet yang sama via pemanggilan
+         * tulisFormulir() berulang dengan $barisAwal berbeda-beda - lihat
+         * docblock kelas itu.
+         */
+        protected int $barisAwal = 1,
     ) {}
 
     /**
@@ -90,31 +100,43 @@ class FormulirBosK7bSheetExport implements FromArray, ShouldAutoSize, WithEvents
         return 'Rp '.number_format($nilai, 0, ',', '.');
     }
 
-    private function tulisFormulir(Worksheet $sheet): void
+    /**
+     * BARU (Task LPJ BOSP, 2026-10-25): visibility dinaikkan dari private
+     * ke public & return type diubah dari void ke int (mengembalikan
+     * baris terakhir yang ditulis) KHUSUS supaya App\Exports\Lpj\
+     * FormulirBosK7bLpjSheet bisa memanggil method ini 3x (1x per bulan
+     * dalam 1 triwulan) pada SATU Worksheet yang sama, lalu tahu di baris
+     * berapa blok bulan berikutnya harus mulai. TIDAK ADA perubahan pada
+     * ISI/logika formulirnya - unduhan 1 bulan yang sudah ada (barisAwal
+     * default 1) tetap menghasilkan output PERSIS SAMA seperti sebelumnya.
+     */
+    public function tulisFormulir(Worksheet $sheet): int
     {
         $this->pengaturanHalaman($sheet);
 
         $d = $this->data;
 
         // Kotak referensi pojok kanan atas.
-        $sheet->setCellValue('E1', 'FORMULIR BOS-K7b');
-        $sheet->mergeCells('E1:F1');
-        $sheet->getStyle('E1:F1')->applyFromArray([
+        $barisKotakReferensi = $this->barisAwal;
+        $sheet->setCellValue('E'.$barisKotakReferensi, 'FORMULIR BOS-K7b');
+        $sheet->mergeCells('E'.$barisKotakReferensi.':F'.$barisKotakReferensi);
+        $sheet->getStyle('E'.$barisKotakReferensi.':F'.$barisKotakReferensi)->applyFromArray([
             'font' => ['bold' => true],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
         ]);
 
         // Judul.
-        $sheet->setCellValue('A3', 'REGISTER PENUTUPAN KAS');
-        $sheet->mergeCells('A3:'.self::KOLOM_TERAKHIR.'3');
-        $sheet->getStyle('A3')->applyFromArray([
+        $barisJudul = $this->barisAwal + 2;
+        $sheet->setCellValue('A'.$barisJudul, 'REGISTER PENUTUPAN KAS');
+        $sheet->mergeCells('A'.$barisJudul.':'.self::KOLOM_TERAKHIR.$barisJudul);
+        $sheet->getStyle('A'.$barisJudul)->applyFromArray([
             'font' => ['bold' => true, 'size' => 13],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
         ]);
 
         // Blok header (Tanggal Penutupan, Nama Penutup KAS, D/K/A, Saldo Kas Tunai).
-        $baris = 5;
+        $baris = $this->barisAwal + 4;
         $headerRows = [
             ['Tanggal Penutupan Kas Bulan ini', $d['tanggalPenutupan']->translatedFormat('d F Y')],
             ['Nama Penutup KAS (Pemegang KAS)', $this->sekolah->nama_bendahara],
@@ -241,6 +263,8 @@ class FormulirBosK7bSheetExport implements FromArray, ShouldAutoSize, WithEvents
 
         $sheet->getStyle('A'.$barisTtdMulai.':A'.$baris)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-        $sheet->getStyle('A1:'.self::KOLOM_TERAKHIR.$baris)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+        $sheet->getStyle('A'.$this->barisAwal.':'.self::KOLOM_TERAKHIR.$baris)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+
+        return $baris;
     }
 }

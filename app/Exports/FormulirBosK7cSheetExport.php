@@ -36,6 +36,15 @@ class FormulirBosK7cSheetExport implements FromArray, ShouldAutoSize, WithTitle,
         protected int $bulan,
         protected array $data,
         protected array $pengaturanCetak = [],
+        /**
+         * BARU (Task LPJ BOSP, 2026-10-25): baris awal tempat formulir ini
+         * mulai ditulis (default 1 = sama seperti perilaku sebelumnya,
+         * TIDAK ADA perubahan untuk unduhan 1 bulan yang sudah ada).
+         * Dipakai App\Exports\Lpj\FormulirBosK7cLpjSheet untuk menumpuk
+         * 3 bulan (1 triwulan) pada SATU sheet yang sama - lihat
+         * docblock kelas itu & FormulirBosK7bSheetExport::$barisAwal.
+         */
+        protected int $barisAwal = 1,
     ) {}
 
     /**
@@ -97,31 +106,44 @@ class FormulirBosK7cSheetExport implements FromArray, ShouldAutoSize, WithTitle,
         return $baris + 1;
     }
 
-    private function tulisFormulir(Worksheet $sheet): void
+    /**
+     * BARU (Task LPJ BOSP, 2026-10-25): visibility dinaikkan dari private
+     * ke public & return type diubah dari void ke int (mengembalikan
+     * baris terakhir yang ditulis) KHUSUS supaya App\Exports\Lpj\
+     * FormulirBosK7cLpjSheet bisa memanggil method ini 3x (1x per bulan
+     * dalam 1 triwulan) pada SATU Worksheet yang sama. TIDAK ADA
+     * perubahan pada ISI/logika formulirnya - unduhan 1 bulan yang
+     * sudah ada (barisAwal default 1) tetap PERSIS SAMA seperti
+     * sebelumnya.
+     */
+    public function tulisFormulir(Worksheet $sheet): int
     {
         $this->pengaturanHalaman($sheet);
 
         $d = $this->data;
         $labelBulan = FormulirBosK7::BULAN_OPTIONS[$this->bulan];
 
-        $sheet->setCellValue('E1', 'FORMULIR BOS K7c');
-        $sheet->mergeCells('E1:F1');
-        $sheet->getStyle('E1:F1')->applyFromArray([
+        $barisKotakReferensi = $this->barisAwal;
+        $sheet->setCellValue('E'.$barisKotakReferensi, 'FORMULIR BOS K7c');
+        $sheet->mergeCells('E'.$barisKotakReferensi.':F'.$barisKotakReferensi);
+        $sheet->getStyle('E'.$barisKotakReferensi.':F'.$barisKotakReferensi)->applyFromArray([
             'font' => ['bold' => true],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
             'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]],
         ]);
 
-        $sheet->setCellValue('A3', 'BERITA ACARA PEMERIKSAAN KAS');
-        $sheet->mergeCells('A3:'.self::KOLOM_TERAKHIR.'3');
-        $sheet->setCellValue('A4', 'PRIODE : '.$labelBulan.' '.$this->tahun);
-        $sheet->mergeCells('A4:'.self::KOLOM_TERAKHIR.'4');
-        $sheet->getStyle('A3:'.self::KOLOM_TERAKHIR.'4')->applyFromArray([
+        $barisJudul1 = $this->barisAwal + 2;
+        $barisJudul2 = $this->barisAwal + 3;
+        $sheet->setCellValue('A'.$barisJudul1, 'BERITA ACARA PEMERIKSAAN KAS');
+        $sheet->mergeCells('A'.$barisJudul1.':'.self::KOLOM_TERAKHIR.$barisJudul1);
+        $sheet->setCellValue('A'.$barisJudul2, 'PRIODE : '.$labelBulan.' '.$this->tahun);
+        $sheet->mergeCells('A'.$barisJudul2.':'.self::KOLOM_TERAKHIR.$barisJudul2);
+        $sheet->getStyle('A'.$barisJudul1.':'.self::KOLOM_TERAKHIR.$barisJudul2)->applyFromArray([
             'font' => ['bold' => true, 'size' => 12],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
         ]);
 
-        $baris = 6;
+        $baris = $this->barisAwal + 5;
 
         $noSkKepsek = (string) ($d['noSkKepalaSekolah'] ?: '_______________');
         $tglSkKepsek = $d['tanggalSkKepalaSekolah'] ? $d['tanggalSkKepalaSekolah']->translatedFormat('d F Y') : '_______________';
@@ -197,5 +219,7 @@ class FormulirBosK7cSheetExport implements FromArray, ShouldAutoSize, WithTitle,
         $sheet->setCellValue('D'.$baris, 'NIP. '.$this->sekolah->nip_kepala_sekolah);
 
         $sheet->getStyle('A'.$barisTtdMulai.':A'.$baris)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+        return $baris;
     }
 }

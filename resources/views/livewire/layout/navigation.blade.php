@@ -204,6 +204,9 @@ new class extends Component
                                     <x-sidebar-link :href="route('pendataan-bosp.formulir-bos-k7')" :active="request()->routeIs('pendataan-bosp.formulir-bos-k7')" wire:navigate.hover>
                                         {{ __('Formulir BOS K7b & K7c') }}
                                     </x-sidebar-link>
+                                    <x-sidebar-link :href="route('pendataan-bosp.unduhan-lpj-bosp')" :active="request()->routeIs('pendataan-bosp.unduhan-lpj-bosp')" wire:navigate.hover>
+                                        {{ __('Unduhan LPJ BOSP') }}
+                                    </x-sidebar-link>
                                 @endif
                             </div>
                         </div>
@@ -392,6 +395,9 @@ new class extends Component
                                 </x-sidebar-link>
                                 <x-sidebar-link :href="route('pendataan-bosp.formulir-bos-k7')" :active="request()->routeIs('pendataan-bosp.formulir-bos-k7')" wire:navigate.hover>
                                     {{ __('Formulir BOS K7b & K7c') }}
+                                </x-sidebar-link>
+                                <x-sidebar-link :href="route('pendataan-bosp.unduhan-lpj-bosp')" :active="request()->routeIs('pendataan-bosp.unduhan-lpj-bosp')" wire:navigate.hover>
+                                    {{ __('Unduhan LPJ BOSP') }}
                                 </x-sidebar-link>
                             @endif
                         </div>

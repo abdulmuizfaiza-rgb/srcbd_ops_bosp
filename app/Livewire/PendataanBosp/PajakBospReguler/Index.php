@@ -227,7 +227,7 @@ class Index extends Component
      * kotak tabel - Jumlah & Saldo TIDAK pernah masuk daftar ini karena
      * keduanya SELALU hasil rumus, tidak bisa diedit dari jalur manapun.
      */
-    protected function daftarField(): array
+    public function daftarField(): array
     {
         return array_merge(PajakBospReguler::FIELD_DEBIT, PajakBospReguler::FIELD_KREDIT);
     }
@@ -452,7 +452,7 @@ class Index extends Component
      * seluruh kotak tetap ditampilkan KOSONG & Jumlah/Saldo/Triwulan
      * semuanya nol - tabel tidak bisa diisi (dicegah juga di updated()).
      */
-    protected function dataPerSekolah(): array
+    public function dataPerSekolah(): array
     {
         $sekolahId = $this->sekolahAktifId();
         $sekolah = $sekolahId ? ProfilSekolah::find($sekolahId) : null;
@@ -537,7 +537,7 @@ class Index extends Component
      * total Debit/Kredit setahun & Saldo akhir (Desember) untuk tahun
      * yang dipilih.
      */
-    protected function dataRekap()
+    public function dataRekap()
     {
         $daftarSekolah = ProfilSekolah::with(['pajakBospReguler' => function ($q) {
             $q->where('tahun', $this->tahun);

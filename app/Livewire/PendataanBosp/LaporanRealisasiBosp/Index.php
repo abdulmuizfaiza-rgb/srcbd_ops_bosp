@@ -471,7 +471,7 @@ class Index extends Component
      * Data untuk tab tw1-tw4 - 1 baris per sekolah, difilter ke triwulan
      * tab yang aktif.
      */
-    protected function renderTabTriwulan(int $triwulan): array
+    public function renderTabTriwulan(int $triwulan): array
     {
         $query = ProfilSekolah::with(['laporanRealisasiBosp' => function ($q) use ($triwulan) {
             $q->where('tahun', $this->tahun)->where('triwulan', $triwulan);
