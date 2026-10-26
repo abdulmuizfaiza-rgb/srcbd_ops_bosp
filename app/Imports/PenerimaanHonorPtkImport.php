@@ -7,6 +7,7 @@ use App\Models\ProfilSekolah;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Concerns\Importable;
+use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithUpsertColumns;
@@ -36,7 +37,20 @@ use Maatwebsite\Excel\Concerns\WithValidation;
  * selalu dianggap beda) - selalu masuk sebagai baris baru, karena tidak
  * ada kunci pencocokan yang bisa diandalkan tanpa NUPTK.
  */
-class PenerimaanHonorPtkImport implements ToModel, WithHeadingRow, WithUpsertColumns, WithUpserts, WithValidation
+/**
+ * SkipsEmptyRows (perbaikan bug 2026-10-26, kelanjutan dari perbaikan
+ * headingRow() hari sebelumnya - pola IDENTIK dengan yang sudah
+ * diterapkan di RincianBelanjaModalBmdImport 2026-10-16): file hasil
+ * "Export Excel"/"Unduh Excel" PenerimaanHonorPtkExport menulis beberapa baris
+ * kosong (border tabel) di BAWAH baris data asli, supaya tampilannya
+ * rapi saat dicetak (lihat PenerimaanHonorPtkExport::BARIS_KOSONG_SEBELUM_TANDA_TANGAN).
+ * Tanpa SkipsEmptyRows, baris-baris kosong ini ikut divalidasi sebagai
+ * baris data sungguhan (field wajib dianggap kosong) - gagal pada baris
+ * pertama setelah data asli & membatalkan sisa proses import.
+ * SkipsEmptyRows membuat baris yang BENAR-BENAR kosong (tanpa isi sama
+ * sekali) dilewati otomatis.
+ */
+class PenerimaanHonorPtkImport implements ToModel, WithHeadingRow, WithUpsertColumns, WithUpserts, WithValidation, SkipsEmptyRows
 {
     use Importable;
 
