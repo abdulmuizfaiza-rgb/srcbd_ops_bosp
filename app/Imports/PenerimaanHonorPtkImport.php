@@ -115,6 +115,21 @@ class PenerimaanHonorPtkImport implements ToModel, WithHeadingRow, WithUpsertCol
         return ['nama_penerima', 'volume', 'satuan', 'tarif_harga', 'jumlah_honor', 'tanggal_bayar', 'updated_at'];
     }
 
+    /**
+     * BARU (perbaikan bug 2026-10-26, permintaan user: import file hasil
+     * export sendiri selalu gagal "field is required"): tanpa ini,
+     * WithHeadingRow membaca baris 1 sebagai header (default Maatwebsite
+     * Excel), padahal file yang DIHASILKAN oleh PenerimaanHonorPtkExport (satu-satunya
+     * file yang wajar diupload user ke sini) menaruh judul di baris 1-2,
+     * baris kosong di 3-4, dan header tabel SEBENARNYA di baris
+     * 5 (lihat PenerimaanHonorPtkExport::BARIS_HEADER_TABEL). Angka ini HARUS
+     * selalu sama dengan BARIS_HEADER_TABEL di kelas Export berpasangan.
+     */
+    public function headingRow(): int
+    {
+        return 5;
+    }
+
     public function rules(): array
     {
         return [
