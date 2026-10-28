@@ -92,10 +92,25 @@ Artisan::command('audit:lihat-data-ringkasan', function () {
  * lampiran_2a/2b/2c & deadline_pekerjaan).
  *
  * SAFETY: tabel 'users' SENGAJA tidak ikut dihapus lewat loop generik -
- * hanya user yg emailnya persis cocok yg dihapus. Kalau ternyata ADA
- * user LAIN yg juga terhubung ke sekolah "uji coba" ini (di luar
- * dugaan), command BERHENTI tanpa menghapus apa pun & minta dicek
- * manual dulu - supaya tidak ada akun asli yang ikut terhapus.
+ * hanya user yg emailnya persis cocok (ada di $emailUjiCobaList) yg
+ * dihapus. Kalau ternyata ADA user LAIN (di luar daftar ini) yg juga
+ * terhubung ke sekolah "uji coba" ini (di luar dugaan), command
+ * BERHENTI tanpa menghapus apa pun & minta dicek manual dulu - supaya
+ * tidak ada akun asli yang ikut terhapus.
+ *
+ * UPDATE 2026-10-28 (audit ulang menyeluruh atas permintaan user "hapus
+ * semua data dummy, jangan sampai ada yang salah"): ditemukan akun
+ * KEDUA yang juga data uji coba, HANYA ada di ONLINE (tidak ada di
+ * Lokal) - abdulmuizfaiza3@gmail.com (level admin_bosp), dibuat
+ * 2026-10-23, terhubung ke sekolah dummy yang SAMA (NPSN 12345678).
+ * User sudah mengonfirmasi akun ini juga boleh dihapus. Command
+ * digeneralisasi dari 1 email hardcoded ($emailUjiCoba) menjadi DAFTAR
+ * email ($emailUjiCobaList) supaya kedua akun tertangani otomatis -
+ * pengecekan keamanan "user lain terhubung" disesuaikan supaya TIDAK
+ * menganggap sesama email di daftar ini sebagai "user lain yang tidak
+ * terduga" (sebelum perubahan ini, command akan membatalkan diri
+ * sendiri karena menganggap abdulmuizfaiza3@gmail.com sebagai akun
+ * asing - sudah terbukti saat preview ONLINE 2026-10-28).
  *
  * DEFAULT (tanpa flag) = HANYA PREVIEW, tidak mengubah/menghapus apa
  * pun. Untuk benar-benar menghapus, WAJIB pakai flag --hapus-sungguhan
@@ -106,23 +121,31 @@ Artisan::command('audit:lihat-data-ringkasan', function () {
  *   php artisan audit:bersihkan-data-uji-coba --hapus-sungguhan  (hapus beneran)
  */
 Artisan::command('audit:bersihkan-data-uji-coba {--hapus-sungguhan : Benar-benar menghapus, bukan cuma preview}', function () {
-    $emailUjiCoba = 'abdulmuizfaiza2@gmail.com';
+    $emailUjiCobaList = ['abdulmuizfaiza2@gmail.com', 'abdulmuizfaiza3@gmail.com'];
     $npsnUjiCoba = '12345678';
 
-    $user = \App\Models\User::where('email', $emailUjiCoba)->first();
+    $users = \App\Models\User::whereIn('email', $emailUjiCobaList)->get();
     $sekolah = \App\Models\ProfilSekolah::where('npsn', $npsnUjiCoba)->first();
 
-    if (! $user && ! $sekolah) {
-        $this->error("Tidak ditemukan User dgn email {$emailUjiCoba} maupun Sekolah dgn NPSN {$npsnUjiCoba}. Mungkin sudah pernah dihapus sebelumnya, atau datanya sudah berubah - tidak ada tindakan yang dilakukan.");
+    if ($users->isEmpty() && ! $sekolah) {
+        $this->error('Tidak ditemukan User dgn email uji coba manapun ('.implode(', ', $emailUjiCobaList).") maupun Sekolah dgn NPSN {$npsnUjiCoba}. Mungkin sudah pernah dihapus sebelumnya, atau datanya sudah berubah - tidak ada tindakan yang dilakukan.");
 
         return;
     }
 
     $this->info('=== Data Uji Coba yang Terdeteksi ===');
-    if ($user) {
-        $this->line("User: #{$user->id} | username: {$user->username} | email: {$user->email} | level: {$user->level_akses}");
+    if ($users->isNotEmpty()) {
+        $users->each(function ($u) {
+            $this->line("User: #{$u->id} | username: {$u->username} | email: {$u->email} | level: {$u->level_akses}");
+        });
+        $emailDitemukan = $users->pluck('email')->all();
+        foreach ($emailUjiCobaList as $email) {
+            if (! in_array($email, $emailDitemukan, true)) {
+                $this->comment("User dgn email {$email} TIDAK ditemukan (mungkin sudah dihapus sebelumnya).");
+            }
+        }
     } else {
-        $this->comment("User dgn email {$emailUjiCoba} TIDAK ditemukan (mungkin sudah dihapus sebelumnya).");
+        $this->comment('Tidak ada User dgn email uji coba manapun yang ditemukan (mungkin sudah dihapus sebelumnya).');
     }
     if ($sekolah) {
         $this->line("Sekolah: #{$sekolah->id} | NPSN: {$sekolah->npsn} | nama: {$sekolah->nama_sekolah}");
@@ -153,8 +176,9 @@ Artisan::command('audit:bersihkan-data-uji-coba {--hapus-sungguhan : Benar-benar
 
         $this->newLine();
         $this->info('--- Pengecekan Keamanan: User LAIN yang Juga Terhubung ke Sekolah Ini ---');
+        $idUserDitemukan = $users->pluck('id')->all();
         $userLainTerhubung = \App\Models\User::where('profil_sekolah_id', $sekolah->id)
-            ->when($user, fn ($q) => $q->where('id', '!=', $user->id))
+            ->whereNotIn('id', $idUserDitemukan)
             ->get(['id', 'username', 'email', 'level_akses']);
         if ($userLainTerhubung->isEmpty()) {
             $this->line('(tidak ada user lain yang terhubung ke sekolah ini - aman)');
@@ -187,14 +211,14 @@ Artisan::command('audit:bersihkan-data-uji-coba {--hapus-sungguhan : Benar-benar
         return;
     }
 
-    \Illuminate\Support\Facades\DB::transaction(function () use ($user, $sekolah, $jumlahPerTabel) {
+    \Illuminate\Support\Facades\DB::transaction(function () use ($users, $sekolah, $jumlahPerTabel) {
         if ($sekolah) {
             foreach (array_keys($jumlahPerTabel) as $tabel) {
                 \Illuminate\Support\Facades\DB::table($tabel)->where('profil_sekolah_id', $sekolah->id)->delete();
             }
         }
-        if ($user) {
-            $user->delete();
+        foreach ($users as $u) {
+            $u->delete();
         }
         if ($sekolah) {
             $sekolah->delete();
@@ -202,7 +226,7 @@ Artisan::command('audit:bersihkan-data-uji-coba {--hapus-sungguhan : Benar-benar
     });
 
     $this->info('Selesai. Data uji coba (user, sekolah, & data transaksi terkait) sudah dihapus.');
-})->purpose('Hapus data uji coba yang sudah dikonfirmasi user (email abdulmuizfaiza2@gmail.com + sekolah NPSN 12345678) - default PREVIEW, pakai --hapus-sungguhan utk eksekusi');
+})->purpose('Hapus data uji coba yang sudah dikonfirmasi user (daftar email abdulmuizfaiza2@gmail.com & abdulmuizfaiza3@gmail.com + sekolah NPSN 12345678) - default PREVIEW, pakai --hapus-sungguhan utk eksekusi');
 
 /**
  * Permintaan user 2026-10-24 (fitur Tahun Anggaran - rollover otomatis):
