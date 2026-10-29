@@ -145,5 +145,12 @@ class AppServiceProvider extends ServiceProvider
         // muncul di login superadmin"), sama seperti pola gate-gate lain
         // di atas.
         Gate::define('akses-sinkronisasi', fn (User $user) => $user->isSuperadmin());
+
+        // Menu "Analitik Pengunjung" (BARU, permintaan user 2026-10-29) -
+        // dashboard ringkasan/grafik dari data yang SUDAH ada
+        // (login_histories & akses_data_logs). Keputusan AskUserQuestion:
+        // "Hanya Superadmin" - sama seperti pola gate-gate lain di atas
+        // (data ini lintas-sekolah/lintas-pengguna).
+        Gate::define('akses-analitik-pengunjung', fn (User $user) => $user->isSuperadmin());
     }
 }

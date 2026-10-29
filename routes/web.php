@@ -13,6 +13,7 @@ use App\Http\Controllers\SuratTpgCetakSemuaController;
 use App\Http\Controllers\TampilanBackgroundController;
 use App\Livewire\Backup\Index as BackupIndex;
 use App\Livewire\Sinkronisasi\Index as SinkronisasiIndex;
+use App\Livewire\AnalitikPengunjung\Index as AnalitikPengunjungIndex;
 use App\Livewire\CekDatabaseAplikasi\Index as CekDatabaseAplikasiIndex;
 use App\Livewire\Beranda\Index as BerandaIndex;
 use App\Livewire\Dashboard\Index as DashboardIndex;
@@ -199,6 +200,14 @@ Route::middleware(['auth', 'can:akses-pengumuman'])->group(function () {
 // App\Providers\AppServiceProvider).
 Route::middleware(['auth', 'can:akses-cek-database-aplikasi'])->group(function () {
     Route::get('cek-database-aplikasi', CekDatabaseAplikasiIndex::class)->name('cek-database-aplikasi.index');
+});
+
+// Menu "Analitik Pengunjung" (BARU, permintaan user 2026-10-29) - dashboard
+// ringkasan/grafik "siapa pengunjung, dari mana asalnya, apa yang dilihat" -
+// HANYA Superadmin (Gate 'akses-analitik-pengunjung', lihat
+// App\Providers\AppServiceProvider).
+Route::middleware(['auth', 'can:akses-analitik-pengunjung'])->group(function () {
+    Route::get('analitik-pengunjung', AnalitikPengunjungIndex::class)->name('analitik-pengunjung.index');
 });
 
 require __DIR__.'/auth.php';

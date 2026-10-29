@@ -262,6 +262,12 @@ new class extends Component
                     </x-sidebar-link>
                 @endcan
 
+                @can('akses-analitik-pengunjung')
+                    <x-sidebar-link :href="route('analitik-pengunjung.index')" :active="request()->routeIs('analitik-pengunjung.*')" wire:navigate.hover>
+                        {{ __('Analitik Pengunjung') }}
+                    </x-sidebar-link>
+                @endcan
+
                 @can('akses-sinkronisasi')
                     <x-sidebar-link :href="route('sinkronisasi.index')" :active="request()->routeIs('sinkronisasi.*')" wire:navigate.hover>
                         {{ __('Sinkronisasi dan Tarik Data') }}
@@ -450,6 +456,12 @@ new class extends Component
             @can('akses-cek-database-aplikasi')
                 <x-sidebar-link :href="route('cek-database-aplikasi.index')" :active="request()->routeIs('cek-database-aplikasi.*')" wire:navigate.hover>
                     {{ __('Cek Database dan Aplikasi') }}
+                </x-sidebar-link>
+            @endcan
+
+            @can('akses-analitik-pengunjung')
+                <x-sidebar-link :href="route('analitik-pengunjung.index')" :active="request()->routeIs('analitik-pengunjung.*')" wire:navigate.hover>
+                    {{ __('Analitik Pengunjung') }}
                 </x-sidebar-link>
             @endcan
 
