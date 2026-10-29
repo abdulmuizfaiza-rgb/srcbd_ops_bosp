@@ -151,6 +151,6 @@ class AppServiceProvider extends ServiceProvider
         // (login_histories & akses_data_logs). Keputusan AskUserQuestion:
         // "Hanya Superadmin" - sama seperti pola gate-gate lain di atas
         // (data ini lintas-sekolah/lintas-pengguna).
-        Gate::define('akses-analitik-pengunjung', fn (User $user) => $user->isSuperadmin());
+        Gate::define('akses-analitik-pengunjung', fn (User $user) => $user->isSuperadmin() || $user->isAdminOps() || $user->isAdminBosp());
     }
 }

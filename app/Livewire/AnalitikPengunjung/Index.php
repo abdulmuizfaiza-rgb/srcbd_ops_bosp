@@ -44,9 +44,15 @@ use Livewire\Component;
  *    lokasi geografis (titik koordinat yang sudah tersimpan), (c) asal
  *    perangkat/browser (diuraikan dari User-Agent yang sudah tersimpan,
  *    lihat App\Support\InfoPerangkat).
- * 3. Hak akses: HANYA Superadmin (Gate 'akses-analitik-pengunjung', lihat
- *    App\Providers\AppServiceProvider) - sama seperti pola gate-gate
- *    menu lain yang bersifat lintas-sekolah/lintas-pengguna.
+ * 3. Hak akses (DIPERLUAS 2026-10-29, susulan): awalnya HANYA Superadmin.
+ *    User lalu minta menu ini JUGA muncul utk Admin OPS & Admin BOSP,
+ *    TAPI dibatasi hanya data sekolahnya sendiri - "sekolah milik orang
+ *    lain jangan ditampilkan". Jadi sekarang Gate
+ *    'akses-analitik-pengunjung' (lihat App\Providers\AppServiceProvider)
+ *    mengizinkan ketiga level, dan di kelas ini SEMUA query dibatasi
+ *    lewat sekolahIdPembatas(): NULL utk Superadmin (lihat data lintas-
+ *    sekolah, seperti semula), berisi profil_sekolah_id akun yang login
+ *    utk Admin OPS/BOSP (HANYA lihat sekolahnya sendiri).
  *
  * Catatan desain (bukan aturan bisnis, murni pilihan teknis - lihat
  * panduan update untuk penjelasan lebih lengkap):
@@ -62,6 +68,20 @@ use Livewire\Component;
  * - Superadmin dikeluarkan dari daftar "Asal Sekolah" (tidak terikat 1
  *   sekolah tertentu) - bukan berarti login Superadmin diabaikan, tetap
  *   dihitung di kartu ringkasan & breakdown per level akses.
+ * - Grafik "Asal Sekolah/Instansi" (top 10 sekolah) DISEMBUNYIKAN untuk
+ *   Admin OPS/BOSP (lihat tampilkanAsalSekolah() di render()) - tidak
+ *   relevan kalau tampilan sudah dibatasi 1 sekolah saja, dan tetap
+ *   konsisten dengan prinsip "sekolah milik orang lain jangan
+ *   ditampilkan" (grafik itu pada dasarnya PERBANDINGAN antar sekolah).
+ * - Pembatasan per-sekolah dilakukan lewat whereHas('user', ...) ke
+ *   profil_sekolah_id akun yang login (BUKAN mencocokkan teks
+ *   nama_sekolah) - lebih presisi & tidak bergantung pada akun yang
+ *   melakukan login masih ada/sudah dihapus untuk login_histories
+ *   (user_id di tabel itu cascadeOnDelete, jadi selalu valid selama
+ *   barisnya masih ada). Untuk akses_data_logs yang user_id-nya bisa
+ *   NULL (akun pelaku sudah dihapus, baris log tetap disimpan sebagai
+ *   bukti audit), baris semacam itu otomatis TIDAK ikut ditampilkan
+ *   saat dibatasi per-sekolah (tidak bisa dipastikan sekolah mana).
  */
 #[Layout('layouts.app')]
 #[Title('Analitik Pengunjung')]
@@ -83,6 +103,32 @@ class Index extends Component
     }
 
     /**
+     * ID sekolah untuk membatasi SEMUA query di bawah ("sekolah milik
+     * sendiri" saja) - permintaan user 2026-10-29 (susulan). NULL berarti
+     * TIDAK dibatasi (khusus Superadmin, yang memang perlu melihat data
+     * lintas-sekolah) - selain itu selalu berisi profil_sekolah_id akun
+     * yang sedang login.
+     */
+    private function sekolahIdPembatas(): ?int
+    {
+        $user = auth()->user();
+
+        return $user->isSuperadmin() ? null : $user->profil_sekolah_id;
+    }
+
+    /**
+     * Apakah grafik "Asal Sekolah/Instansi" (perbandingan antar sekolah)
+     * boleh ditampilkan - HANYA kalau tampilan tidak sedang dibatasi ke 1
+     * sekolah (lihat sekolahIdPembatas()), karena grafik itu pada
+     * dasarnya perbandingan lintas-sekolah yang tidak relevan/tidak boleh
+     * dilihat Admin OPS/BOSP.
+     */
+    private function tampilkanAsalSekolah(): bool
+    {
+        return $this->sekolahIdPembatas() === null;
+    }
+
+    /**
      * Kartu ringkasan: total login, pengunjung unik (akun berbeda), total
      * aktivitas (buka halaman + unduh), dan rata-rata login per hari -
      * semua dihitung dalam rentang periode yang dipilih.
@@ -90,10 +136,17 @@ class Index extends Component
     private function ringkasan(): array
     {
         $sejak = $this->sejakTanggal();
+        $sekolahId = $this->sekolahIdPembatas();
 
-        $totalLogin = LoginHistory::where('login_at', '>=', $sejak)->count();
-        $pengunjungUnik = LoginHistory::where('login_at', '>=', $sejak)->distinct('user_id')->count('user_id');
-        $totalAktivitas = AksesDataLog::where('created_at', '>=', $sejak)->count();
+        $totalLogin = LoginHistory::where('login_at', '>=', $sejak)
+            ->when($sekolahId, fn ($q, $id) => $q->whereHas('user', fn ($q2) => $q2->where('profil_sekolah_id', $id)))
+            ->count();
+        $pengunjungUnik = LoginHistory::where('login_at', '>=', $sejak)
+            ->when($sekolahId, fn ($q, $id) => $q->whereHas('user', fn ($q2) => $q2->where('profil_sekolah_id', $id)))
+            ->distinct('user_id')->count('user_id');
+        $totalAktivitas = AksesDataLog::where('created_at', '>=', $sejak)
+            ->when($sekolahId, fn ($q, $id) => $q->whereHas('user', fn ($q2) => $q2->where('profil_sekolah_id', $id)))
+            ->count();
 
         return [
             'totalLogin' => $totalLogin,
@@ -111,8 +164,10 @@ class Index extends Component
     private function trendLoginHarian(): array
     {
         $sejak = $this->sejakTanggal();
+        $sekolahId = $this->sekolahIdPembatas();
 
         $perHari = LoginHistory::where('login_at', '>=', $sejak)
+            ->when($sekolahId, fn ($q, $id) => $q->whereHas('user', fn ($q2) => $q2->where('profil_sekolah_id', $id)))
             ->selectRaw('DATE(login_at) as tanggal, COUNT(*) as jumlah')
             ->groupBy('tanggal')
             ->pluck('jumlah', 'tanggal');
@@ -144,8 +199,10 @@ class Index extends Component
         ];
 
         $labelLevel = User::levelAksesOptions();
+        $sekolahId = $this->sekolahIdPembatas();
 
         return LoginHistory::where('login_at', '>=', $sejak)
+            ->when($sekolahId, fn ($q, $id) => $q->whereHas('user', fn ($q2) => $q2->where('profil_sekolah_id', $id)))
             ->selectRaw('level_akses, COUNT(*) as jumlah')
             ->groupBy('level_akses')
             ->get()
@@ -167,6 +224,13 @@ class Index extends Component
      */
     private function topSekolah(): array
     {
+        if (! $this->tampilkanAsalSekolah()) {
+            // Dibatasi ke 1 sekolah (Admin OPS/BOSP) - grafik perbandingan
+            // antar sekolah ini tidak relevan/tidak boleh ditampilkan,
+            // lihat tampilkanAsalSekolah(). Tidak perlu query sama sekali.
+            return [];
+        }
+
         $sejak = $this->sejakTanggal();
 
         return LoginHistory::where('login_at', '>=', $sejak)
@@ -192,8 +256,10 @@ class Index extends Component
     private function titikLokasi(): array
     {
         $sejak = $this->sejakTanggal();
+        $sekolahId = $this->sekolahIdPembatas();
 
         return LoginHistory::where('login_at', '>=', $sejak)
+            ->when($sekolahId, fn ($q, $id) => $q->whereHas('user', fn ($q2) => $q2->where('profil_sekolah_id', $id)))
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->selectRaw('ROUND(latitude, 3) as lat_r, ROUND(longitude, 3) as lng_r, COUNT(*) as jumlah')
@@ -218,8 +284,11 @@ class Index extends Component
     private function cakupanLokasi(): array
     {
         $sejak = $this->sejakTanggal();
-        $total = LoginHistory::where('login_at', '>=', $sejak)->count();
-        $adaLokasi = LoginHistory::where('login_at', '>=', $sejak)->whereNotNull('latitude')->whereNotNull('longitude')->count();
+        $sekolahId = $this->sekolahIdPembatas();
+        $batasSekolah = fn ($q) => $q->when($sekolahId, fn ($q2, $id) => $q2->whereHas('user', fn ($q3) => $q3->where('profil_sekolah_id', $id)));
+
+        $total = $batasSekolah(LoginHistory::where('login_at', '>=', $sejak))->count();
+        $adaLokasi = $batasSekolah(LoginHistory::where('login_at', '>=', $sejak))->whereNotNull('latitude')->whereNotNull('longitude')->count();
 
         return [
             'total' => $total,
@@ -239,8 +308,10 @@ class Index extends Component
     private function perangkat(): array
     {
         $sejak = $this->sejakTanggal();
+        $sekolahId = $this->sekolahIdPembatas();
 
         return AksesDataLog::where('created_at', '>=', $sejak)
+            ->when($sekolahId, fn ($q, $id) => $q->whereHas('user', fn ($q2) => $q2->where('profil_sekolah_id', $id)))
             ->whereNotNull('user_agent')
             ->selectRaw('user_agent, COUNT(*) as jumlah')
             ->groupBy('user_agent')
@@ -275,8 +346,10 @@ class Index extends Component
     private function topMenu(string $jenisAksi): array
     {
         $sejak = $this->sejakTanggal();
+        $sekolahId = $this->sekolahIdPembatas();
 
         return AksesDataLog::where('created_at', '>=', $sejak)
+            ->when($sekolahId, fn ($q, $id) => $q->whereHas('user', fn ($q2) => $q2->where('profil_sekolah_id', $id)))
             ->where('jenis_aksi', $jenisAksi)
             ->selectRaw('nama_menu, COUNT(*) as jumlah')
             ->groupBy('nama_menu')
@@ -299,6 +372,8 @@ class Index extends Component
             'perangkat' => $this->perangkat(),
             'topMenuDibuka' => $this->topMenuDibuka(),
             'topMenuDiunduh' => $this->topMenuDiunduh(),
+            'tampilkanAsalSekolah' => $this->tampilkanAsalSekolah(),
+            'namaSekolahSaya' => $this->tampilkanAsalSekolah() ? null : auth()->user()->nama_sekolah,
         ]);
     }
 }

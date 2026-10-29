@@ -18,7 +18,11 @@
                     </button>
                 @endforeach
                 <span class="text-xs text-slate-400 ml-auto">
-                    Data dirangkum dari menu "Pengguna &gt; Riwayat Login" dan "Cek Database dan Aplikasi &gt; Log Akses Data".
+                    @if ($tampilkanAsalSekolah)
+                        Data dirangkum dari menu "Pengguna &gt; Riwayat Login" dan "Cek Database dan Aplikasi &gt; Log Akses Data".
+                    @else
+                        Menampilkan data untuk sekolah Anda saja: <strong class="text-slate-600">{{ $namaSekolahSaya ?? '-' }}</strong>.
+                    @endif
                 </span>
             </div>
 
@@ -81,7 +85,9 @@
             </div>
 
             {{-- ============ LOGIN PER LEVEL AKSES + TOP SEKOLAH ============ --}}
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {{-- "Asal Sekolah/Instansi" (perbandingan antar sekolah) HANYA utk Superadmin -
+                 Admin OPS/BOSP tidak boleh lihat sekolah lain, jadi grid jadi 1 kolom. --}}
+            <div class="grid grid-cols-1 {{ $tampilkanAsalSekolah ? 'lg:grid-cols-2' : '' }} gap-4">
                 <div class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-slate-200/70">
                     <p class="text-sm font-semibold text-slate-800">Siapa yang Login</p>
                     <p class="text-xs text-slate-500 mb-4">Pembagian login berdasarkan level akses.</p>
@@ -116,44 +122,46 @@
                     @endif
                 </div>
 
-                <div class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-slate-200/70">
-                    <p class="text-sm font-semibold text-slate-800">Asal Sekolah/Instansi</p>
-                    <p class="text-xs text-slate-500 mb-4">10 sekolah dengan login terbanyak (Superadmin tidak disertakan - tidak terikat 1 sekolah).</p>
-                    @if (count($topSekolah) === 0)
-                        <p class="text-sm text-slate-400 py-8 text-center">Belum ada data login sekolah pada periode ini.</p>
-                    @else
-                        <div wire:ignore
-                             x-data="{
-                                init() {
-                                    new Chart(this.$refs.canvas.getContext('2d'), {
-                                        type: 'bar',
-                                        data: {
-                                            labels: @js(array_column($topSekolah, 'nama_sekolah')),
-                                            datasets: [{
-                                                label: 'Login',
-                                                data: @js(array_column($topSekolah, 'jumlah')),
-                                                backgroundColor: '#10b981',
-                                                borderRadius: 4,
-                                            }],
-                                        },
-                                        options: {
-                                            indexAxis: 'y',
-                                            responsive: true,
-                                            maintainAspectRatio: false,
-                                            scales: {
-                                                x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f1f5f9' } },
-                                                y: { grid: { display: false } },
+                @if ($tampilkanAsalSekolah)
+                    <div class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-slate-200/70">
+                        <p class="text-sm font-semibold text-slate-800">Asal Sekolah/Instansi</p>
+                        <p class="text-xs text-slate-500 mb-4">10 sekolah dengan login terbanyak (Superadmin tidak disertakan - tidak terikat 1 sekolah).</p>
+                        @if (count($topSekolah) === 0)
+                            <p class="text-sm text-slate-400 py-8 text-center">Belum ada data login sekolah pada periode ini.</p>
+                        @else
+                            <div wire:ignore
+                                 x-data="{
+                                    init() {
+                                        new Chart(this.$refs.canvas.getContext('2d'), {
+                                            type: 'bar',
+                                            data: {
+                                                labels: @js(array_column($topSekolah, 'nama_sekolah')),
+                                                datasets: [{
+                                                    label: 'Login',
+                                                    data: @js(array_column($topSekolah, 'jumlah')),
+                                                    backgroundColor: '#10b981',
+                                                    borderRadius: 4,
+                                                }],
                                             },
-                                            plugins: { legend: { display: false } },
-                                        },
-                                    });
-                                }
-                             }"
-                             class="h-56">
-                            <canvas x-ref="canvas"></canvas>
-                        </div>
-                    @endif
-                </div>
+                                            options: {
+                                                indexAxis: 'y',
+                                                responsive: true,
+                                                maintainAspectRatio: false,
+                                                scales: {
+                                                    x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f1f5f9' } },
+                                                    y: { grid: { display: false } },
+                                                },
+                                                plugins: { legend: { display: false } },
+                                            },
+                                        });
+                                    }
+                                 }"
+                                 class="h-56">
+                                <canvas x-ref="canvas"></canvas>
+                            </div>
+                        @endif
+                    </div>
+                @endif
             </div>
 
             {{-- ============ ASAL LOKASI GEOGRAFIS ============ --}}
@@ -305,7 +313,7 @@
                                         },
                                         plugins: { legend: { display: false } },
                                     },
-                            });
+                                });
                             }
                          }"
                          class="h-72">
