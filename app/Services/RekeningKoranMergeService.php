@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use setasign\Fpdi\Fpdf\Fpdi;
+use setasign\Fpdi\Fpdi;
 
 /**
  * Menggabungkan file PDF Rekening Koran Triwulan 1-4 (sudah diupload
