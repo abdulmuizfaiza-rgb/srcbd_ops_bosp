@@ -72,6 +72,30 @@ class Index extends Component
 
     public const LOGO_SEKOLAH_TINGGI_PX = 450;
 
+    /**
+     * Cap Sekolah yang diupload OTOMATIS di-crop PERSEGI (cover, pola
+     * sama seperti Logo Sekolah di atas) - permintaan user 2026-11-14.
+     * Resolusi SENGAJA lebih tinggi dari Logo Sekolah (600 vs 450px)
+     * supaya tetap tajam saat nanti dicetak di ukuran fisik cap
+     * sesungguhnya (4 cm, aturan SE Kadisdik Sukabumi 15 Januari 2024) -
+     * cap/stempel yang diupload Admin OPS/Admin BOSP adalah gambar
+     * stempel yang SUDAH ADA (hasil scan/foto), BUKAN dibuat otomatis
+     * oleh sistem - lihat simpanCapSekolah().
+     */
+    public const CAP_SEKOLAH_LEBAR_PX = 600;
+
+    public const CAP_SEKOLAH_TINGGI_PX = 600;
+
+    /**
+     * Tanda Tangan Kepala Sekolah - permintaan user 2026-11-14. SENGAJA
+     * TIDAK di-crop persegi seperti Logo Sekolah/Cap Sekolah (tanda
+     * tangan lazimnya memanjang/landscape, crop persegi akan memotong
+     * bagiannya) - hanya dibatasi lebar maksimum, rasio asli
+     * dipertahankan lewat scaleDown() - lihat
+     * simpanTandaTanganKepalaSekolah().
+     */
+    public const TANDA_TANGAN_LEBAR_MAKS_PX = 800;
+
     #[Url(as: 'tab')]
     public string $tabUtama = self::TAB_PROFIL;
 
@@ -159,6 +183,19 @@ class Index extends Component
      * menu Format Surat Rekomendasi & Pembatalan TPG.
      */
     public $logoSekolahBaru = null;
+
+    /**
+     * Upload Tanda Tangan Kepala Sekolah & Cap Sekolah (permintaan user
+     * 2026-11-14) - KEDUANYA field UPLOAD biasa, sama persis pola &
+     * perilakunya dengan $logoSekolahBaru di atas (auto-save begitu file
+     * dipilih di mode Edit, ditahan dulu sampai tombol "Simpan" di mode
+     * Tambah Sekolah). Sistem TIDAK membuat tanda tangan/cap secara
+     * otomatis - Admin OPS/Admin BOSP mengupload gambar yang SUDAH ADA
+     * (scan/foto tanda tangan asli & stempel sekolah yang sudah ada).
+     */
+    public $tandaTanganKepalaSekolahBaru = null;
+
+    public $capSekolahBaru = null;
 
     public bool $showForm = false;
 
@@ -378,6 +415,7 @@ class Index extends Component
             'nama_kasie_kpml', 'nip_kasie_kpml',
             'nama_bendahara', 'nip_bendahara', 'status_kepegawaian_bendahara',
             'alamat_sekolah', 'nama_yayasan', 'logoSekolahBaru',
+            'tandaTanganKepalaSekolahBaru', 'capSekolahBaru',
         ]);
         $this->resetErrorBag();
     }
@@ -490,6 +528,29 @@ class Index extends Component
             $pathLama = $sekolah->logo_sekolah;
             $pathBaru = $this->simpanLogoSekolah($this->logoSekolahBaru);
             $sekolah->update(['logo_sekolah' => $pathBaru]);
+
+            if ($pathLama && Storage::disk('public')->exists($pathLama)) {
+                Storage::disk('public')->delete($pathLama);
+            }
+        }
+
+        // Tanda Tangan Kepala Sekolah & Cap Sekolah yang dipilih di mode
+        // Tambah Sekolah (permintaan user 2026-11-14) - pola SAMA PERSIS
+        // dengan blok Logo Sekolah di atas.
+        if ($this->tandaTanganKepalaSekolahBaru) {
+            $pathLama = $sekolah->tanda_tangan_kepala_sekolah;
+            $pathBaru = $this->simpanTandaTanganKepalaSekolah($this->tandaTanganKepalaSekolahBaru);
+            $sekolah->update(['tanda_tangan_kepala_sekolah' => $pathBaru]);
+
+            if ($pathLama && Storage::disk('public')->exists($pathLama)) {
+                Storage::disk('public')->delete($pathLama);
+            }
+        }
+
+        if ($this->capSekolahBaru) {
+            $pathLama = $sekolah->cap_sekolah;
+            $pathBaru = $this->simpanCapSekolah($this->capSekolahBaru);
+            $sekolah->update(['cap_sekolah' => $pathBaru]);
 
             if ($pathLama && Storage::disk('public')->exists($pathLama)) {
                 Storage::disk('public')->delete($pathLama);
@@ -646,6 +707,186 @@ class Index extends Component
 
         $sekolah->update(['logo_sekolah' => null]);
         session()->flash('status', 'Logo Sekolah berhasil dihapus.');
+    }
+
+    /**
+     * Upload/ganti Tanda Tangan Kepala Sekolah (permintaan user
+     * 2026-11-14) - pola SAMA PERSIS dengan updatedLogoSekolahBaru() di
+     * atas (auto-save di mode Edit, ditahan dulu di mode Tambah
+     * Sekolah). Disimpan ke App\Models\ProfilSekolah::
+     * tanda_tangan_kepala_sekolah.
+     */
+    public function updatedTandaTanganKepalaSekolahBaru(): void
+    {
+        if (! $this->tandaTanganKepalaSekolahBaru) {
+            return;
+        }
+
+        if ($this->editingId) {
+            $sekolah = ProfilSekolah::findOrFail($this->editingId);
+            abort_unless($this->bolehEdit($sekolah), 403);
+        } else {
+            abort_unless($this->bolehKelolaSemua(), 403);
+        }
+
+        $validator = Validator::make(
+            ['tandaTanganKepalaSekolahBaru' => $this->tandaTanganKepalaSekolahBaru],
+            ['tandaTanganKepalaSekolahBaru' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048']],
+            [],
+            ['tandaTanganKepalaSekolahBaru' => 'Tanda Tangan Kepala Sekolah']
+        );
+
+        if ($validator->fails()) {
+            $this->addError('tandaTanganKepalaSekolahBaru', $validator->errors()->first('tandaTanganKepalaSekolahBaru'));
+            $this->tandaTanganKepalaSekolahBaru = null;
+
+            return;
+        }
+
+        if (! $this->editingId) {
+            $this->resetErrorBag('tandaTanganKepalaSekolahBaru');
+
+            return;
+        }
+
+        $pathLama = $sekolah->tanda_tangan_kepala_sekolah;
+        $pathBaru = $this->simpanTandaTanganKepalaSekolah($this->tandaTanganKepalaSekolahBaru);
+        $sekolah->update(['tanda_tangan_kepala_sekolah' => $pathBaru]);
+
+        if ($pathLama && Storage::disk('public')->exists($pathLama)) {
+            Storage::disk('public')->delete($pathLama);
+        }
+
+        $this->tandaTanganKepalaSekolahBaru = null;
+        $this->resetErrorBag('tandaTanganKepalaSekolahBaru');
+        session()->flash('status', 'Tanda Tangan Kepala Sekolah berhasil diperbarui.');
+    }
+
+    /**
+     * Simpan Tanda Tangan Kepala Sekolah apa adanya (hanya dibatasi
+     * lebar maksimum lewat scaleDown(), TIDAK di-crop persegi seperti
+     * Logo Sekolah/Cap Sekolah - lihat docblock
+     * self::TANDA_TANGAN_LEBAR_MAKS_PX) - supaya seluruh tanda tangan
+     * (biasanya memanjang/landscape) tetap utuh. Disimpan sebagai PNG
+     * (bukan JPEG) supaya latar belakang transparan pada file yang
+     * diupload (kalau ada) tetap terjaga.
+     */
+    private function simpanTandaTanganKepalaSekolah($fileBaru): string
+    {
+        $manager = new ImageManager(new Driver);
+
+        $gambar = $manager->read($fileBaru->getRealPath())
+            ->scaleDown(width: self::TANDA_TANGAN_LEBAR_MAKS_PX);
+
+        $namaFile = 'tanda-tangan-kepala-sekolah/'.Str::random(40).'.png';
+        Storage::disk('public')->put($namaFile, (string) $gambar->toPng());
+
+        return $namaFile;
+    }
+
+    public function hapusTandaTanganKepalaSekolah(): void
+    {
+        abort_unless($this->editingId, 403);
+        $sekolah = ProfilSekolah::findOrFail($this->editingId);
+        abort_unless($this->bolehEdit($sekolah), 403);
+
+        $pathLama = $sekolah->tanda_tangan_kepala_sekolah;
+
+        if ($pathLama && Storage::disk('public')->exists($pathLama)) {
+            Storage::disk('public')->delete($pathLama);
+        }
+
+        $sekolah->update(['tanda_tangan_kepala_sekolah' => null]);
+        session()->flash('status', 'Tanda Tangan Kepala Sekolah berhasil dihapus.');
+    }
+
+    /**
+     * Upload/ganti Cap Sekolah (permintaan user 2026-11-14 - field
+     * UPLOAD biasa untuk cap/stempel yang SUDAH ADA secara fisik,
+     * di-scan/difoto oleh Admin OPS/Admin BOSP; sistem TIDAK membuat cap
+     * secara otomatis) - pola SAMA PERSIS dengan
+     * updatedLogoSekolahBaru() di atas.
+     */
+    public function updatedCapSekolahBaru(): void
+    {
+        if (! $this->capSekolahBaru) {
+            return;
+        }
+
+        if ($this->editingId) {
+            $sekolah = ProfilSekolah::findOrFail($this->editingId);
+            abort_unless($this->bolehEdit($sekolah), 403);
+        } else {
+            abort_unless($this->bolehKelolaSemua(), 403);
+        }
+
+        $validator = Validator::make(
+            ['capSekolahBaru' => $this->capSekolahBaru],
+            ['capSekolahBaru' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048']],
+            [],
+            ['capSekolahBaru' => 'Cap Sekolah']
+        );
+
+        if ($validator->fails()) {
+            $this->addError('capSekolahBaru', $validator->errors()->first('capSekolahBaru'));
+            $this->capSekolahBaru = null;
+
+            return;
+        }
+
+        if (! $this->editingId) {
+            $this->resetErrorBag('capSekolahBaru');
+
+            return;
+        }
+
+        $pathLama = $sekolah->cap_sekolah;
+        $pathBaru = $this->simpanCapSekolah($this->capSekolahBaru);
+        $sekolah->update(['cap_sekolah' => $pathBaru]);
+
+        if ($pathLama && Storage::disk('public')->exists($pathLama)) {
+            Storage::disk('public')->delete($pathLama);
+        }
+
+        $this->capSekolahBaru = null;
+        $this->resetErrorBag('capSekolahBaru');
+        session()->flash('status', 'Cap Sekolah berhasil diperbarui.');
+    }
+
+    /**
+     * Crop & resize Cap Sekolah ke 600x600px persegi (center-crop, pola
+     * sama seperti simpanLogoSekolah() tapi resolusi lebih tinggi -
+     * lihat docblock self::CAP_SEKOLAH_LEBAR_PX). Disimpan sebagai PNG
+     * (bukan JPEG) supaya latar belakang transparan pada file yang
+     * diupload (kalau ada) tetap terjaga, TIDAK dipaksa jadi putih.
+     */
+    private function simpanCapSekolah($fileBaru): string
+    {
+        $manager = new ImageManager(new Driver);
+
+        $gambar = $manager->read($fileBaru->getRealPath())
+            ->cover(self::CAP_SEKOLAH_LEBAR_PX, self::CAP_SEKOLAH_TINGGI_PX);
+
+        $namaFile = 'cap-sekolah/'.Str::random(40).'.png';
+        Storage::disk('public')->put($namaFile, (string) $gambar->toPng());
+
+        return $namaFile;
+    }
+
+    public function hapusCapSekolah(): void
+    {
+        abort_unless($this->editingId, 403);
+        $sekolah = ProfilSekolah::findOrFail($this->editingId);
+        abort_unless($this->bolehEdit($sekolah), 403);
+
+        $pathLama = $sekolah->cap_sekolah;
+
+        if ($pathLama && Storage::disk('public')->exists($pathLama)) {
+            Storage::disk('public')->delete($pathLama);
+        }
+
+        $sekolah->update(['cap_sekolah' => null]);
+        session()->flash('status', 'Cap Sekolah berhasil dihapus.');
     }
 
     public function konfirmasiHapus(int $id): void
@@ -1698,6 +1939,15 @@ class Index extends Component
             // logonya belum berubah.
             'logoSekolahSrc' => ($sekolahSedangDiedit && $sekolahSedangDiedit->logo_sekolah)
                 ? route('profil-sekolah.logo-sekolah', $sekolahSedangDiedit->id).'?v='.urlencode(basename($sekolahSedangDiedit->logo_sekolah))
+                : null,
+            // Tanda Tangan Kepala Sekolah & Cap Sekolah (permintaan user
+            // 2026-11-14) - pola cache-buster SAMA PERSIS seperti
+            // logoSekolahSrc di atas.
+            'tandaTanganKepalaSekolahSrc' => ($sekolahSedangDiedit && $sekolahSedangDiedit->tanda_tangan_kepala_sekolah)
+                ? route('profil-sekolah.tanda-tangan-kepala-sekolah', $sekolahSedangDiedit->id).'?v='.urlencode(basename($sekolahSedangDiedit->tanda_tangan_kepala_sekolah))
+                : null,
+            'capSekolahSrc' => ($sekolahSedangDiedit && $sekolahSedangDiedit->cap_sekolah)
+                ? route('profil-sekolah.cap-sekolah', $sekolahSedangDiedit->id).'?v='.urlencode(basename($sekolahSedangDiedit->cap_sekolah))
                 : null,
             'statusOptions' => ProfilSekolah::statusOptions(),
             'statusKepegawaianOptions' => ProfilSekolah::statusKepegawaianOptions(),

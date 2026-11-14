@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BackupFileController;
+use App\Http\Controllers\CapSekolahFileController;
 use App\Http\Controllers\FormulirBosK7CetakController;
 use App\Http\Controllers\GoogleDriveOAuthController;
 use App\Http\Controllers\KopSuratFileController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\PendataanOpsFileController;
 use App\Http\Controllers\SuratTpgCetakController;
 use App\Http\Controllers\SuratTpgCetakSemuaController;
 use App\Http\Controllers\TampilanBackgroundController;
+use App\Http\Controllers\TandaTanganKepalaSekolahFileController;
 use App\Livewire\Backup\Index as BackupIndex;
 use App\Livewire\Sinkronisasi\Index as SinkronisasiIndex;
 use App\Livewire\AnalitikPengunjung\Index as AnalitikPengunjungIndex;
@@ -90,6 +92,12 @@ Route::middleware(['auth', 'can:akses-profil-sekolah'])->group(function () {
     // Format Surat Rekomendasi & Pembatalan TPG (tab Cover SMPN/SMP-S).
     Route::get('profil-sekolah/logo-sekolah/{profilSekolah}', [LogoSekolahFileController::class, 'show'])
         ->name('profil-sekolah.logo-sekolah');
+    // Tanda Tangan Kepala Sekolah & Cap Sekolah (permintaan user
+    // 2026-11-14) - pola route SAMA PERSIS seperti logo-sekolah di atas.
+    Route::get('profil-sekolah/tanda-tangan-kepala-sekolah/{profilSekolah}', [TandaTanganKepalaSekolahFileController::class, 'show'])
+        ->name('profil-sekolah.tanda-tangan-kepala-sekolah');
+    Route::get('profil-sekolah/cap-sekolah/{profilSekolah}', [CapSekolahFileController::class, 'show'])
+        ->name('profil-sekolah.cap-sekolah');
 });
 
 Route::middleware(['auth', 'can:akses-pendataan-ops'])->group(function () {
