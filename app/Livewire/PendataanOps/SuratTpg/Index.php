@@ -235,6 +235,69 @@ class Index extends Component
     }
 
     /**
+     * Hitung modeTandaTangan/tandaTanganSrc/capSekolahSrc/qrSvg - dipakai
+     * BERSAMA oleh render() (tampilan langsung di halaman, dgn
+     * editable=true) & exportPdf() (file PDF sungguhan, editable=false).
+     *
+     * PERBAIKAN PENTING (2026-11-14, laporan user "tanda tangan/cap/QR
+     * belum muncul" disertai screenshot halaman TAMPILAN LANGSUNG, BUKAN
+     * hasil PDF) - akar masalah: render() (yg memberi data ke tampilan
+     * langsung di layar) TIDAK pernah dilengkapi data mode tanda tangan
+     * sama sekali, HANYA exportPdf() yg dilengkapi - jadi dropdown
+     * "Tanda Tangan" sudah tersimpan dgn benar tapi tampilan di layar
+     * (halaman utama menu ini) tidak pernah membacanya.
+     *
+     * $untukPreview=true (dipanggil dari render(), tampilan di layar yg
+     * re-render pada SETIAP interaksi Livewire - mis. tiap ketikan Nomor
+     * Surat) - mode 'qrcode' SENGAJA TIDAK mencatat baris baru ke
+     * verifikasi_dokumen_qr (kalau dicatat, setiap render() akan bikin
+     * baris baru & membanjiri tabel) - QR yg ditampilkan di layar HANYA
+     * pratinjau visual (uuid acak, TIDAK disimpan ke database, jadi
+     * kalau di-scan akan menunjukkan "QR Code Tidak Dikenali" - wajar,
+     * krn dokumen sungguhan baru benar-benar diterbitkan & dicatat saat
+     * tombol Cetak/Unduh PDF yang sesungguhnya ditekan, bukan saat masih
+     * pratinjau/sedang diedit).
+     *
+     * $untukPreview=false (dipanggil dari exportPdf(), PDF sungguhan yg
+     * diunduh user) - mode 'qrcode' BENAR mencatat baris baru lewat
+     * TandaTanganDigitalService::siapkanQrUntukDokumen() supaya QR di
+     * PDF itu valid & bisa diverifikasi publik.
+     *
+     * @return array{modeTandaTangan: string, tandaTanganSrc: ?string, capSekolahSrc: ?string, qrSvg: ?string}
+     */
+    private function dataModeTandaTangan(?ProfilSekolah $sekolah, bool $untukPreview): array
+    {
+        $modeTandaTangan = $sekolah && $this->adaTtdKepsekUntukTabAktif() ? $this->modeTandaTangan : 'tanpa';
+
+        $tandaTanganSrc = $modeTandaTangan === 'gambar' ? $sekolah?->tandaTanganKepalaSekolahDataUri() : null;
+        $capSekolahSrc = $modeTandaTangan === 'gambar' ? $sekolah?->capSekolahDataUri() : null;
+
+        $qrSvg = null;
+        if ($modeTandaTangan === 'qrcode' && $sekolah) {
+            $layanan = app(TandaTanganDigitalService::class);
+            if ($untukPreview) {
+                $qrSvg = $layanan->svgQr(route('verifikasi-dokumen.show', (string) Str::uuid()));
+            } else {
+                $labelDokumen = match ($this->tabAktif) {
+                    SuratTpg::JENIS_REKOMENDASI => 'Surat Rekomendasi TPG',
+                    SuratTpg::JENIS_PENGHENTIAN => 'Surat Penghentian TPG',
+                    SuratTpg::JENIS_LEMBAR_VALIDASI => 'Lembar Validasi TPG',
+                    SuratTpg::JENIS_REKAP_CAIR_TPG => 'Rekap Cair TPG',
+                    default => 'Surat TPG',
+                };
+                $qrSvg = $layanan->siapkanQrUntukDokumen($sekolah, $labelDokumen, $this->tahun)['svg'];
+            }
+        }
+
+        return [
+            'modeTandaTangan' => $modeTandaTangan,
+            'tandaTanganSrc' => $tandaTanganSrc,
+            'capSekolahSrc' => $capSekolahSrc,
+            'qrSvg' => $qrSvg,
+        ];
+    }
+
+    /**
      * Konfirmasi hapus manual surat aktif (sekolah+tahun+triwulan+jenis
      * tab) - permintaan user 2026-09-27, meniru pola
      * App\Livewire\PendataanBosp\PajakBospReguler\Index::
@@ -1322,26 +1385,9 @@ class Index extends Component
         $data['kopSuratSrc'] = $sekolah->kopSuratDataUri();
         $data['logoSekolahSrc'] = $sekolah->logoSekolahDataUri();
 
-        // Fase 2 (2026-11-14): lihat docblock $modeTandaTangan &
-        // adaTtdKepsekUntukTabAktif() di atas - HARUS sinkron dgn
-        // App\Http\Controllers\SuratTpgCetakController::JENIS_ADA_TTD_KEPSEK
-        // (tombol "Cetak" di halaman ini memakai controller itu).
-        $modeTandaTangan = $this->adaTtdKepsekUntukTabAktif() ? $this->modeTandaTangan : 'tanpa';
-        $data['modeTandaTangan'] = $modeTandaTangan;
-        $data['tandaTanganSrc'] = $modeTandaTangan === 'gambar' ? $sekolah->tandaTanganKepalaSekolahDataUri() : null;
-        $data['capSekolahSrc'] = $modeTandaTangan === 'gambar' ? $sekolah->capSekolahDataUri() : null;
-        $data['qrSvg'] = null;
-        if ($modeTandaTangan === 'qrcode') {
-            $labelDokumen = match ($this->tabAktif) {
-                SuratTpg::JENIS_REKOMENDASI => 'Surat Rekomendasi TPG',
-                SuratTpg::JENIS_PENGHENTIAN => 'Surat Penghentian TPG',
-                SuratTpg::JENIS_LEMBAR_VALIDASI => 'Lembar Validasi TPG',
-                SuratTpg::JENIS_REKAP_CAIR_TPG => 'Rekap Cair TPG',
-                default => 'Surat TPG',
-            };
-            $data['qrSvg'] = app(TandaTanganDigitalService::class)
-                ->siapkanQrUntukDokumen($sekolah, $labelDokumen, $this->tahun)['svg'];
-        }
+        // Fase 2 (2026-11-14): lihat docblock dataModeTandaTangan() di atas
+        // - $untukPreview=false krn ini PDF sungguhan (boleh mencatat QR).
+        $data = array_merge($data, $this->dataModeTandaTangan($sekolah, untukPreview: false));
 
         $pengaturan = $this->pengaturanCetak();
         $data['margin'] = $pengaturan['margin'];
@@ -1402,6 +1448,12 @@ class Index extends Component
     public function render()
     {
         $data = $this->dataSurat();
+
+        // Fase 2 (2026-11-14): lihat docblock dataModeTandaTangan() di
+        // atas - $untukPreview=true krn ini tampilan langsung di layar
+        // (re-render pada tiap interaksi), BUKAN PDF sungguhan.
+        $sekolahAktif = ($id = $this->sekolahAktifId()) ? ProfilSekolah::find($id) : null;
+        $data = array_merge($data, $this->dataModeTandaTangan($sekolahAktif, untukPreview: true));
 
         return view('livewire.pendataan-ops.surat-tpg.index', array_merge($data, [
             'tabAktif' => $this->tabAktif,
