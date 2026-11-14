@@ -21,6 +21,19 @@
       langkah" diterjemahkan sebagai margin-left 40px (kira-kira setara
       5 karakter pada ukuran font 11pt), diterapkan SAMA pada kedua
       kolom (Pengawas Pembina & Kepala Sekolah) supaya tetap simetris.
+
+    Fase 2 (2026-11-14): ruang kosong tanda tangan Kepala Sekolah
+    (sebelumnya selalu <div style="height:64px;"></div> kosong) sekarang
+    lewat @include('pdf.partials.isi-ttd-kepala-sekolah') supaya bisa
+    diisi gambar tanda tangan+cap atau QR Code sesuai pilihan mode saat
+    Unduh PDF - lihat docblock partial itu. Variabel $modeTandaTangan/
+    $tandaTanganSrc/$capSekolahSrc/$qrSvg TIDAK perlu ditambahkan ke
+    parameter @include surat-tpg-ttd di surat-tpg-rekomendasi-isi/
+    surat-tpg-penghentian-isi - otomatis ikut ter-inherit dari data
+    controller paling atas (perilaku standar Blade @include: parent
+    view punya akses semua variabel view induknya). Blok tanda tangan
+    Pengawas Pembina (kolom kiri) TIDAK disentuh - fitur ini HANYA
+    untuk Kepala Sekolah.
 --}}
 @php($editable = $editable ?? false)
 <table style="width:100%;border-collapse:collapse;margin-top:34px;font-size:11pt;">
@@ -45,7 +58,7 @@
                 @endif
                 <br>
                 Kepala Sekolah,
-                <div style="height:64px;"></div>
+                @include('pdf.partials.isi-ttd-kepala-sekolah', ['tinggiPx' => 64])
                 {{ $namaKepsek ?: '............................' }}<br>
                 NIP. {{ $nipKepsek ?: '............................' }}
             </div>

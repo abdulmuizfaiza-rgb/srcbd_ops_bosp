@@ -12,6 +12,7 @@ use App\Models\ProfilSekolah;
 use App\Models\RekapCairTpg;
 use App\Models\RekapCairTpgBulan;
 use App\Models\SuratTpg;
+use App\Services\TandaTanganDigitalService;
 use App\Support\UrutanRosterTpg;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Carbon;
@@ -202,6 +203,36 @@ class Index extends Component
     public float $marginBawah = 2.5;
 
     public bool $tampilSettingMargin = false;
+
+    /**
+     * Fase 2 (2026-11-14): pilihan mode tanda tangan Kepala Sekolah saat
+     * tombol "Cetak" dibuka - 'tanpa' (default) | 'gambar' | 'qrcode'.
+     * Sengaja TIDAK disimpan ke database (sama seperti $jenisKertas dst
+     * di atas) - hanya state tampilan per kunjungan. Lihat
+     * App\Http\Controllers\SuratTpgCetakController utk daftar jenis
+     * surat yang memang punya tanda tangan Kepala Sekolah
+     * (JENIS_ADA_TTD_KEPSEK) & docblock
+     * resources/views/pdf/partials/isi-ttd-kepala-sekolah.
+     */
+    public string $modeTandaTangan = 'tanpa';
+
+    /**
+     * Jenis Surat TPG yang memang punya tanda tangan Kepala Sekolah -
+     * dipakai utk menyembunyikan/menonaktifkan pilihan mode tanda tangan
+     * di tab yang tidak relevan (mis. Surat Pernyataan ditandatangani
+     * Pengawas, BUKAN Kepala Sekolah - lihat docblock
+     * surat-tpg-pernyataan-isi.blade.php). HARUS SAMA PERSIS dengan
+     * SuratTpgCetakController::JENIS_ADA_TTD_KEPSEK.
+     */
+    public function adaTtdKepsekUntukTabAktif(): bool
+    {
+        return in_array($this->tabAktif, [
+            SuratTpg::JENIS_REKOMENDASI,
+            SuratTpg::JENIS_PENGHENTIAN,
+            SuratTpg::JENIS_LEMBAR_VALIDASI,
+            SuratTpg::JENIS_REKAP_CAIR_TPG,
+        ], true);
+    }
 
     /**
      * Konfirmasi hapus manual surat aktif (sekolah+tahun+triwulan+jenis
@@ -429,6 +460,8 @@ class Index extends Component
             'margin_kanan' => $pengaturan['margin']['kanan'],
             'margin_atas' => $pengaturan['margin']['atas'],
             'margin_bawah' => $pengaturan['margin']['bawah'],
+            // Fase 2 (2026-11-14) - lihat docblock $modeTandaTangan di atas.
+            'mode_ttd' => $this->adaTtdKepsekUntukTabAktif() ? $this->modeTandaTangan : 'tanpa',
         ]);
     }
 
@@ -1288,6 +1321,27 @@ class Index extends Component
         $data['editable'] = false;
         $data['kopSuratSrc'] = $sekolah->kopSuratDataUri();
         $data['logoSekolahSrc'] = $sekolah->logoSekolahDataUri();
+
+        // Fase 2 (2026-11-14): lihat docblock $modeTandaTangan &
+        // adaTtdKepsekUntukTabAktif() di atas - HARUS sinkron dgn
+        // App\Http\Controllers\SuratTpgCetakController::JENIS_ADA_TTD_KEPSEK
+        // (tombol "Cetak" di halaman ini memakai controller itu).
+        $modeTandaTangan = $this->adaTtdKepsekUntukTabAktif() ? $this->modeTandaTangan : 'tanpa';
+        $data['modeTandaTangan'] = $modeTandaTangan;
+        $data['tandaTanganSrc'] = $modeTandaTangan === 'gambar' ? $sekolah->tandaTanganKepalaSekolahDataUri() : null;
+        $data['capSekolahSrc'] = $modeTandaTangan === 'gambar' ? $sekolah->capSekolahDataUri() : null;
+        $data['qrSvg'] = null;
+        if ($modeTandaTangan === 'qrcode') {
+            $labelDokumen = match ($this->tabAktif) {
+                SuratTpg::JENIS_REKOMENDASI => 'Surat Rekomendasi TPG',
+                SuratTpg::JENIS_PENGHENTIAN => 'Surat Penghentian TPG',
+                SuratTpg::JENIS_LEMBAR_VALIDASI => 'Lembar Validasi TPG',
+                SuratTpg::JENIS_REKAP_CAIR_TPG => 'Rekap Cair TPG',
+                default => 'Surat TPG',
+            };
+            $data['qrSvg'] = app(TandaTanganDigitalService::class)
+                ->siapkanQrUntukDokumen($sekolah, $labelDokumen, $this->tahun)['svg'];
+        }
 
         $pengaturan = $this->pengaturanCetak();
         $data['margin'] = $pengaturan['margin'];

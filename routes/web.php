@@ -13,6 +13,7 @@ use App\Http\Controllers\SuratTpgCetakController;
 use App\Http\Controllers\SuratTpgCetakSemuaController;
 use App\Http\Controllers\TampilanBackgroundController;
 use App\Http\Controllers\TandaTanganKepalaSekolahFileController;
+use App\Http\Controllers\VerifikasiDokumenController;
 use App\Livewire\Backup\Index as BackupIndex;
 use App\Livewire\Sinkronisasi\Index as SinkronisasiIndex;
 use App\Livewire\AnalitikPengunjung\Index as AnalitikPengunjungIndex;
@@ -56,6 +57,14 @@ use Livewire\Volt\Volt;
 Route::get('tampilan/background/{jenis}', [TampilanBackgroundController::class, 'show'])
     ->where('jenis', 'landing|login')
     ->name('tampilan.background');
+
+// Halaman verifikasi publik dokumen PDF yang diunduh dengan mode "Tanda
+// Tangan & Cap berupa QR Code" (Fase 2 fitur Tanda Tangan Kepala Sekolah
+// & Cap Sekolah, permintaan user 2026-11-14) - SENGAJA TANPA middleware
+// "auth" supaya siapa pun yang men-scan QR Code di dokumen (termasuk
+// pihak luar/dinas yang tidak punya akun) bisa memverifikasi tanpa login.
+Route::get('verifikasi-dokumen/{uuid}', [VerifikasiDokumenController::class, 'show'])
+    ->name('verifikasi-dokumen.show');
 
 // ROUND KEENAM BELAS (2026-09-24, bagian 2): permintaan user "landing
 // page yang muncul sebelum halaman form login" - menggantikan
