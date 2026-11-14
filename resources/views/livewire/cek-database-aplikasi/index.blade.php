@@ -33,6 +33,9 @@
                         <button wire:click="pindahTab('storage')" class="pb-3 text-sm font-medium border-b-2 transition @if ($tab === 'storage') border-blue-600 text-blue-600 @else border-transparent text-slate-500 hover:text-slate-700 @endif">
                             Storage & Langganan VPS
                         </button>
+                        <button wire:click="pindahTab('hapus_tahun')" class="pb-3 text-sm font-medium border-b-2 transition @if ($tab === 'hapus_tahun') border-red-600 text-red-600 @else border-transparent text-slate-500 hover:text-slate-700 @endif">
+                            Hapus Data Aplikasi dan Database
+                        </button>
                     </nav>
                 </div>
 
@@ -570,6 +573,122 @@
                                 </form>
                             </div>
                         </div>
+                    @elseif ($tab === 'hapus_tahun')
+                        {{--
+                            Tab BARU "Hapus Data Aplikasi dan Database"
+                            (permintaan user 2026-11-14) - format mengikuti
+                            gambar contoh yang diupload user dari aplikasi
+                            lain, disesuaikan: di sini penghapusan berbasis
+                            TAHUN ANGGARAN (bukan hapus total sekaligus),
+                            cakupan SEMUA sekolah untuk 1 tahun yang
+                            dipilih. Lihat docblock kategoriHapusTahun()
+                            di App\Livewire\CekDatabaseAplikasi\Index untuk
+                            daftar lengkap & keputusan bisnisnya (2 ronde
+                            AskUserQuestion).
+                        --}}
+                        <div class="border border-red-200 rounded-lg overflow-hidden">
+                            <div class="p-5 sm:p-6 flex items-start gap-4 bg-white">
+                                <div class="shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                                    <x-icon name="trash" class="w-6 h-6 text-red-600" />
+                                </div>
+                                <div>
+                                    <h3 class="text-base font-semibold text-slate-900">Hapus Data Aplikasi dan Database</h3>
+                                    <p class="mt-1 text-sm text-slate-600">
+                                        Menghapus <strong>seluruh data</strong> aplikasi dan database sekaligus, langsung, tanpa sisa, untuk 1 <strong>Tahun Anggaran</strong> yang Anda pilih - termasuk semua berkas yang tersimpan (file backup .zip tahun itu). Gunakan bila ingin memulai dari awal dengan data baru yang bersih untuk tahun tersebut.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="mx-5 sm:mx-6 mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                                <p class="text-sm font-semibold text-amber-800 mb-2">Sebelum menghapus</p>
+                                <ul class="text-sm text-amber-800 space-y-1.5 list-disc list-inside">
+                                    <li>Data yang sudah dihapus <strong>tidak bisa dikembalikan</strong> dari aplikasi, kecuali melalui file backup.</li>
+                                    <li>Simpan dulu cadangannya lewat menu <strong>Backup</strong> (atau centang "buat backup otomatis dulu" di bawah).</li>
+                                    <li>Yang tetap ada: akun pengguna Anda (supaya aplikasi tetap bisa dibuka), Profil Sekolah &amp; Data PTK, struktur tabel database, dan daftar Hak Akses Menu (tidak berubah).</li>
+                                    <li>Hanya data di aplikasi yang sedang Anda buka saat ini yang dihapus. Kalau dijalankan di <strong>online</strong>, data di aplikasi <strong>lokal</strong> tidak ikut terhapus - jangan jalankan "Ambil dari Lokal" di menu Sinkronisasi bila ingin tetap bersih (berlaku juga sebaliknya).</li>
+                                </ul>
+                            </div>
+
+                            <div class="mx-5 sm:mx-6 mb-6">
+                                <x-input-label for="tahunHapus" value="Pilih Tahun Anggaran yang akan dihapus" />
+                                <select wire:model.live="tahunHapus" id="tahunHapus" class="mt-1 block w-full sm:w-64 border-slate-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-sm">
+                                    <option value="">-- Pilih Tahun --</option>
+                                    @foreach ($tahunTersediaHapus as $satuTahun)
+                                        <option value="{{ $satuTahun }}">{{ $satuTahun }}@if ($satuTahun === $tahunAktifHapus) (Tahun Anggaran Aktif) @endif</option>
+                                    @endforeach
+                                </select>
+                                @if ($tahunHapus && $tahunHapus === $tahunAktifHapus)
+                                    <p class="mt-2 text-xs text-amber-700">Tahun ini adalah Tahun Anggaran AKTIF saat ini - Admin OPS/Admin BOSP yang login akan langsung diarahkan ke tahun ini. Pastikan Anda sudah mengganti Tahun Anggaran Aktif di menu "Tahun Anggaran" dulu kalau tidak ingin mereka melihat data kosong setelah dihapus.</p>
+                                @endif
+                            </div>
+
+                            @if ($tahunHapus)
+                                <div class="mx-5 sm:mx-6 mb-6">
+                                    <p class="text-sm font-semibold text-slate-700 mb-2">Pratinjau data yang akan dihapus untuk Tahun {{ $tahunHapus }}</p>
+                                    <div class="overflow-auto scrollbar-modern border border-slate-200 rounded-lg" style="max-height: 24rem;">
+                                        <table class="min-w-full divide-y divide-slate-200 text-sm">
+                                            <thead class="sticky top-0 bg-slate-50">
+                                                <tr class="text-left text-slate-500">
+                                                    <th class="px-3 py-2 w-12">No</th>
+                                                    <th class="px-3 py-2">Data yang Dihapus</th>
+                                                    <th class="px-3 py-2">Tabel Database</th>
+                                                    <th class="px-3 py-2 text-right">Jumlah Data</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-slate-100 bg-white">
+                                                @foreach ($pratinjauHapusTahun as $i => $baris)
+                                                    <tr class="@if ($baris['jumlah'] === 0) text-slate-400 @endif">
+                                                        <td class="px-3 py-2">{{ $i + 1 }}</td>
+                                                        <td class="px-3 py-2">{{ $baris['label'] }}</td>
+                                                        <td class="px-3 py-2 font-mono text-xs">{{ $baris['tabel'] }}</td>
+                                                        <td class="px-3 py-2 text-right font-medium">{{ number_format($baris['jumlah'], 0, ',', '.') }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                            <tfoot>
+                                                <tr class="bg-slate-50 font-semibold text-slate-700">
+                                                    <td class="px-3 py-2" colspan="3">Total Baris Data</td>
+                                                    <td class="px-3 py-2 text-right">{{ number_format(collect($pratinjauHapusTahun)->sum('jumlah'), 0, ',', '.') }}</td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div class="mx-5 sm:mx-6 mb-6">
+                                    <label class="inline-flex items-start gap-2 text-sm text-slate-700">
+                                        <input type="checkbox" wire:model="buatBackupDuluHapusTahun" class="mt-0.5 rounded border-slate-300 text-red-600 focus:ring-red-500">
+                                        <span>Buat backup otomatis dulu sebelum menghapus (tersimpan di menu <strong>Backup</strong>, backup penuh aplikasi + database saat ini).</span>
+                                    </label>
+                                </div>
+
+                                <div class="mx-5 sm:mx-6 mb-6 flex justify-end">
+                                    <x-danger-button type="button" wire:click="bukaKonfirmasiHapusTahun">
+                                        <x-icon name="trash" class="w-4 h-4 mr-1.5" />
+                                        Hapus Data Tahun {{ $tahunHapus }} Sekarang
+                                    </x-danger-button>
+                                </div>
+                            @endif
+                        </div>
+
+                        {{-- Modal konfirmasi hapus tahun - WAJIB ketik ulang angka tahun (jawaban AskUserQuestion) --}}
+                        <x-modal name="cek-database-hapus-tahun" :show="$confirmingHapusTahun" maxWidth="md">
+                            <div class="p-6">
+                                <h2 class="text-lg font-medium text-red-700">Hapus PERMANEN seluruh data Tahun {{ $tahunHapus }}?</h2>
+                                <p class="mt-1 text-sm text-slate-600">
+                                    Tindakan ini <strong>tidak dapat dibatalkan</strong>. Seluruh data Tahun {{ $tahunHapus }} untuk SEMUA sekolah - termasuk berkas backup tahun itu - akan dihapus permanen dari database ini.
+                                </p>
+                                <div class="mt-4">
+                                    <x-input-label for="konfirmasiTeksHapusTahun" value="Ketik ulang angka tahun ({{ $tahunHapus }}) untuk konfirmasi" />
+                                    <input wire:model="konfirmasiTeksHapusTahun" id="konfirmasiTeksHapusTahun" type="text" autocomplete="off" placeholder="{{ $tahunHapus }}" class="mt-1 block w-full border-slate-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-sm">
+                                    <x-input-error :messages="$errors->get('konfirmasiTeksHapusTahun')" class="mt-1" />
+                                </div>
+                                <div class="mt-6 flex justify-end gap-3">
+                                    <x-secondary-button wire:click="batalHapusTahun" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="x-mark" class="w-3.5 h-3.5 mr-1" />Batal</x-secondary-button>
+                                    <x-danger-button wire:click="eksekusiHapusTahun" wire:loading.attr="disabled" :disabled="trim($konfirmasiTeksHapusTahun) !== (string) $tahunHapus" class="!px-3 !py-1.5 !text-[10px]"><x-icon name="trash" class="w-3.5 h-3.5 mr-1" />Ya, Hapus Permanen</x-danger-button>
+                                </div>
+                            </div>
+                        </x-modal>
                     @endif
                 </div>
             </div>

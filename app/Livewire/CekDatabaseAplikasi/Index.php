@@ -4,10 +4,12 @@ namespace App\Livewire\CekDatabaseAplikasi;
 
 use App\Livewire\Concerns\HasZoomTampilan;
 use App\Models\AksesDataLog;
+use App\Models\Backup;
 use App\Models\BelanjaHonorKegiatan;
 use App\Models\BiayaPendaftaranLomba;
 use App\Models\DanaBospTahap;
 use App\Models\DataPtk;
+use App\Models\DeadlinePekerjaan;
 use App\Models\FailedLoginAttempt;
 use App\Models\FormulirBosK7;
 use App\Models\Lampiran2a;
@@ -16,11 +18,16 @@ use App\Models\Lampiran2c;
 use App\Models\LanggananDayaJasa;
 use App\Models\LanggananVpsSetting;
 use App\Models\LaporanRealisasiBosp;
+use App\Models\LembarValidasiTpg;
+use App\Models\LembarValidasiTpgCeklist;
 use App\Models\PajakBospReguler;
 use App\Models\PendataanBosp;
 use App\Models\PendataanOps;
 use App\Models\PenerimaanHonorPtk;
+use App\Models\PermintaanAksesTahun;
 use App\Models\ProfilSekolah;
+use App\Models\RekapCairTpg;
+use App\Models\RekapCairTpgBulan;
 use App\Models\RekapRkas;
 use App\Models\RincianBelanjaBarangHabisPakai;
 use App\Models\RincianBelanjaModal;
@@ -29,11 +36,14 @@ use App\Models\RincianPemeliharaan;
 use App\Models\RincianPemeliharaanPc;
 use App\Models\StockOpnameBarangPersediaan;
 use App\Models\SuratTpg;
+use App\Models\TahunAnggaranSetting;
 use App\Models\User;
 use App\Models\VervalRealisasiBosp;
+use App\Services\BackupService;
 use App\Services\SyncClient;
 use App\Support\RegistriModulSekolah;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -68,6 +78,25 @@ use Livewire\WithPagination;
  *    oleh Superadmin (dikonfirmasi lewat AskUserQuestion, BUKAN ditarik
  *    otomatis lewat API idcloudhost - tidak ada kredensial yang
  *    disimpan di aplikasi ini).
+ * 6. Hapus Data Aplikasi dan Database (BARU, permintaan user 2026-11-14,
+ *    format tab mengikuti gambar contoh yang diupload user dari aplikasi
+ *    lain - lihat kategoriHapusTahun() untuk daftar lengkap tabel &
+ *    keputusan bisnis lengkap via 2 ronde AskUserQuestion). RINGKASAN:
+ *    Superadmin pilih 1 Tahun Anggaran, lalu SEMUA data tahun itu di
+ *    SEMUA sekolah (bukan 1 sekolah) dihapus permanen sekaligus -
+ *    termasuk riwayat Backup (file .zip & baris database-nya) & Deadline
+ *    Pekerjaan tahun itu. YANG TETAP ADA (tidak ikut terhapus): akun
+ *    pengguna, Profil Sekolah/Data PTK/Pendataan OPS & BOSP (bukan data
+ *    per-tahun), struktur tabel database, & pengaturan Hak Akses Menu -
+ *    supaya aplikasi tetap bisa dipakai setelah data tahun itu dihapus.
+ *    Pengaman: Superadmin WAJIB mengetik ulang angka tahunnya persis
+ *    sebelum tombol hapus permanen aktif (jawaban AskUserQuestion "Wajib
+ *    ketik ulang teks konfirmasi"), & ada centang OPSIONAL "buat backup
+ *    otomatis dulu" yang memanggil App\Services\BackupService yang
+ *    sudah ada (jawaban "Opsional via centang (seperti gambar)"). HANYA
+ *    menghapus data di database aplikasi yang sedang dibuka (kalau
+ *    dijalankan di ONLINE, data di LOKAL tidak ikut terhapus, sama
+ *    seperti pola Lokal/Online yang sudah ada di aplikasi ini).
  *
  * SEMUA pengecekan integritas di sini bersifat BACA DULU baru HAPUS -
  * tombol "Bersihkan Otomatis" selalu meminta konfirmasi dulu (pola sama
@@ -189,6 +218,29 @@ class Index extends Component
     public ?int $ukuranFolderAplikasiBytes = null;
 
     public ?string $ukuranAplikasiDihitungPada = null;
+
+    /**
+     * Tahun yang dipilih Superadmin untuk DIHAPUS (tab "Hapus Data
+     * Aplikasi dan Database", permintaan user 2026-11-14). Null berarti
+     * belum ada tahun dipilih - tombol hapus & pratinjau belum muncul.
+     */
+    public ?int $tahunHapus = null;
+
+    /**
+     * Centang OPSIONAL "buat backup otomatis dulu sebelum menghapus" -
+     * jawaban AskUserQuestion "Opsional via centang (seperti gambar)".
+     */
+    public bool $buatBackupDuluHapusTahun = false;
+
+    /**
+     * Teks yang diketik ulang Superadmin sebagai pengaman sebelum
+     * eksekusiHapusTahun() benar-benar berjalan - HARUS persis sama
+     * dengan angka $tahunHapus (jawaban AskUserQuestion "Wajib ketik
+     * ulang teks konfirmasi").
+     */
+    public string $konfirmasiTeksHapusTahun = '';
+
+    public bool $confirmingHapusTahun = false;
 
     /**
      * Daftar modul yang datanya terikat ke satu sekolah (profil_sekolah_id)
@@ -703,6 +755,18 @@ class Index extends Component
         $this->dipilihLoginGagal = [];
         $this->dipilihAksesData = [];
 
+        // Pindah tab (ke mana pun) selalu menutup modal konfirmasi hapus
+        // Tahun kalau sempat terbuka, & mengosongkan tahun yang sedang
+        // dipilih - supaya tidak ada modal "nyangkut" & Superadmin selalu
+        // mulai dari awal lagi tiap kali membuka tab ini.
+        $this->confirmingHapusTahun = false;
+        $this->resetErrorBag('konfirmasiTeksHapusTahun');
+        if ($tab !== 'hapus_tahun') {
+            $this->tahunHapus = null;
+            $this->buatBackupDuluHapusTahun = false;
+            $this->konfirmasiTeksHapusTahun = '';
+        }
+
         if ($tab === 'kecocokan') {
             $this->cekUlangKecocokanData();
         }
@@ -957,6 +1021,198 @@ class Index extends Component
         session()->flash('status', "Berhasil membersihkan {$totalDihapus} baris data bermasalah.");
     }
 
+    /**
+     * Daftar SEMUA tabel yang datanya terikat ke 1 Tahun Anggaran
+     * tertentu (kolom `tahun`) - dipakai bareng oleh
+     * daftarTahunTersediaHapus(), pratinjauHapusTahun(), &
+     * eksekusiHapusTahun(). Permintaan user 2026-11-14 ("tambahkan tab
+     * Hapus Aplikasi dan Database ... berdasarkan tahun"), daftar ini
+     * dikonfirmasi lewat 2 ronde AskUserQuestion - lihat docblock kelas
+     * ini (atas) untuk ringkasan lengkap keputusan bisnisnya.
+     *
+     * Backup::class SENGAJA ada di daftar ini juga (bukan hanya
+     * penanganan terpisah) karena kolom `tahun`-nya persis sama polanya
+     * dengan tabel lain (where('tahun', ...)) - hanya perlu 1 langkah
+     * TAMBAHAN menghapus file fisik .zip-nya, lihat eksekusiHapusTahun().
+     *
+     * @return array<int, array{label: string, model: class-string}>
+     */
+    private function kategoriHapusTahun(): array
+    {
+        return [
+            ['label' => 'Rekap RKAS', 'model' => RekapRkas::class],
+            ['label' => 'Penerimaan Honor PTK', 'model' => PenerimaanHonorPtk::class],
+            ['label' => 'Langganan Daya & Jasa', 'model' => LanggananDayaJasa::class],
+            ['label' => 'Rincian Pemeliharaan', 'model' => RincianPemeliharaan::class],
+            ['label' => 'Rincian Pemeliharaan PC', 'model' => RincianPemeliharaanPc::class],
+            ['label' => 'Biaya Pendaftaran Lomba', 'model' => BiayaPendaftaranLomba::class],
+            ['label' => 'Belanja Honor Kegiatan', 'model' => BelanjaHonorKegiatan::class],
+            ['label' => 'Rincian Belanja Modal', 'model' => RincianBelanjaModal::class],
+            ['label' => 'Rincian Belanja Barang Habis Pakai', 'model' => RincianBelanjaBarangHabisPakai::class],
+            ['label' => 'Rincian Belanja Modal BMD', 'model' => RincianBelanjaModalBmd::class],
+            ['label' => 'Pajak BOSP Reguler', 'model' => PajakBospReguler::class],
+            ['label' => 'Dana BOSP Tahap', 'model' => DanaBospTahap::class],
+            ['label' => 'Laporan Realisasi BOSP', 'model' => LaporanRealisasiBosp::class],
+            ['label' => 'Verifikasi Realisasi BOSP', 'model' => VervalRealisasiBosp::class],
+            ['label' => 'Stock Opname Barang Persediaan', 'model' => StockOpnameBarangPersediaan::class],
+            ['label' => 'Formulir BOS K7', 'model' => FormulirBosK7::class],
+            ['label' => 'Lampiran 2A', 'model' => Lampiran2a::class],
+            ['label' => 'Lampiran 2B', 'model' => Lampiran2b::class],
+            ['label' => 'Lampiran 2C', 'model' => Lampiran2c::class],
+            ['label' => 'Surat TPG', 'model' => SuratTpg::class],
+            ['label' => 'Lembar Validasi TPG', 'model' => LembarValidasiTpg::class],
+            ['label' => 'Ceklist Validasi TPG', 'model' => LembarValidasiTpgCeklist::class],
+            ['label' => 'Rekap Cair TPG', 'model' => RekapCairTpg::class],
+            ['label' => 'Rekap Cair TPG per Bulan', 'model' => RekapCairTpgBulan::class],
+            ['label' => 'Permintaan Akses Tahun', 'model' => PermintaanAksesTahun::class],
+            ['label' => 'Deadline Pekerjaan (Timeline Pekerjaan)', 'model' => DeadlinePekerjaan::class],
+            ['label' => 'Riwayat Backup (file .zip & catatan)', 'model' => Backup::class],
+        ];
+    }
+
+    /**
+     * Daftar tahun yang bisa dipilih di dropdown "Pilih Tahun" - diambil
+     * dari nilai `tahun` yang BENAR-BENAR ada di salah satu tabel pada
+     * kategoriHapusTahun() (supaya tidak menawarkan tahun yang datanya
+     * sudah kosong), ditambah Tahun Anggaran AKTIF saat ini (supaya
+     * tetap muncul di dropdown walau belum ada data sama sekali untuk
+     * tahun itu).
+     */
+    private function daftarTahunTersediaHapus(): array
+    {
+        $tahunSet = [TahunAnggaranSetting::current()->tahun_aktif];
+
+        foreach ($this->kategoriHapusTahun() as $kategori) {
+            $model = $kategori['model'];
+            $tahunSet = array_merge($tahunSet, $model::query()->whereNotNull('tahun')->distinct()->pluck('tahun')->all());
+        }
+
+        $tahunSet = array_values(array_unique(array_map('intval', $tahunSet)));
+        rsort($tahunSet);
+
+        return $tahunSet;
+    }
+
+    /**
+     * Pratinjau "DATA YANG DIHAPUS / TABEL DATABASE / JUMLAH DATA" untuk
+     * Tahun yang sedang dipilih - DIHITUNG ULANG setiap kali dipanggil
+     * (bukan disimpan di properti) supaya selalu mencerminkan jumlah
+     * TERBARU di database, sama seperti pola render() tab lain di kelas
+     * ini.
+     */
+    public function pratinjauHapusTahun(): array
+    {
+        if (! $this->tahunHapus) {
+            return [];
+        }
+
+        return collect($this->kategoriHapusTahun())->map(function (array $kategori) {
+            $model = $kategori['model'];
+
+            return [
+                'label' => $kategori['label'],
+                'tabel' => (new $model)->getTable(),
+                'jumlah' => $model::where('tahun', $this->tahunHapus)->count(),
+            ];
+        })->all();
+    }
+
+    public function updatedTahunHapus(): void
+    {
+        // Ganti tahun -> teks konfirmasi yang mungkin sudah diketik untuk
+        // tahun SEBELUMNYA otomatis dikosongkan lagi, supaya Superadmin
+        // tidak bisa "lolos" memakai ketikan tahun yang berbeda.
+        $this->konfirmasiTeksHapusTahun = '';
+    }
+
+    public function bukaKonfirmasiHapusTahun(): void
+    {
+        if (! $this->tahunHapus) {
+            return;
+        }
+
+        $this->resetErrorBag('konfirmasiTeksHapusTahun');
+        $this->konfirmasiTeksHapusTahun = '';
+        $this->confirmingHapusTahun = true;
+        $this->dispatch('open-modal', 'cek-database-hapus-tahun');
+    }
+
+    public function batalHapusTahun(): void
+    {
+        $this->resetErrorBag('konfirmasiTeksHapusTahun');
+        $this->confirmingHapusTahun = false;
+        $this->konfirmasiTeksHapusTahun = '';
+        $this->dispatch('close-modal', 'cek-database-hapus-tahun');
+    }
+
+    /**
+     * Eksekusi PERMANEN hapus seluruh data 1 Tahun Anggaran (SEMUA
+     * sekolah) - lihat kategoriHapusTahun() & docblock kelas ini untuk
+     * daftar lengkap & keputusan bisnisnya. Ini aksi PALING BERBAHAYA di
+     * seluruh aplikasi, jadi pengamannya BERLAPIS: (1) hanya Superadmin
+     * yang bisa membuka halaman ini sama sekali (Gate
+     * 'akses-cek-database-aplikasi'), (2) harus ada $tahunHapus yang
+     * dipilih, (3) teks yang diketik ulang HARUS PERSIS sama dengan
+     * angka tahunnya (dicek SERVER-SIDE di sini, bukan cuma lewat
+     * disabled di tombol), (4) semua penghapusan dibungkus 1 transaksi
+     * database (semua berhasil atau semua dibatalkan).
+     */
+    public function eksekusiHapusTahun(BackupService $backupService): void
+    {
+        if (! $this->tahunHapus) {
+            return;
+        }
+
+        if (trim($this->konfirmasiTeksHapusTahun) !== (string) $this->tahunHapus) {
+            $this->addError('konfirmasiTeksHapusTahun', 'Ketikan belum cocok. Ketik ulang angka tahun ('.$this->tahunHapus.') persis untuk konfirmasi.');
+
+            return;
+        }
+
+        $tahun = $this->tahunHapus;
+
+        // Backup otomatis OPSIONAL dulu, kalau dicentang - jawaban
+        // AskUserQuestion "Opsional via centang (seperti gambar)". Dibuat
+        // SEBELUM transaksi hapus dimulai supaya backup-nya sendiri tidak
+        // ikut terhapus kalau kebetulan dibuat untuk tahun yang sama.
+        if ($this->buatBackupDuluHapusTahun) {
+            $backupService->buat(auth()->id());
+        }
+
+        $totalDihapus = 0;
+
+        DB::transaction(function () use ($tahun, &$totalDihapus) {
+            foreach ($this->kategoriHapusTahun() as $kategori) {
+                $model = $kategori['model'];
+
+                if ($model === Backup::class) {
+                    // File fisik .zip ikut dihapus dari disk, BUKAN cuma
+                    // baris database-nya - permintaan user "termasuk
+                    // semua berkas yang tersimpan".
+                    Backup::where('tahun', $tahun)->get()->each(function (Backup $backup) use (&$totalDihapus) {
+                        if ($backup->path) {
+                            Storage::disk('local')->delete($backup->path);
+                        }
+                        $backup->delete();
+                        $totalDihapus++;
+                    });
+                    Storage::disk('local')->deleteDirectory('backup/'.$tahun);
+
+                    continue;
+                }
+
+                $totalDihapus += $model::where('tahun', $tahun)->delete();
+            }
+        });
+
+        $this->tahunHapus = null;
+        $this->buatBackupDuluHapusTahun = false;
+        $this->konfirmasiTeksHapusTahun = '';
+        $this->confirmingHapusTahun = false;
+        $this->dispatch('close-modal', 'cek-database-hapus-tahun');
+        session()->flash('status', "Berhasil menghapus seluruh data Tahun {$tahun} ({$totalDihapus} baris data, termasuk berkas yang tersimpan).");
+    }
+
     public function render()
     {
         $loginGagal = null;
@@ -998,6 +1254,9 @@ class Index extends Component
             'infoStorageVps' => $this->tab === 'storage' ? $this->infoStorageVps() : null,
             'ukuranDatabaseBytes' => $this->tab === 'storage' ? $this->ukuranDatabaseBytes() : null,
             'statusJatuhTempo' => $this->tab === 'storage' ? $this->statusJatuhTempo() : null,
+            'tahunTersediaHapus' => $this->tab === 'hapus_tahun' ? $this->daftarTahunTersediaHapus() : [],
+            'pratinjauHapusTahun' => $this->tab === 'hapus_tahun' ? $this->pratinjauHapusTahun() : [],
+            'tahunAktifHapus' => $this->tab === 'hapus_tahun' ? TahunAnggaranSetting::current()->tahun_aktif : null,
         ]);
     }
 }
