@@ -32,18 +32,45 @@
     atau mode=qrcode tapi $qrSvg kosong, SENGAJA jatuh kembali ke
     perilaku 'tanpa' (ruang kosong biasa) - BUKAN error - supaya dokumen
     tetap bisa dicetak normal walau datanya belum lengkap.
+
+    PERBAIKAN TATA LETAK (2026-11-14, laporan user "hasilnya sangat jelek"
+    disertai screenshot cap menimpa tulisan "Kepala Sekolah," di ATAS
+    ruang tanda tangan, tidak simetris): versi SEBELUMNYA menumpuk cap di
+    atas tanda tangan pakai `position:absolute` + `margin-left` negatif -
+    dompdf TIDAK konsisten merender `position:absolute`, jadi hasilnya
+    melenceng jauh dari posisi seharusnya (menimpa teks label di ATAS
+    kotak, bukan di tengah tanda tangan). Diganti total ke pendekatan
+    ALUR NORMAL (bukan absolute): tanda tangan & cap masing-masing taruh
+    di barisnya sendiri (lewat <br>, BUKAN posisi absolut), keduanya
+    center horizontal lewat text-align:center pada div pembungkus (sudah
+    terbukti bekerja benar di dompdf di seluruh aplikasi ini), lalu cap
+    ditarik ke ATAS dengan margin-top NEGATIF (bukan position:absolute)
+    supaya menumpuk/overlap ke bagian BAWAH tanda tangan - teknik overlap
+    pakai margin negatif ini JAUH lebih konsisten di dompdf dibanding
+    position:absolute. Ukuran tanda tangan & cap dihitung PROPORSIONAL
+    terhadap $tinggiPx (bukan angka tetap) supaya pas & rapi di kotak
+    manapun (64px di surat-tpg-ttd, 56px di tabel 3-kolom lembar
+    validasi/rekap cair) - TIDAK ADA LAGI yang menimpa baris di atasnya.
 --}}
 @php($modeTandaTangan = $modeTandaTangan ?? 'tanpa')
 @php($tinggiPx = $tinggiPx ?? 64)
 @if ($modeTandaTangan === 'gambar' && ! empty($tandaTanganSrc))
-    <div style="height:{{ $tinggiPx }}px;position:relative;text-align:center;">
-        <img src="{{ $tandaTanganSrc }}" style="max-height:{{ max(20, $tinggiPx - 6) }}px;max-width:150px;">
+    @php($ukuranTtd = (int) round($tinggiPx * 0.5))
+    @php($ukuranCap = (int) round($tinggiPx * 0.72))
+    @php($tarikKeAtas = (int) round($ukuranCap * 0.5))
+    <div style="height:{{ $tinggiPx }}px;text-align:center;line-height:1;">
+        <img src="{{ $tandaTanganSrc }}" style="max-height:{{ $ukuranTtd }}px;max-width:{{ $tinggiPx * 2 }}px;">
         @if (! empty($capSekolahSrc))
-            <img src="{{ $capSekolahSrc }}" style="position:absolute;top:0;left:50%;margin-left:-34px;width:68px;height:68px;opacity:0.8;">
+            <br>
+            <img src="{{ $capSekolahSrc }}" style="width:{{ $ukuranCap }}px;height:{{ $ukuranCap }}px;opacity:0.75;margin-top:-{{ $tarikKeAtas }}px;">
         @endif
     </div>
 @elseif ($modeTandaTangan === 'qrcode' && ! empty($qrSvg))
-    <div style="height:{{ $tinggiPx }}px;text-align:center;">
+    {{-- SENGAJA pakai min-height (bukan height tetap) - ukuran QR Code
+         dari TandaTanganDigitalService (default 100px) boleh lebih
+         tinggi dari $tinggiPx supaya tetap mudah dipindai, bukan
+         dipaksa gepeng/kecil. --}}
+    <div style="min-height:{{ $tinggiPx }}px;text-align:center;">
         {!! $qrSvg !!}
     </div>
 @else

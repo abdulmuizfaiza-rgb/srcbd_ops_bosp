@@ -55,14 +55,34 @@ class TandaTanganDigitalService
         ];
     }
 
-    /** Gambar QR Code mentah (markup SVG) yang meng-encode $isi (biasanya URL verifikasi). */
-    public function svgQr(string $isi, int $ukuranPx = 90): string
+    /**
+     * Gambar QR Code mentah (markup SVG) yang meng-encode $isi (biasanya
+     * URL verifikasi).
+     *
+     * PERBAIKAN (2026-11-14, laporan user "QR Code belum muncul" di
+     * dokumen PDF): bacon/bacon-qr-code SELALU mengembalikan dokumen SVG
+     * LENGKAP berawalan `<?xml version="1.0" ...?>` + `<!DOCTYPE svg
+     * ...>` SEBELUM tag `<svg>`-nya sendiri. Itu wajar & tidak masalah
+     * kalau ditempel sebagai file SVG berdiri sendiri (atau di halaman
+     * HTML biasa di browser, yang cenderung toleran), TAPI kalau
+     * ditempel inline di TENGAH dokumen HTML yang sedang dirender dompdf
+     * (bukan di awal dokumen), potongan `<?xml ?>`/`<!DOCTYPE>` itu
+     * merusak parsing HTML dompdf-nya - itulah sebabnya QR Code tidak
+     * pernah tampil sama sekali di PDF sebelumnya. Perbaikannya: buang
+     * semua teks SEBELUM tag `<svg` supaya yang ditempel inline HANYA
+     * elemen `<svg>...</svg>`-nya saja.
+     */
+    public function svgQr(string $isi, int $ukuranPx = 100): string
     {
         $renderer = new ImageRenderer(
             new RendererStyle($ukuranPx),
             new SvgImageBackEnd(),
         );
 
-        return (new Writer($renderer))->writeString($isi);
+        $svg = (new Writer($renderer))->writeString($isi);
+
+        $posisiTagSvg = strpos($svg, '<svg');
+
+        return $posisiTagSvg !== false ? substr($svg, $posisiTagSvg) : $svg;
     }
 }
