@@ -22,6 +22,7 @@ use App\Models\ProfilSekolah;
 use App\Models\RekapCairTpg;
 use App\Models\RekapCairTpgBulan;
 use App\Models\RekapRkas;
+use App\Models\RekeningKoran;
 use App\Models\RincianBelanjaBarangHabisPakai;
 use App\Models\RincianBelanjaModal;
 use App\Models\RincianBelanjaModalBmd;
@@ -80,6 +81,7 @@ class RegistriModulSekolah
             'Stock Opname Barang Persediaan' => StockOpnameBarangPersediaan::class,
             'Formulir BOS K7' => FormulirBosK7::class,
             'Verval Realisasi BOSP' => VervalRealisasiBosp::class,
+            'Rekening Koran' => RekeningKoran::class,
             'Pendataan OPS (Identitas)' => PendataanOps::class,
             'Pendataan BOSP (Identitas)' => PendataanBosp::class,
             'Data PTK' => DataPtk::class,
@@ -107,6 +109,7 @@ class RegistriModulSekolah
             'Lembar Validasi TPG Ceklist' => [LembarValidasiTpgCeklist::class, ['profil_sekolah_id', 'tahun', 'triwulan', 'nuptk']],
             'Rekap Cair TPG' => [RekapCairTpg::class, ['profil_sekolah_id', 'tahun', 'triwulan']],
             'Rekap Cair TPG Bulan' => [RekapCairTpgBulan::class, ['profil_sekolah_id', 'tahun', 'triwulan', 'nuptk']],
+            'Rekening Koran' => [RekeningKoran::class, ['profil_sekolah_id', 'tahun']],
             'Pendataan OPS (Identitas)' => [PendataanOps::class, ['profil_sekolah_id']],
             'Pendataan BOSP (Identitas)' => [PendataanBosp::class, ['profil_sekolah_id']],
             'Data PTK' => [DataPtk::class, ['nik']],
@@ -162,6 +165,13 @@ class RegistriModulSekolah
         // foto_ops & sk_ops (Pendataan OPS/Identitas) sama-sama file,
         // dikecualikan dengan alasan yang sama.
         $hasil['pendataan_ops']['kolom_dikecualikan'] = ['foto_ops', 'sk_ops'];
+
+        // rekening_koran_tw1-4 (Rekening Koran, permintaan user
+        // 2026-11-14) sama-sama file PDF, dikecualikan dengan alasan
+        // yang sama.
+        $hasil['rekening_koran']['kolom_dikecualikan'] = [
+            'rekening_koran_tw1', 'rekening_koran_tw2', 'rekening_koran_tw3', 'rekening_koran_tw4',
+        ];
 
         return $hasil;
     }

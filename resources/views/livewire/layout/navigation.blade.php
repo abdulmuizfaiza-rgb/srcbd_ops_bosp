@@ -207,6 +207,9 @@ new class extends Component
                                     <x-sidebar-link :href="route('pendataan-bosp.unduhan-lpj-bosp')" :active="request()->routeIs('pendataan-bosp.unduhan-lpj-bosp')" wire:navigate.hover>
                                         {{ __('Unduhan LPJ BOSP') }}
                                     </x-sidebar-link>
+                                    <x-sidebar-link :href="route('pendataan-bosp.rekening-koran')" :active="request()->routeIs('pendataan-bosp.rekening-koran')" wire:navigate.hover>
+                                        {{ __('Upload Rekening Koran') }}
+                                    </x-sidebar-link>
                                 @endif
                             </div>
                         </div>
@@ -404,6 +407,9 @@ new class extends Component
                                 </x-sidebar-link>
                                 <x-sidebar-link :href="route('pendataan-bosp.unduhan-lpj-bosp')" :active="request()->routeIs('pendataan-bosp.unduhan-lpj-bosp')" wire:navigate.hover>
                                     {{ __('Unduhan LPJ BOSP') }}
+                                </x-sidebar-link>
+                                <x-sidebar-link :href="route('pendataan-bosp.rekening-koran')" :active="request()->routeIs('pendataan-bosp.rekening-koran')" wire:navigate.hover>
+                                    {{ __('Upload Rekening Koran') }}
                                 </x-sidebar-link>
                             @endif
                         </div>

@@ -31,6 +31,8 @@ use App\Livewire\PendataanBosp\LaporanRealisasiBosp\Index as LaporanRealisasiBos
 use App\Livewire\PendataanBosp\PajakBospReguler\Index as PajakBospRegulerIndex;
 use App\Livewire\PendataanBosp\PenerimaanHonorPtk\Index as PenerimaanHonorPtkIndex;
 use App\Livewire\PendataanBosp\RekapRkas\Index as RekapRkasIndex;
+use App\Livewire\PendataanBosp\RekeningKoran\Index as RekeningKoranIndex;
+use App\Http\Controllers\RekeningKoranFileController;
 use App\Livewire\PendataanBosp\RincianBelanjaBarangHabisPakai\Index as RincianBelanjaBarangHabisPakaiIndex;
 use App\Livewire\PendataanBosp\RincianBelanjaModal\Index as RincianBelanjaModalIndex;
 use App\Livewire\PendataanBosp\UnduhanLpjBosp\Index as UnduhanLpjBospIndex;
@@ -126,6 +128,8 @@ Route::middleware(['auth', 'can:akses-pendataan-bosp'])->group(function () {
     Route::get('pendataan-bosp/formulir-bos-k7/cetak', FormulirBosK7CetakController::class)->name('pendataan-bosp.formulir-bos-k7.cetak');
     Route::get('pendataan-bosp/unduhan-lpj-bosp', UnduhanLpjBospIndex::class)->name('pendataan-bosp.unduhan-lpj-bosp');
     Route::get('pendataan-bosp/unduhan-lpj-bosp/unduh', UnduhanLpjBospController::class)->name('pendataan-bosp.unduhan-lpj-bosp.unduh');
+    Route::get('pendataan-bosp/rekening-koran', RekeningKoranIndex::class)->name('pendataan-bosp.rekening-koran');
+    Route::get('pendataan-bosp/rekening-koran/file/{tw}/{rekeningKoran}', [RekeningKoranFileController::class, 'show'])->name('pendataan-bosp.rekening-koran.file');
 });
 
 Route::middleware(['auth', 'can:akses-timeline-pekerjaan'])->group(function () {
