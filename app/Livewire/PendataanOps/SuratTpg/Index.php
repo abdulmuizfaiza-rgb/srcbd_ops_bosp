@@ -235,7 +235,7 @@ class Index extends Component
     }
 
     /**
-     * Hitung modeTandaTangan/tandaTanganSrc/capSekolahSrc/qrSvg - dipakai
+     * Hitung modeTandaTangan/tandaTanganSrc/capSekolahSrc/qrGambar - dipakai
      * BERSAMA oleh render() (tampilan langsung di halaman, dgn
      * editable=true) & exportPdf() (file PDF sungguhan, editable=false).
      *
@@ -263,7 +263,7 @@ class Index extends Component
      * TandaTanganDigitalService::siapkanQrUntukDokumen() supaya QR di
      * PDF itu valid & bisa diverifikasi publik.
      *
-     * @return array{modeTandaTangan: string, tandaTanganSrc: ?string, capSekolahSrc: ?string, qrSvg: ?string}
+     * @return array{modeTandaTangan: string, tandaTanganSrc: ?string, capSekolahSrc: ?string, qrGambar: ?string}
      */
     private function dataModeTandaTangan(?ProfilSekolah $sekolah, bool $untukPreview): array
     {
@@ -272,11 +272,11 @@ class Index extends Component
         $tandaTanganSrc = $modeTandaTangan === 'gambar' ? $sekolah?->tandaTanganKepalaSekolahDataUri() : null;
         $capSekolahSrc = $modeTandaTangan === 'gambar' ? $sekolah?->capSekolahDataUri() : null;
 
-        $qrSvg = null;
+        $qrGambar = null;
         if ($modeTandaTangan === 'qrcode' && $sekolah) {
             $layanan = app(TandaTanganDigitalService::class);
             if ($untukPreview) {
-                $qrSvg = $layanan->svgQr(route('verifikasi-dokumen.show', (string) Str::uuid()));
+                $qrGambar = $layanan->gambarQr(route('verifikasi-dokumen.show', (string) Str::uuid()));
             } else {
                 $labelDokumen = match ($this->tabAktif) {
                     SuratTpg::JENIS_REKOMENDASI => 'Surat Rekomendasi TPG',
@@ -285,7 +285,7 @@ class Index extends Component
                     SuratTpg::JENIS_REKAP_CAIR_TPG => 'Rekap Cair TPG',
                     default => 'Surat TPG',
                 };
-                $qrSvg = $layanan->siapkanQrUntukDokumen($sekolah, $labelDokumen, $this->tahun)['svg'];
+                $qrGambar = $layanan->siapkanQrUntukDokumen($sekolah, $labelDokumen, $this->tahun)['gambar'];
             }
         }
 
@@ -293,7 +293,7 @@ class Index extends Component
             'modeTandaTangan' => $modeTandaTangan,
             'tandaTanganSrc' => $tandaTanganSrc,
             'capSekolahSrc' => $capSekolahSrc,
-            'qrSvg' => $qrSvg,
+            'qrGambar' => $qrGambar,
         ];
     }
 

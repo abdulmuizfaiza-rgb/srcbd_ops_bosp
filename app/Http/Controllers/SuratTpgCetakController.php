@@ -113,10 +113,10 @@ class SuratTpgCetakController extends Controller
             : 'tanpa';
         $tandaTanganSrc = $modeTandaTangan === 'gambar' ? $sekolah->tandaTanganKepalaSekolahDataUri() : null;
         $capSekolahSrc = $modeTandaTangan === 'gambar' ? $sekolah->capSekolahDataUri() : null;
-        $qrSvg = null;
+        $qrGambar = null;
         if ($modeTandaTangan === 'qrcode') {
-            $qrSvg = app(TandaTanganDigitalService::class)
-                ->siapkanQrUntukDokumen($sekolah, self::LABEL_DOKUMEN[$jenis] ?? 'Surat TPG', $tahun)['svg'];
+            $qrGambar = app(TandaTanganDigitalService::class)
+                ->siapkanQrUntukDokumen($sekolah, self::LABEL_DOKUMEN[$jenis] ?? 'Surat TPG', $tahun)['gambar'];
         }
 
         $surat = SuratTpg::query()
@@ -149,7 +149,7 @@ class SuratTpgCetakController extends Controller
             'modeTandaTangan' => $modeTandaTangan,
             'tandaTanganSrc' => $tandaTanganSrc,
             'capSekolahSrc' => $capSekolahSrc,
-            'qrSvg' => $qrSvg,
+            'qrGambar' => $qrGambar,
         ];
 
         // Data tambahan khusus tab "Lembar Validasi TPG" (BARU

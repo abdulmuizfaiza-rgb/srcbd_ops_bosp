@@ -27,7 +27,7 @@
     lewat @include('pdf.partials.isi-ttd-kepala-sekolah') supaya bisa
     diisi gambar tanda tangan+cap atau QR Code sesuai pilihan mode saat
     Unduh PDF - lihat docblock partial itu. Variabel $modeTandaTangan/
-    $tandaTanganSrc/$capSekolahSrc/$qrSvg TIDAK perlu ditambahkan ke
+    $tandaTanganSrc/$capSekolahSrc/$qrGambar TIDAK perlu ditambahkan ke
     parameter @include surat-tpg-ttd di surat-tpg-rekomendasi-isi/
     surat-tpg-penghentian-isi - otomatis ikut ter-inherit dari data
     controller paling atas (perilaku standar Blade @include: parent
