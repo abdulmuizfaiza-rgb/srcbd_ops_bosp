@@ -679,8 +679,22 @@
                                     Tindakan ini <strong>tidak dapat dibatalkan</strong>. Seluruh data Tahun {{ $tahunHapus }} untuk SEMUA sekolah - termasuk berkas backup tahun itu - akan dihapus permanen dari database ini.
                                 </p>
                                 <div class="mt-4">
-                                    <x-input-label for="konfirmasiTeksHapusTahun" value="Ketik ulang angka tahun ({{ $tahunHapus }}) untuk konfirmasi" />
-                                    <input wire:model="konfirmasiTeksHapusTahun" id="konfirmasiTeksHapusTahun" type="text" autocomplete="off" placeholder="{{ $tahunHapus }}" class="mt-1 block w-full border-slate-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-sm">
+                                    {{--
+                                        Permintaan user 2026-11-14 (perbaikan): teks yang harus
+                                        diketik ulang DIWARNAI + HURUF BESAR SEMUA (uppercase)
+                                        supaya jelas beda dari teks lain di label. wire:model
+                                        diganti jadi wire:model.live (PERBAIKAN BUG) - sebelumnya
+                                        tombol "Ya, Hapus Permanen" tidak pernah aktif walau
+                                        ketikan sudah benar, karena :disabled dihitung ulang di
+                                        server tapi wire:model TANPA .live tidak mengirim
+                                        perubahan ke server tiap ketikan (hanya saat request lain
+                                        dikirim) - jadi halaman tidak pernah tahu ketikan sudah
+                                        cocok sampai ada request lain.
+                                    --}}
+                                    <x-input-label for="konfirmasiTeksHapusTahun">
+                                        Ketik ulang angka tahun (<span class="text-red-600 font-bold uppercase">{{ $tahunHapus }}</span>) untuk konfirmasi
+                                    </x-input-label>
+                                    <input wire:model.live="konfirmasiTeksHapusTahun" id="konfirmasiTeksHapusTahun" type="text" autocomplete="off" placeholder="{{ $tahunHapus }}" class="mt-1 block w-full uppercase font-bold tracking-widest text-red-700 border-red-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-sm placeholder:text-slate-300 placeholder:font-normal placeholder:tracking-normal">
                                     <x-input-error :messages="$errors->get('konfirmasiTeksHapusTahun')" class="mt-1" />
                                 </div>
                                 <div class="mt-6 flex justify-end gap-3">
