@@ -171,13 +171,7 @@
     <tr>
         <td style="border-left:1px solid #000;border-right:1px solid #000;height:56px;"></td>
         <td style="border-left:1px solid #000;border-right:1px solid #000;height:56px;"></td>
-        {{-- Fase 2 (2026-11-14): ruang tanda tangan Kepala Sekolah (kolom
-             ke-3) bisa diisi gambar tanda tangan+cap atau QR Code - lihat
-             docblock resources/views/pdf/partials/isi-ttd-kepala-sekolah.
-             Kolom Kasie KPML & Pengawas (2 td di atas) TIDAK disentuh. --}}
-        <td style="border-left:1px solid #000;border-right:1px solid #000;height:56px;">
-            @include('pdf.partials.isi-ttd-kepala-sekolah', ['tinggiPx' => 56])
-        </td>
+        <td style="border-left:1px solid #000;border-right:1px solid #000;height:56px;"></td>
     </tr>
     <tr>
         <td style="border:1px solid #000;border-top:none;padding:4px 6px;vertical-align:top;text-align:center;">

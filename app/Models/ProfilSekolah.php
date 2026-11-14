@@ -34,8 +34,6 @@ use App\Models\Concerns\Syncable;
     'kop_surat',
     'nama_yayasan',
     'logo_sekolah',
-    'tanda_tangan_kepala_sekolah',
-    'cap_sekolah',
 ])]
 class ProfilSekolah extends Model
 {
@@ -156,41 +154,6 @@ class ProfilSekolah extends Model
 
         $mime = Storage::disk('public')->mimeType($this->logo_sekolah) ?: 'image/png';
         $isi = Storage::disk('public')->get($this->logo_sekolah);
-
-        return 'data:'.$mime.';base64,'.base64_encode($isi);
-    }
-
-    /**
-     * Data URI base64 untuk gambar Tanda Tangan Kepala Sekolah & Cap
-     * Sekolah (permintaan user 2026-11-14) - KEDUANYA file UPLOAD biasa
-     * (bukan dibuat otomatis oleh sistem), sama persis polanya dengan
-     * logoSekolahDataUri() di atas. BELUM dipakai di PDF manapun di
-     * round ini (Fase 1) - disiapkan untuk Fase 2 (pemasangan ke
-     * dokumen PDF) yang belum dikerjakan. Untuk tampilan layar (preview
-     * Livewire), lihat App\Http\Controllers\
-     * TandaTanganKepalaSekolahFileController & App\Http\Controllers\
-     * CapSekolahFileController.
-     */
-    public function tandaTanganKepalaSekolahDataUri(): ?string
-    {
-        if (! $this->tanda_tangan_kepala_sekolah || ! Storage::disk('public')->exists($this->tanda_tangan_kepala_sekolah)) {
-            return null;
-        }
-
-        $mime = Storage::disk('public')->mimeType($this->tanda_tangan_kepala_sekolah) ?: 'image/png';
-        $isi = Storage::disk('public')->get($this->tanda_tangan_kepala_sekolah);
-
-        return 'data:'.$mime.';base64,'.base64_encode($isi);
-    }
-
-    public function capSekolahDataUri(): ?string
-    {
-        if (! $this->cap_sekolah || ! Storage::disk('public')->exists($this->cap_sekolah)) {
-            return null;
-        }
-
-        $mime = Storage::disk('public')->mimeType($this->cap_sekolah) ?: 'image/png';
-        $isi = Storage::disk('public')->get($this->cap_sekolah);
 
         return 'data:'.$mime.';base64,'.base64_encode($isi);
     }

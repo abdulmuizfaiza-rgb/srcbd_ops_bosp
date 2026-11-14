@@ -11,7 +11,6 @@ use App\Models\ProfilSekolah;
 use App\Models\RekapCairTpg;
 use App\Models\RekapCairTpgBulan;
 use App\Models\SuratTpg;
-use App\Services\TandaTanganDigitalService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -35,37 +34,12 @@ use Symfony\Component\HttpFoundation\Response;
  * (controller TERPISAH, bukan diperluas di sini, krn bentuk query
  * parameter & datanya beda - tidak ada `jenis` tunggal).
  *
- * Fase 2 (2026-11-14): query parameter BARU `mode_ttd` (pola SAMA seperti
- * `kertas`/`margin_*` yang sudah ada) - 'tanpa' (default) | 'gambar' |
- * 'qrcode', dipilih user lewat dropdown sebelum link "Cetak"/"Unduh PDF"
- * dibuka (lihat App\Livewire\PendataanOps\SuratTpg\Index). HANYA berlaku
- * utk jenis surat yang memang punya tanda tangan Kepala Sekolah (lihat
- * JENIS_ADA_TTD_KEPSEK di bawah) - dikonfirmasi lewat pembacaan tiap
- * partial PDF-nya satu per satu: JENIS_PERNYATAAN TIDAK termasuk karena
- * penandatangannya Pengawas, BUKAN Kepala Sekolah (lihat docblock
- * surat-tpg-pernyataan-isi.blade.php). Mode 'qrcode' mencatat baris baru
- * ke tabel verifikasi_dokumen_qr (App\Services\TandaTanganDigitalService)
- * supaya QR Code di PDF-nya bisa diverifikasi publik di
- * /verifikasi-dokumen/{uuid}.
+ * Fitur Tanda Tangan Kepala Sekolah & Cap Sekolah (mode gambar/QR Code
+ * yang sempat ditambahkan 2026-11-14) sudah DIHAPUS kembali atas
+ * permintaan user - selalu diperlakukan sebagai "tanpa" seperti semula.
  */
 class SuratTpgCetakController extends Controller
 {
-    /** Jenis Surat TPG yang memang punya tanda tangan Kepala Sekolah (lihat docblock kelas). */
-    private const JENIS_ADA_TTD_KEPSEK = [
-        SuratTpg::JENIS_REKOMENDASI,
-        SuratTpg::JENIS_PENGHENTIAN,
-        SuratTpg::JENIS_LEMBAR_VALIDASI,
-        SuratTpg::JENIS_REKAP_CAIR_TPG,
-    ];
-
-    /** Label dokumen (utk dicatat di verifikasi_dokumen_qr saat mode QR Code). */
-    private const LABEL_DOKUMEN = [
-        SuratTpg::JENIS_REKOMENDASI => 'Surat Rekomendasi TPG',
-        SuratTpg::JENIS_PENGHENTIAN => 'Surat Penghentian TPG',
-        SuratTpg::JENIS_LEMBAR_VALIDASI => 'Lembar Validasi TPG',
-        SuratTpg::JENIS_REKAP_CAIR_TPG => 'Rekap Cair TPG',
-    ];
-
     public function __invoke(Request $request): Response
     {
         $jenis = match ($request->query('jenis')) {
@@ -102,23 +76,6 @@ class SuratTpgCetakController extends Controller
             'bawah' => $this->batasMargin($request->query('margin_bawah', 2.5)),
         ];
 
-        // Fase 2 (2026-11-14): pilihan mode tanda tangan Kepala Sekolah -
-        // lihat docblock kelas. $adaTtdKepsek menentukan apakah jenis surat
-        // ini memang punya tanda tangan Kepala Sekolah sama sekali (kalau
-        // tidak, mode SELALU dipaksa 'tanpa' walau user iseng mengetik
-        // query string mode_ttd secara manual).
-        $adaTtdKepsek = in_array($jenis, self::JENIS_ADA_TTD_KEPSEK, true);
-        $modeTandaTangan = $adaTtdKepsek && in_array($request->query('mode_ttd'), ['gambar', 'qrcode'], true)
-            ? $request->query('mode_ttd')
-            : 'tanpa';
-        $tandaTanganSrc = $modeTandaTangan === 'gambar' ? $sekolah->tandaTanganKepalaSekolahDataUri() : null;
-        $capSekolahSrc = $modeTandaTangan === 'gambar' ? $sekolah->capSekolahDataUri() : null;
-        $qrGambar = null;
-        if ($modeTandaTangan === 'qrcode') {
-            $qrGambar = app(TandaTanganDigitalService::class)
-                ->siapkanQrUntukDokumen($sekolah, self::LABEL_DOKUMEN[$jenis] ?? 'Surat TPG', $tahun)['gambar'];
-        }
-
         $surat = SuratTpg::query()
             ->where('profil_sekolah_id', $sekolah->id)
             ->where('tahun', $tahun)
@@ -145,11 +102,6 @@ class SuratTpgCetakController extends Controller
             'logoSekolahSrc' => $sekolah->logoSekolahDataUri(),
             'sekolah' => $sekolah,
             'margin' => $margin,
-            // Fase 2 (2026-11-14): lihat blok perhitungan $modeTandaTangan dst di atas.
-            'modeTandaTangan' => $modeTandaTangan,
-            'tandaTanganSrc' => $tandaTanganSrc,
-            'capSekolahSrc' => $capSekolahSrc,
-            'qrGambar' => $qrGambar,
         ];
 
         // Data tambahan khusus tab "Lembar Validasi TPG" (BARU

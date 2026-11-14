@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\BackupFileController;
-use App\Http\Controllers\CapSekolahFileController;
 use App\Http\Controllers\FormulirBosK7CetakController;
 use App\Http\Controllers\GoogleDriveOAuthController;
 use App\Http\Controllers\KopSuratFileController;
@@ -12,8 +11,6 @@ use App\Http\Controllers\PendataanOpsFileController;
 use App\Http\Controllers\SuratTpgCetakController;
 use App\Http\Controllers\SuratTpgCetakSemuaController;
 use App\Http\Controllers\TampilanBackgroundController;
-use App\Http\Controllers\TandaTanganKepalaSekolahFileController;
-use App\Http\Controllers\VerifikasiDokumenController;
 use App\Livewire\Backup\Index as BackupIndex;
 use App\Livewire\Sinkronisasi\Index as SinkronisasiIndex;
 use App\Livewire\AnalitikPengunjung\Index as AnalitikPengunjungIndex;
@@ -58,14 +55,6 @@ Route::get('tampilan/background/{jenis}', [TampilanBackgroundController::class, 
     ->where('jenis', 'landing|login')
     ->name('tampilan.background');
 
-// Halaman verifikasi publik dokumen PDF yang diunduh dengan mode "Tanda
-// Tangan & Cap berupa QR Code" (Fase 2 fitur Tanda Tangan Kepala Sekolah
-// & Cap Sekolah, permintaan user 2026-11-14) - SENGAJA TANPA middleware
-// "auth" supaya siapa pun yang men-scan QR Code di dokumen (termasuk
-// pihak luar/dinas yang tidak punya akun) bisa memverifikasi tanpa login.
-Route::get('verifikasi-dokumen/{uuid}', [VerifikasiDokumenController::class, 'show'])
-    ->name('verifikasi-dokumen.show');
-
 // ROUND KEENAM BELAS (2026-09-24, bagian 2): permintaan user "landing
 // page yang muncul sebelum halaman form login" - menggantikan
 // `Route::redirect('/', '/dashboard')` yang sebelumnya UNCONDITIONAL
@@ -101,12 +90,6 @@ Route::middleware(['auth', 'can:akses-profil-sekolah'])->group(function () {
     // Format Surat Rekomendasi & Pembatalan TPG (tab Cover SMPN/SMP-S).
     Route::get('profil-sekolah/logo-sekolah/{profilSekolah}', [LogoSekolahFileController::class, 'show'])
         ->name('profil-sekolah.logo-sekolah');
-    // Tanda Tangan Kepala Sekolah & Cap Sekolah (permintaan user
-    // 2026-11-14) - pola route SAMA PERSIS seperti logo-sekolah di atas.
-    Route::get('profil-sekolah/tanda-tangan-kepala-sekolah/{profilSekolah}', [TandaTanganKepalaSekolahFileController::class, 'show'])
-        ->name('profil-sekolah.tanda-tangan-kepala-sekolah');
-    Route::get('profil-sekolah/cap-sekolah/{profilSekolah}', [CapSekolahFileController::class, 'show'])
-        ->name('profil-sekolah.cap-sekolah');
 });
 
 Route::middleware(['auth', 'can:akses-pendataan-ops'])->group(function () {

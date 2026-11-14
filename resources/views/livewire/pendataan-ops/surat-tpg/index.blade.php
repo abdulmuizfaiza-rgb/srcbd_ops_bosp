@@ -192,25 +192,6 @@
                                 Setting Margin
                             </x-secondary-button>
 
-                            {{--
-                                Fase 2 (2026-11-14, permintaan user): pilihan
-                                mode tanda tangan Kepala Sekolah pada PDF yang
-                                dihasilkan tombol "Cetak"/"Unduh PDF" di bawah
-                                - hanya ditampilkan utk tab yang memang punya
-                                tanda tangan Kepala Sekolah (lihat
-                                adaTtdKepsekUntukTabAktif(), mis. tidak
-                                ditampilkan di tab Surat Pernyataan karena
-                                ditandatangani Pengawas, bukan Kepala Sekolah).
-                            --}}
-                            @if ($this->adaTtdKepsekUntukTabAktif())
-                                <label for="mode_tanda_tangan" class="text-sm text-slate-600">Tanda Tangan</label>
-                                <select wire:model.live="modeTandaTangan" id="mode_tanda_tangan" class="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-xs">
-                                    <option value="tanpa">Tanpa Tanda Tangan</option>
-                                    <option value="gambar">Dengan Tanda Tangan &amp; Cap (gambar)</option>
-                                    <option value="qrcode">Dengan Tanda Tangan &amp; Cap (QR Code)</option>
-                                </select>
-                            @endif
-
                             @if ($urlCetak)
                                 <a href="{{ $urlCetak }}" target="_blank" rel="noopener" class="inline-flex items-center px-2.5 py-1.5 bg-white border border-slate-300 rounded-md font-semibold text-[10px] text-slate-700 uppercase tracking-widest shadow-sm hover:bg-slate-50 whitespace-nowrap">
                                     <x-icon name="printer" class="w-3.5 h-3.5 mr-1" />
